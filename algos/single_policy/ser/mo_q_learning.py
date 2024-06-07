@@ -8,10 +8,10 @@ import numpy as np
 import wandb
 
 from algos.common.evaluation import log_episode_info
-from algos.common.model_based.tabular_model import TabularModel
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.scalarization import weighted_sum
-from algos.common.utils import linearly_decaying_value
+from mo_utilssed.tabular_model import TabularModel
+from mo_utilsorithm import MOAgent, MOPolicy
+from mo_utilsation import weighted_sum
+from mo_utilsport linearly_decaying_value
 
 
 class MOQLearning(MOPolicy, MOAgent):
@@ -117,9 +117,8 @@ class MOQLearning(MOPolicy, MOAgent):
         self.log = log
         if self.log and parent_rng is None:
             self.setup_wandb(project_name, experiment_name, wandb_entity)
-    
-    @override
-    def act(self, obs: np.array) -> int:
+
+    def __act(self, obs: np.array) -> int:
         # epsilon-greedy
         coin = self.np_random.random()
         if coin < self.epsilon:
@@ -265,7 +264,7 @@ class MOQLearning(MOPolicy, MOAgent):
         for _ in range(1, total_timesteps + 1):
             self.global_step += 1
 
-            self.action = self.act(self.obs)
+            self.action = self.__act(self.obs)
             (
                 self.next_obs,
                 self.reward,

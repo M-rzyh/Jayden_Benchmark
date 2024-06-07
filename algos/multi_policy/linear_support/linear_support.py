@@ -10,9 +10,9 @@ from cvxpy import SolverError
 from gymnasium.core import Env
 
 from algos.common.evaluation import policy_evaluation_mo
-from algos.common.morl_algorithm import MOPolicy
-from algos.common.performance_indicators import hypervolume
-from algos.common.weights import extrema_weights
+from mo_utilsorithm import MOPolicy
+from mo_utilsnce_indicators import hypervolume
+from mo_utilsimport extrema_weights
 
 
 np.set_printoptions(precision=4)

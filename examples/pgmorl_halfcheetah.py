@@ -1,6 +1,6 @@
 import numpy as np
 
-from algos.common.evaluation import eval_mo
+from mo_utils.evaluation import eval_mo
 from algos.multi_policy.pgmorl.pgmorl import PGMORL
 from algos.single_policy.ser.mo_ppo import make_env
 

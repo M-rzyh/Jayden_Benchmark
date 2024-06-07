@@ -3,7 +3,7 @@ import random
 
 import numpy as np
 
-from algos.common.prioritized_buffer import SumTree
+from mo_utils.prioritized_buffer import SumTree
 
 
 class TabularModel:

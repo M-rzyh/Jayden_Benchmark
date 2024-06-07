@@ -3,7 +3,6 @@ import os
 import random
 from itertools import chain
 from typing import Callable, List, Optional, Union
-from typing_extensions import override
 
 import gymnasium as gym
 import numpy as np
@@ -14,17 +13,17 @@ import torch.optim as optim
 import wandb
 
 from algos.common.buffer import ReplayBuffer
-from algos.common.evaluation import (
+from mo_utilson import (
     log_all_multi_policy_metrics,
     log_episode_info,
     policy_evaluation_mo,
 )
-from algos.common.model_based.probabilistic_ensemble import (
+from mo_utilssed.probabilistic_ensemble import (
     ProbabilisticEnsemble,
 )
-from algos.common.model_based.utils import ModelEnv, visualize_eval
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.networks import (
+from mo_utilssed.utils import ModelEnv, visualize_eval
+from mo_utilsorithm import MOAgent, MOPolicy
+from mo_utils import (
     NatureCNN,
     get_grad_norm,
     huber,
@@ -32,9 +31,9 @@ from algos.common.networks import (
     mlp,
     polyak_update,
 )
-from algos.common.prioritized_buffer import PrioritizedReplayBuffer
-from algos.common.utils import linearly_decaying_value, unique_tol
-from algos.common.weights import equally_spaced_weights
+from mo_utilszed_buffer import PrioritizedReplayBuffer
+from mo_utilsport linearly_decaying_value, unique_tol
+from mo_utilsimport equally_spaced_weights
 from algos.multi_policy.linear_support.linear_support import LinearSupport
 
 
@@ -599,8 +598,7 @@ class GPIPD(MOPolicy, MOAgent):
             q_net.train()
         return action
 
-    @override
-    def act(self, obs: th.Tensor, w: th.Tensor) -> int:
+    def _act(self, obs: th.Tensor, w: th.Tensor) -> int:
         if self.np_random.random() < self.epsilon:
             return self.env.action_space.sample()
         else:
@@ -741,7 +739,7 @@ class GPIPD(MOPolicy, MOAgent):
             if self.global_step < self.learning_starts:
                 action = self.env.action_space.sample()
             else:
-                action = self.act(th.as_tensor(obs).float().to(self.device), tensor_w)
+                action = self._act(th.as_tensor(obs).float().to(self.device), tensor_w)
 
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
 

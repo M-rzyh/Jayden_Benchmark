@@ -14,8 +14,8 @@ from torch import nn, optim
 from torch.distributions import Normal
 
 from algos.common.evaluation import log_episode_info
-from algos.common.morl_algorithm import MOPolicy
-from algos.common.networks import layer_init, mlp
+from mo_utilsorithm import MOPolicy
+from mo_utils import layer_init, mlp
 
 
 class PPOReplayBuffer:
@@ -400,7 +400,7 @@ class MOPPO(MOPolicy):
             self.global_step += 1 * self.num_envs
             # Compute best action
             with th.no_grad():
-                action, logprob, _, value = self.act(obs)
+                action, logprob, _, value = self.networks.get_action_and_value(obs)
                 value = value.view(self.num_envs, self.networks.reward_dim)
 
             # Perform action on the environment
@@ -472,16 +472,6 @@ class MOPPO(MOPolicy):
         return returns, advantages
 
     @override
-    def act(self, obs: th.Tensor, action: Optional[th.Tensor] = None):
-        """Returns the action to perform for the given obs
-
-        Returns:
-            action as a numpy array (continuous actions)
-        """
-        action, logprob, entropy, value = self.networks.get_action_and_value(obs, action)
-        return action, logprob, entropy, value
-
-    @override
     def eval(self, obs: np.ndarray, w):
         """Returns the best action to perform for the given obs
 
@@ -491,7 +481,7 @@ class MOPPO(MOPolicy):
         obs = th.as_tensor(obs).float().to(self.device)
         obs = obs.unsqueeze(0).repeat(self.num_envs, 1)  # duplicate observation to fit the NN input
         with th.no_grad():
-            action, _, _, _ = self.act(obs)
+            action, _, _, _ = self.networks.get_action_and_value(obs)
 
         return action[0].detach().cpu().numpy()
 
@@ -517,7 +507,7 @@ class MOPPO(MOPolicy):
                 # mb == minibatch
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = self.act(b_obs[mb_inds], b_actions[mb_inds])
+                _, newlogprob, entropy, newvalue = self.networks.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 

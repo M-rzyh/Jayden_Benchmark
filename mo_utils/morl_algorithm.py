@@ -13,7 +13,7 @@ import wandb
 from gymnasium import spaces
 from mo_gymnasium.utils import MOSyncVectorEnv
 
-from algos.common.evaluation import (
+from mo_utils.evaluation import (
     eval_mo_reward_conditioned,
     policy_evaluation_mo,
 )
@@ -47,17 +47,18 @@ class MOPolicy(ABC):
             np.array or int: Action
         """
     
-    @abstractmethod
-    def act(self, obs: Union[th.Tensor, np.ndarray], w: Optional[Union[th.Tensor, np.ndarray]]):
-        """Non-greedy action selection. Used for training.
+    # to check
+    # @abstractmethod
+    # def act(self, obs: Union[th.Tensor, np.ndarray], w: Optional[Union[th.Tensor, np.ndarray]]):
+    #     """Non-greedy action selection. Used for training.
 
-        Args:
-            obs (np.array): Observation
-            w (optional np.array): weight for scalarization
+    #     Args:
+    #         obs (np.array): Observation
+    #         w (optional np.array): weight for scalarization
 
-        Returns:
-            np.array or int: Action logits or Action
-        """
+    #     Returns:
+    #         np.array or int: Action logits or Action
+    #     """
     
     @abstractmethod
     def update(self, weight: Optional[Union[th.Tensor, np.ndarray]]) -> None:
@@ -289,3 +290,16 @@ class MOAgent(ABC):
         import wandb
 
         wandb.finish()
+
+class MORLAlgo(MOAgent, MOPolicy):
+    def __init__(
+            self, 
+            env: Optional[gym.Env], 
+            device: Union[th.device, str] = "auto", 
+            seed: Optional[int] = None
+        ) -> None:
+        """
+        Wrapper for MORL algorithms
+        """
+        MOPolicy.__init__(self, device=device)
+        MOAgent.__init__(self, env=env, device=device, seed=seed)

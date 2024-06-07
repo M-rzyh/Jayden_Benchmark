@@ -3,7 +3,6 @@ import os
 import random
 from itertools import chain
 from typing import List, Optional, Union
-from typing_extensions import override
 
 import gymnasium
 import numpy as np
@@ -14,20 +13,20 @@ import torch.optim as optim
 import wandb
 
 from algos.common.buffer import ReplayBuffer
-from algos.common.evaluation import (
+from mo_utilson import (
     log_all_multi_policy_metrics,
     log_episode_info,
     policy_evaluation_mo,
 )
-from algos.common.model_based.probabilistic_ensemble import (
+from mo_utilssed.probabilistic_ensemble import (
     ProbabilisticEnsemble,
 )
-from algos.common.model_based.utils import ModelEnv, visualize_eval
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.networks import layer_init, mlp, polyak_update
-from algos.common.prioritized_buffer import PrioritizedReplayBuffer
-from algos.common.utils import unique_tol
-from algos.common.weights import equally_spaced_weights
+from mo_utilssed.utils import ModelEnv, visualize_eval
+from mo_utilsorithm import MOAgent, MOPolicy
+from mo_utils import layer_init, mlp, polyak_update
+from mo_utilszed_buffer import PrioritizedReplayBuffer
+from mo_utilsport unique_tol
+from mo_utilsimport equally_spaced_weights
 from algos.multi_policy.linear_support.linear_support import LinearSupport
 
 
@@ -495,16 +494,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         if len(self.weight_support) > 0:
             self.stacked_weight_support = th.stack(self.weight_support)
 
-    @override
-    def act(self, obs: th.Tensor, w: th.Tensor) -> np.ndarray:
-        """Select an action for the given observation and weight vector."""
-        return self.policy(
-                    th.tensor(obs).float().to(self.device),
-                    th.tensor(w).float().to(self.device),
-                    noise=self.policy_noise,
-                    noise_clip=self.noise_clip,
-                ).detach().cpu().numpy()
-    
     def train_iteration(
         self,
         total_timesteps: int,
@@ -534,7 +523,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
 
         obs, info = self.env.reset()
-        tensor_obs = th.tensor(obs).float().to(self.device)
         for _ in range(1, total_timesteps + 1):
             self.global_step += 1
 
@@ -542,7 +530,17 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 action = self.env.action_space.sample()
             else:
                 with th.no_grad():
-                    action = self.act(tensor_obs, tensor_w)
+                    action = (
+                        self.policy(
+                            th.tensor(obs).float().to(self.device),
+                            tensor_w,
+                            noise=self.policy_noise,
+                            noise_clip=self.noise_clip,
+                        )
+                        .detach()
+                        .cpu()
+                        .numpy()
+                    )
 
             action_env = action
 

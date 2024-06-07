@@ -3,7 +3,7 @@ import numpy as np
 import torch as th
 from mo_gymnasium.utils import MORecordEpisodeStatistics
 
-from algos.common.evaluation import eval_mo_reward_conditioned
+from mo_utils.evaluation import eval_mo_reward_conditioned
 from algos.single_policy.esr.eupg import EUPG
 
 

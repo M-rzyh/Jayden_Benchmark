@@ -13,9 +13,9 @@ import wandb
 from torch.distributions import Categorical
 
 from algos.common.accrued_reward_buffer import AccruedRewardReplayBuffer
-from algos.common.evaluation import log_episode_info
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.networks import layer_init, mlp
+from mo_utilson import log_episode_info
+from mo_utilsorithm import MOAgent, MOPolicy
+from mo_utils import layer_init, mlp
 
 
 class PolicyNet(nn.Module):
@@ -214,10 +214,10 @@ class EUPG(MOPolicy, MOAgent):
         else:
             obs = th.as_tensor(obs).to(self.device)
         accrued_reward = th.as_tensor(accrued_reward).float().to(self.device)
-        return self.act(obs, accrued_reward)
+        return self.__choose_action(obs, accrued_reward)
 
     @th.no_grad()
-    def act(self, obs: th.Tensor, accrued_reward: th.Tensor) -> int:
+    def __choose_action(self, obs: th.Tensor, accrued_reward: th.Tensor) -> int:
         action = self.net.distribution(obs, accrued_reward)
         action = action.sample().detach().item()
         return action
@@ -292,7 +292,7 @@ class EUPG(MOPolicy, MOAgent):
 
             with th.no_grad():
                 # For training, takes action according to the policy
-                action = self.act(th.Tensor([obs]).to(self.device), accrued_reward_tensor)
+                action = self.__choose_action(th.Tensor([obs]).to(self.device), accrued_reward_tensor)
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
 
             # Memory update

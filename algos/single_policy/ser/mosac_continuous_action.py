@@ -19,9 +19,9 @@ import torch.optim as optim
 import wandb
 
 from algos.common.buffer import ReplayBuffer
-from algos.common.evaluation import log_episode_info
-from algos.common.morl_algorithm import MOPolicy
-from algos.common.networks import mlp, polyak_update
+from mo_utilson import log_episode_info
+from mo_utilsorithm import MOPolicy
+from mo_utils import mlp, polyak_update
 
 
 # ALGO LOGIC: initialize agent here:
@@ -337,10 +337,6 @@ class MOSAC(MOPolicy):
     def set_weights(self, weights: np.ndarray):
         self.weights = weights
         self.weights_tensor = th.from_numpy(self.weights).float().to(self.device)
-    
-    @override
-    def act(self, obs: Union[th.Tensor, np.ndarray], w: Optional[np.ndarray] = None) -> np.ndarray:
-        return self.actor.get_action(obs)
 
     @override
     def eval(self, obs: np.ndarray, w: Optional[np.ndarray] = None) -> Union[int, np.ndarray]:
@@ -352,10 +348,10 @@ class MOSAC(MOPolicy):
         Return:
             action as a numpy array (continuous actions)
         """
-        tensor_obs = th.as_tensor(obs).float().to(self.device)
-        tensor_obs = tensor_obs.unsqueeze(0)
+        obs = th.as_tensor(obs).float().to(self.device)
+        obs = obs.unsqueeze(0)
         with th.no_grad():
-            action, _, _ = self.act(tensor_obs)
+            action, _, _ = self.actor.get_action(obs)
 
         return action[0].detach().cpu().numpy()
 
@@ -366,7 +362,7 @@ class MOSAC(MOPolicy):
         )
 
         with th.no_grad():
-            next_state_actions, next_state_log_pi, _ = self.act(mb_next_obs)
+            next_state_actions, next_state_log_pi, _ = self.actor.get_action(mb_next_obs)
             # (!) Q values are scalarized before being compared (min of ensemble networks)
             qf1_next_target = self.scalarization(self.qf1_target(mb_next_obs, next_state_actions), self.weights_tensor)
             qf2_next_target = self.scalarization(self.qf2_target(mb_next_obs, next_state_actions), self.weights_tensor)
@@ -386,7 +382,7 @@ class MOSAC(MOPolicy):
 
         if self.global_step % self.policy_freq == 0:  # TD 3 Delayed update support
             for _ in range(self.policy_freq):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                pi, log_pi, _ = self.act(mb_obs)
+                pi, log_pi, _ = self.actor.get_action(mb_obs)
                 # (!) Q values are scalarized before being compared (min of ensemble networks)
                 qf1_pi = self.scalarization(self.qf1(mb_obs, pi), self.weights_tensor)
                 qf2_pi = self.scalarization(self.qf2(mb_obs, pi), self.weights_tensor)
@@ -399,7 +395,7 @@ class MOSAC(MOPolicy):
 
                 if self.autotune:
                     with th.no_grad():
-                        _, log_pi, _ = self.act(mb_obs)
+                        _, log_pi, _ = self.actor.get_action(mb_obs)
                     alpha_loss = (-self.log_alpha * (log_pi + self.target_entropy)).mean()
 
                     self.a_optimizer.zero_grad(set_to_none=True)
@@ -451,7 +447,7 @@ class MOSAC(MOPolicy):
             else:
                 th_obs = th.as_tensor(obs).float().to(self.device)
                 th_obs = th_obs.unsqueeze(0)
-                actions, _, _ = self.act(th_obs)
+                actions, _, _ = self.actor.get_action(th_obs)
                 actions = actions[0].detach().cpu().numpy()
 
             # execute the game and log data

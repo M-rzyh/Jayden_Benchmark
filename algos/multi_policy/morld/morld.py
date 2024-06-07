@@ -14,12 +14,12 @@ from mo_gymnasium import MONormalizeReward
 from torch import optim
 
 from algos.common.evaluation import log_all_multi_policy_metrics
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.networks import polyak_update
-from algos.common.pareto import ParetoArchive
-from algos.common.scalarization import tchebicheff, weighted_sum
-from algos.common.utils import nearest_neighbors
-from algos.common.weights import equally_spaced_weights, random_weights
+from mo_utilsorithm import MOAgent, MOPolicy
+from mo_utils import polyak_update
+from mo_utilsmport ParetoArchive
+from mo_utilsation import tchebicheff, weighted_sum
+from mo_utilsport nearest_neighbors
+from mo_utilsimport equally_spaced_weights, random_weights
 from algos.single_policy.esr.eupg import EUPG
 from algos.single_policy.ser.mosac_continuous_action import MOSAC
 

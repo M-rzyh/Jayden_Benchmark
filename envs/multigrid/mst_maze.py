@@ -10,7 +10,7 @@ import networkx
 import gym_minigrid.minigrid as minigrid
 
 from . import multigrid
-from util.unionfind import UnionFind
+from ued_utils.unionfind import UnionFind
 import envs.registration as register
 
 

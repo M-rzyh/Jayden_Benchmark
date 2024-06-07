@@ -8,8 +8,8 @@ import torch as th
 import wandb
 from pymoo.util.ref_dirs import get_reference_directions
 
-from algos.common.pareto import filter_pareto_dominated
-from algos.common.performance_indicators import (
+from mo_utils.pareto import filter_pareto_dominated
+from mo_utils.performance_indicators import (
     cardinality,
     expected_utility,
     hypervolume,
@@ -17,7 +17,7 @@ from algos.common.performance_indicators import (
     maximum_utility_loss,
     sparsity,
 )
-from algos.common.weights import equally_spaced_weights
+from mo_utils.weights import equally_spaced_weights
 
 
 def eval_mo(

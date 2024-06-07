@@ -12,21 +12,21 @@ import torch.optim as optim
 import wandb
 
 from algos.common.buffer import ReplayBuffer
-from algos.common.evaluation import (
+from mo_utilson import (
     log_all_multi_policy_metrics,
     log_episode_info,
 )
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.networks import (
+from mo_utilsorithm import MOAgent, MOPolicy
+from mo_utils import (
     NatureCNN,
     get_grad_norm,
     layer_init,
     mlp,
     polyak_update,
 )
-from algos.common.prioritized_buffer import PrioritizedReplayBuffer
-from algos.common.utils import linearly_decaying_value
-from algos.common.weights import equally_spaced_weights, random_weights
+from mo_utilszed_buffer import PrioritizedReplayBuffer
+from mo_utilsport linearly_decaying_value
+from mo_utilsimport equally_spaced_weights, random_weights
 
 
 class QNet(nn.Module):
@@ -380,7 +380,6 @@ class Envelope(MOPolicy, MOAgent):
         w = th.as_tensor(w).float().to(self.device)
         return self.max_action(obs, w)
 
-    @override
     def act(self, obs: th.Tensor, w: th.Tensor) -> int:
         """Epsilon-greedily select an action given an observation and weight.
 

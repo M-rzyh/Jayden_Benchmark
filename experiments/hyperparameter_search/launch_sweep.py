@@ -9,13 +9,13 @@ import wandb
 import yaml
 from mo_gymnasium.utils import MORecordEpisodeStatistics
 
-from algos.common.evaluation import seed_everything
-from algos.common.experiments import (
+from mo_utils.evaluation import seed_everything
+from mo_utils.experiments import (
     ALGOS,
     ENVS_WITH_KNOWN_PARETO_FRONT,
     StoreDict,
 )
-from algos.common.utils import reset_wandb_env
+from mo_utils.utils import reset_wandb_env
 
 
 @dataclass

@@ -7,10 +7,10 @@ import numpy as np
 import wandb
 
 from algos.common.evaluation import log_all_multi_policy_metrics
-from algos.common.morl_algorithm import MOAgent
-from algos.common.pareto import get_non_dominated
-from algos.common.performance_indicators import hypervolume
-from algos.common.utils import linearly_decaying_value
+from mo_utilsorithm import MOAgent
+from mo_utilsmport get_non_dominated
+from mo_utilsnce_indicators import hypervolume
+from mo_utilsport linearly_decaying_value
 
 
 class PQL(MOAgent):

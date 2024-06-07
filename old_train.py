@@ -32,7 +32,7 @@ from envs.box2d import *
 from envs.bipedalwalker import *
 from envs.lunarlander import *
 from envs.runners.adversarial_runner import AdversarialRunner
-from util import make_agent, FileWriter, safe_checkpoint, create_parallel_env, make_plr_args, save_images
+from ued_utils import make_agent, FileWriter, safe_checkpoint, create_parallel_env, make_plr_args, save_images
 from eval import Evaluator
 
 

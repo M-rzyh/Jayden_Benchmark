@@ -6,8 +6,8 @@ import numpy as np
 import torch as th
 from mo_gymnasium.envs.deep_sea_treasure.deep_sea_treasure import CONCAVE_MAP
 
-from algos.common.evaluation import eval_mo, eval_mo_reward_conditioned
-from algos.common.scalarization import tchebicheff
+from mo_utils.evaluation import eval_mo, eval_mo_reward_conditioned
+from mo_utils.scalarization import tchebicheff
 from algos.multi_policy.capql.capql import CAPQL
 from algos.multi_policy.envelope.envelope import Envelope
 from algos.multi_policy.gpi_pd.gpi_pd import GPIPD

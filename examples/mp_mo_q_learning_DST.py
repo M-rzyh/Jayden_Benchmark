@@ -2,7 +2,7 @@ import mo_gymnasium as mo_gym
 import numpy as np
 from mo_gymnasium import MORecordEpisodeStatistics
 
-from algos.common.scalarization import tchebicheff
+from mo_utils.scalarization import tchebicheff
 from algos.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import (
     MPMOQLearning,
 )

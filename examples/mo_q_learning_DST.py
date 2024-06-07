@@ -4,8 +4,8 @@ import mo_gymnasium as mo_gym
 import numpy as np
 from mo_gymnasium.utils import MORecordEpisodeStatistics
 
-from algos.common.evaluation import eval_mo
-from algos.common.scalarization import tchebicheff
+from mo_utils.evaluation import eval_mo
+from mo_utils.scalarization import tchebicheff
 from algos.single_policy.ser.mo_q_learning import MOQLearning
 
 

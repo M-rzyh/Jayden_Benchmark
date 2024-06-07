@@ -13,9 +13,9 @@ import torch.nn.functional as F
 import wandb
 
 from algos.common.evaluation import log_all_multi_policy_metrics
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.pareto import get_non_dominated_inds
-from algos.common.performance_indicators import hypervolume
+from mo_utilsorithm import MOAgent, MOPolicy
+from mo_utilsmport get_non_dominated_inds
+from mo_utilsnce_indicators import hypervolume
 
 
 def crowding_distance(points):
@@ -298,7 +298,7 @@ class PCN(MOAgent, MOPolicy):
         desired_return = np.float32(desired_return)
         return desired_return, desired_horizon
 
-    def act(self, obs: np.ndarray, desired_return, desired_horizon, eval_mode=False) -> int:
+    def _act(self, obs: np.ndarray, desired_return, desired_horizon, eval_mode=False) -> int:
         prediction = self.model(
             th.tensor([obs]).float().to(self.device),
             th.tensor([desired_return]).float().to(self.device),
@@ -325,7 +325,7 @@ class PCN(MOAgent, MOPolicy):
         obs, _ = env.reset()
         done = False
         while not done:
-            action = self.act(obs, desired_return, desired_horizon, eval_mode)
+            action = self._act(obs, desired_return, desired_horizon, eval_mode)
             n_obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
 
@@ -354,7 +354,7 @@ class PCN(MOAgent, MOPolicy):
 
     def eval(self, obs, w=None):
         """Evaluate policy action for a given observation."""
-        return self.act(obs, self.desired_return, self.desired_horizon, eval_mode=True)
+        return self._act(obs, self.desired_return, self.desired_horizon, eval_mode=True)
 
     def evaluate(self, env, max_return, n=10):
         """Evaluate policy in the given environment."""

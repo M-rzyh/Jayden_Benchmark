@@ -25,7 +25,7 @@ from gym import spaces
 from gym.envs.box2d.car_dynamics import Car
 from gym.utils import seeding, EzPickle
 from envs.registration import register as gym_register
-from util import geo_complexity
+from ued_utils import geo_complexity
 
 import pyglet
 

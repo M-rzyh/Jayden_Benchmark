@@ -3,7 +3,6 @@ import os
 import random
 from itertools import chain
 from typing import List, Optional, Union
-from typing_extensions import override
 
 import gymnasium
 import numpy as np
@@ -14,14 +13,14 @@ import torch.optim as optim
 import wandb
 from torch.distributions import Normal
 
-from algos.common.evaluation import (
+from mo_utils.evaluation import (
     log_all_multi_policy_metrics,
     log_episode_info,
     policy_evaluation_mo,
 )
-from algos.common.morl_algorithm import MOAgent, MOPolicy
-from algos.common.networks import layer_init, mlp, polyak_update
-from algos.common.weights import equally_spaced_weights
+from mo_utils.morl_algorithm import MOAgent, MOPolicy
+from mo_utils.networks import layer_init, mlp, polyak_update
+from mo_utils.weights import equally_spaced_weights
 
 
 LOG_SIG_MAX = 2
@@ -124,8 +123,7 @@ class Policy(nn.Module):
         log_std = th.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         return mean, log_std
 
-    @override
-    def act(self, obs, w):
+    def get_action(self, obs, w):
         """Get an action from the policy network."""
         mean, _ = self.forward(obs, w)
         return th.tanh(mean) * self.action_scale + self.action_bias
