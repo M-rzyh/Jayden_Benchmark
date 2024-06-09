@@ -9,10 +9,40 @@
 # This file is an extended version of
 # https://github.com/openai/gym/blob/master/gym/envs/box2d/car_racing.py
 
+"""
+Easiest continuous control task to learn from pixels, a top-down racing
+environment.
+Discrete control is reasonable in this environment as well, on/off
+discretization is fine.
+
+State consists of STATE_W x STATE_H pixels.
+
+The reward is -0.1 every frame and +1000/N for every track tile visited, where
+N is the total number of tiles visited in the track. For example, if you have
+finished in 732 frames, your reward is 1000 - 0.1*732 = 926.8 points.
+
+The game is solved when the agent consistently gets 900+ points. The generated
+track is random every episode.
+
+The episode finishes when all the tiles are visited. The car also can go
+outside of the PLAYFIELD -  that is far off the track, then it will get -100
+and die.
+
+Some indicators are shown at the bottom of the window along with the state RGB
+buffer. From left to right: the true speed, four ABS sensors, the steering
+wheel position and gyroscope.
+
+To play yourself (it's rather fast for humans), type:
+
+python gym/envs/box2d/car_racing.py
+
+Remember it's a powerful rear-wheel drive car -  don't press the accelerator
+and turn at the same time.
+
+Created by Oleg Klimov. Licensed on the same terms as the rest of OpenAI Gym.
+"""
 import sys
-import argparse
 import math
-import time
 import numpy as np
 
 import Box2D
@@ -24,20 +54,14 @@ import gym
 from gym import spaces
 from gym.envs.box2d.car_dynamics import Car
 from gym.utils import seeding, EzPickle
-from envs.registration import register as gym_register
-from ued_utils import geo_complexity
+from ued_mo_envs.registration import register as gym_register
 
 import pyglet
 
 pyglet.options["debug_gl"] = False
 from pyglet import gl
 
-import matplotlib.pyplot as plt
-
-from . import bezier
-from . import racetracks
-
-STATE_W = 96
+STATE_W = 96  # less than Atari 160x192
 STATE_H = 96
 VIDEO_W = 600
 VIDEO_H = 400
@@ -77,24 +101,18 @@ class FrictionDetector(contactListener):
         obj = None
         u1 = contact.fixtureA.body.userData
         u2 = contact.fixtureB.body.userData
-        index = -1
-        if u1 and "tile" in u1:
-            if "road_friction" in u1['tile'].__dict__:
-                tile = u1['tile']
-                index = u1['index']
-                obj = u2
-        if u2 and "tile" in u2:
-            if "road_friction" in u2['tile'].__dict__:
-                tile = u2['tile']
-                index = u2['index']
-                obj = u1
+        if u1 and "road_friction" in u1.__dict__:
+            tile = u1
+            obj = u2
+        if u2 and "road_friction" in u2.__dict__:
+            tile = u2
+            obj = u1
         if not tile:
             return
 
         tile.color[0] = ROAD_COLOR[0]
         tile.color[1] = ROAD_COLOR[1]
         tile.color[2] = ROAD_COLOR[2]
-
         if not obj or "tiles" not in obj.__dict__:
             return
         if begin:
@@ -103,68 +121,19 @@ class FrictionDetector(contactListener):
                 tile.road_visited = True
                 self.env.reward += 1000.0 / len(self.env.track)
                 self.env.tile_visited_count += 1
-
-            if self.env.sparse_rewards and index >= 0:
-                self._eval_tile_index(index)
         else:
             obj.tiles.remove(tile)
 
-    def _eval_tile_index(self, index):
-        goal_bin = self.env.goal_bin
-        track_len = len(self.env.track)
-        goal_step = track_len/(self.env.num_goal_bins)
 
-        MIN_DISTANCE_TO_GO = 10
-        distance = track_len - index
-        tile_bin = np.floor(distance/goal_step)
-
-        # print('in tile bin, index', tile_bin, index, flush=True)
-        if goal_bin == 0 and distance < MIN_DISTANCE_TO_GO:
-            self.env.goal_reached = False
-        elif goal_bin == self.env.num_goal_bins - 1 \
-            and index < MIN_DISTANCE_TO_GO:
-            self.env.goal_reached = False
-        elif tile_bin == goal_bin:
-            self.env.goal_reached = True
-            # print(f'goal bin {goal_bin} reached!', flush=True)
-
-
-class CarRacingBezier(gym.Env, EzPickle):
+class CarRacing(gym.Env, EzPickle):
     metadata = {
         "render.modes": ["human", "rgb_array", "state_pixels"],
         "video.frames_per_second": FPS,
     }
 
-    def __init__(self,
-        n_control_points=12,
-        track_name=None,
-        bezier=True, 
-        show_borders=True, 
-        show_indicators=True,
-        birdseye=False, 
-        seed=None,
-        fixed_environment=False,
-        animate_zoom=False,
-        min_rad_ratio=0.333333333,
-        max_rad_ratio=1.0,
-        sparse_rewards=False,
-        clip_reward=None,
-        num_goal_bins=24,
-        verbose=0):
+    def __init__(self, verbose=0, **kwargs):
         EzPickle.__init__(self)
-
-        self.level_seed = seed
-        self.seed(seed)
-        
-        self.n_control_points = n_control_points
-        self.bezier = bezier
-        self.fixed_environment = fixed_environment
-        self.animate_zoom = animate_zoom
-        self.min_rad_ratio = min_rad_ratio
-        self.max_rad_ratio = max_rad_ratio
-
-        self.steps = 0
-
+        self.seed(kwargs.get('seed', None))
         self.contactListener_keepref = FrictionDetector(self)
         self.world = Box2D.b2World((0, 0), contactListener=self.contactListener_keepref)
         self.viewer = None
@@ -174,27 +143,7 @@ class CarRacingBezier(gym.Env, EzPickle):
         self.car = None
         self.reward = 0.0
         self.prev_reward = 0.0
-
-        self.preloaded_track = racetracks.get_track(track_name)
-        self.show_borders = show_borders
-        self.show_indicators = show_indicators
-        self.birdseye = birdseye
         self.verbose = verbose
-
-        self.track_data = None
-        self.complexity_info = None
-
-        self.window_h = WINDOW_H
-        self.window_w = WINDOW_W
-        self.track_rad = TRACK_RAD
-        self.track_width = TRACK_WIDTH
-        if self.preloaded_track:
-            self.playfield = self.preloaded_track.bounds / SCALE
-            self.full_zoom = self.preloaded_track.full_zoom
-        else:
-            self.playfield = PLAYFIELD
-            self.full_zoom = 0.25
-        
         self.fd_tile = fixtureDef(
             shape=polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)])
         )
@@ -207,267 +156,41 @@ class CarRacingBezier(gym.Env, EzPickle):
             low=0, high=255, shape=(STATE_H, STATE_W, 3), dtype=np.uint8
         )
 
-        self.clip_reward = clip_reward
-
-        # Create goal for sparse rewards
-        self.sparse_rewards = sparse_rewards
-        self.num_goal_bins = num_goal_bins # 0-indexed
-        self.goal_bin = None
-        if sparse_rewards:
-            self.set_goal()
-            self.accumulated_rewards = 0.0
-
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def get_complexity_info(self):
-        if self.complexity_info is None:
-            # recompute
-            points = ((x,y) for _,_,x,y in self.track)
-            return geo_complexity.complexity(points)
-
-        return self.complexity_info
-
-    def set_goal(self, goal_bin=None):
-        if goal_bin is None:
-            goal_bin = self.goal_bin
-
-        if goal_bin is None:
-            self.goal_bin = self.np_random.randint(1,self.num_goal_bins)
-        else:
-            self.goal_bin = goal_bin
-
-        self.goal_reached = False
-
     def _destroy(self):
         if not self.road:
             return
-
         for t in self.road:
-            t.userData = t.userData['tile']
             self.world.DestroyBody(t)
-
         self.road = []
         self.car.destroy()
-        self.car = None
 
-    def _create_track(self, control_points=None, show_borders=None):
-        if self.bezier:
-            return self._create_track_bezier(
-                control_points=control_points, 
-                show_borders=show_borders)
-        else:
-            t = 0
-            reset_random = False
-            while True:
-                t += 1
-                if t > 10:
-                    reset_random = True
-                    break
-
-                success = self._create_track_polar(
-                    control_points=control_points,
-                    show_borders=show_borders)
-                if success:
-                    return success
-
-        if reset_random:
-            t = 0
-            while True:
-                t += 1
-                success = self._create_track_polar(
-                    show_borders=show_borders)
-                if success:
-                    return success
-
-    def _create_track_bezier(self, control_points=None, show_borders=None):
-        if show_borders is None:
-            show_borders = self.show_borders
-        else:
-            show_borders = show_borders
-
-        # Create random bezier curve
-        track = []
-        self.road = []
-
-        if self.preloaded_track is not None:
-            points = self.preloaded_track.xy
-            x,y = zip(*points)
-        elif control_points is not None:
-            a = np.array(control_points)
-            x, y, _ = bezier.get_bezier_curve(a=a, rad=0.2, edgy=0.2, numpoints=40)
-            self.track_data = a
-        else:
-            a = bezier.get_random_points(n=self.n_control_points, scale=self.playfield, np_random=self.np_random)
-            x, y, _ = bezier.get_bezier_curve(a=a, rad=0.2, edgy=0.2, numpoints=40)
-            self.track_data = a
-
-        min_x, max_x = x[-1], x[-1]
-        min_y, max_y = y[-1], y[-1]
-
-        points = list(zip(x,y))
-        betas = []
-        for i, p in enumerate(points[:-1]):
-            x1, y1 = points[i]
-            x2, y2 = points[i+1]
-            dx = x2 - x1
-            dy = y2 - y1
-            if (dx == dy == 0):
-                continue
-
-            # alpha = math.atan(dy/(dx+1e-5))
-            alpha = np.arctan2(dy, dx)
-            beta = math.pi/2 + alpha
-
-            track.append((alpha, beta, x1, y1))
-            betas.append(beta)
-
-            min_x = min(x1, min_x)
-            min_y = min(y1, min_y)
-            max_x = max(x1, max_x)
-            max_y = max(y1, max_y)
-
-        x_offset = min_x + (max_x - min_x)/2
-        y_offset = min_y + (max_y - min_y)/2
-        self.x_offset = x_offset
-        self.y_offset = y_offset
-
-        betas = np.array(betas)
-        abs_dbeta = abs(betas[1:] - betas[0:-1])
-        mean_abs_dbeta = abs_dbeta.mean()
-        std_abs_dbeta = abs_dbeta.std()
-        one_dev_dbeta = mean_abs_dbeta + std_abs_dbeta/2
-
-        # Red-white border on hard turns
-        border = [False] * len(track)
-        if show_borders:
-            for i in range(len(track)):
-                good = True
-                oneside = 0
-                for neg in range(BORDER_MIN_COUNT):
-                    beta1 = track[i - neg - 0][1]
-                    beta2 = track[i - neg - 1][1]
-                    good &= abs(beta1 - beta2) > mean_abs_dbeta
-                    oneside += np.sign(beta1 - beta2)
-                good &= abs(oneside) == BORDER_MIN_COUNT
-                border[i] = good
-            for i in range(len(track)):
-                for neg in range(BORDER_MIN_COUNT):
-                    border[i - neg] |= border[i]
-
-        # Create tiles
-        for i in range(len(track)):
-            alpha1, beta1, x1, y1 = track[i]
-
-            alpha2, beta2, x2, y2 = track[i - 1]
-
-            road1_l = (
-                x1 - TRACK_WIDTH * math.cos(beta1) - x_offset,
-                y1 - TRACK_WIDTH * math.sin(beta1) - y_offset,
-            )
-            road1_r = (
-                x1 + TRACK_WIDTH * math.cos(beta1) - x_offset,
-                y1 + TRACK_WIDTH * math.sin(beta1) - y_offset,
-            )
-            road2_l = (
-                x2 - TRACK_WIDTH * math.cos(beta2) - x_offset,
-                y2 - TRACK_WIDTH * math.sin(beta2) - y_offset,
-            )
-            road2_r = (
-                x2 + TRACK_WIDTH * math.cos(beta2) - x_offset,
-                y2 + TRACK_WIDTH * math.sin(beta2) - y_offset,
-            )
-            vertices = [road1_l, road1_r, road2_r, road2_l]
-
-            try:
-                self.fd_tile.shape.vertices = vertices
-            except:
-                pass
-            t = self.world.CreateStaticBody(fixtures=self.fd_tile)
-            # t.userData = t
-            t.userData = {
-                'tile': t,
-                'index': i
-            }
-            c = 0.01 * (i % 3)
-            t.color = [ROAD_COLOR[0] + c, ROAD_COLOR[1] + c, ROAD_COLOR[2] + c]
-            t.road_visited = False
-            t.road_friction = 1.0
-            t.fixtures[0].sensor = True
-            self.road_poly.append(([road1_l, road1_r, road2_r, road2_l], t.color))
-            self.road.append(t)
-
-            if self.show_borders and border[i]:
-                side = np.sign(beta2 - beta1)
-                b1_l = (
-                    x1 + side * TRACK_WIDTH * math.cos(beta1) - x_offset,
-                    y1 + side * TRACK_WIDTH * math.sin(beta1) - y_offset,
-                )
-                b1_r = (
-                    x1 + side * (TRACK_WIDTH + BORDER) * math.cos(beta1) - x_offset,
-                    y1 + side * (TRACK_WIDTH + BORDER) * math.sin(beta1) - y_offset,
-                )
-                b2_l = (
-                    x2 + side * TRACK_WIDTH * math.cos(beta2) - x_offset,
-                    y2 + side * TRACK_WIDTH * math.sin(beta2) - y_offset,
-                )
-                b2_r = (
-                    x2 + side * (TRACK_WIDTH + BORDER) * math.cos(beta2) - x_offset,
-                    y2 + side * (TRACK_WIDTH + BORDER) * math.sin(beta2) - y_offset,
-                )
-                self.road_poly.append(
-                    ([b1_l, b1_r, b2_r, b2_l], (1, 1, 1) if i % 2 == 0 else (1, 0, 0))
-                )
-        self.track = track
-
-        self.complexity_info = geo_complexity.complexity(points)
-
-        return True
-
-    def _create_track_polar(self, control_points=None, show_borders=None):
-        if show_borders is None:
-            show_borders = self.show_borders
-        else:
-            show_borders = show_borders
-
-        CHECKPOINTS = self.n_control_points
-
-        self.x_offset = 0
-        self.y_offset = 0
-
-        min_rad = TRACK_RAD*self.min_rad_ratio
-        max_rad = TRACK_RAD*self.max_rad_ratio
+    def _create_track(self):
+        CHECKPOINTS = 12
 
         # Create checkpoints
-        if control_points is not None:
-            checkpoints = control_points
-            self.start_alpha = 2 * math.pi * (-0.5) / self.n_control_points
-        else:
-            checkpoints = []
-            for c in range(CHECKPOINTS):
-                noise = self.np_random.uniform(0, 2 * math.pi * 1 / CHECKPOINTS)
-                alpha = 2 * math.pi * c / CHECKPOINTS + noise
-                rad = self.np_random.uniform(min_rad, max_rad)
+        checkpoints = []
+        for c in range(CHECKPOINTS):
+            noise = self.np_random.uniform(0, 2 * math.pi * 1 / CHECKPOINTS)
+            alpha = 2 * math.pi * c / CHECKPOINTS + noise
+            rad = self.np_random.uniform(TRACK_RAD / 3, TRACK_RAD)
 
-                if c == 0:
-                    alpha = 0
-                    rad = 1.5 * TRACK_RAD
-                if c == CHECKPOINTS - 1:
-                    alpha = 2 * math.pi * c / CHECKPOINTS
-                    self.start_alpha = 2 * math.pi * (-0.5) / CHECKPOINTS
-                    rad = 1.5 * TRACK_RAD
+            if c == 0:
+                alpha = 0
+                rad = 1.5 * TRACK_RAD
+            if c == CHECKPOINTS - 1:
+                alpha = 2 * math.pi * c / CHECKPOINTS
+                self.start_alpha = 2 * math.pi * (-0.5) / CHECKPOINTS
+                rad = 1.5 * TRACK_RAD
 
-                checkpoints.append((alpha, rad * math.cos(alpha), rad * math.sin(alpha)))
-
-        self.track_data = checkpoints
-
+            checkpoints.append((alpha, rad * math.cos(alpha), rad * math.sin(alpha)))
         self.road = []
 
         # Go from one checkpoint to another to create track
-        # x, y, beta = 1.5 * TRACK_RAD, 0, 0
-        _,x,y = checkpoints[0]
-        beta = 0
+        x, y, beta = 1.5 * TRACK_RAD, 0, 0
         dest_i = 0
         laps = 0
         track = []
@@ -542,27 +265,39 @@ class CarRacingBezier(gym.Env, EzPickle):
             elif pass_through_start and i1 == -1:
                 i1 = i
                 break
+        if self.verbose == 1:
+            print("Track generation: %i..%i -> %i-tiles track" % (i1, i2, i2 - i1))
         assert i1 != -1
         assert i2 != -1
 
         track = track[i1 : i2 - 1]
 
+        first_beta = track[0][1]
+        first_perp_x = math.cos(first_beta)
+        first_perp_y = math.sin(first_beta)
+        # Length of perpendicular jump to put together head and tail
+        well_glued_together = np.sqrt(
+            np.square(first_perp_x * (track[0][2] - track[-1][2]))
+            + np.square(first_perp_y * (track[0][3] - track[-1][3]))
+        )
+        if well_glued_together > TRACK_DETAIL_STEP:
+            return False
+
         # Red-white border on hard turns
         border = [False] * len(track)
-        if show_borders:
-            for i in range(len(track)):
-                good = True
-                oneside = 0
-                for neg in range(BORDER_MIN_COUNT):
-                    beta1 = track[i - neg - 0][1]
-                    beta2 = track[i - neg - 1][1]
-                    good &= abs(beta1 - beta2) > TRACK_TURN_RATE * 0.2
-                    oneside += np.sign(beta1 - beta2)
-                good &= abs(oneside) == BORDER_MIN_COUNT
-                border[i] = good
-            for i in range(len(track)):
-                for neg in range(BORDER_MIN_COUNT):
-                    border[i - neg] |= border[i]
+        for i in range(len(track)):
+            good = True
+            oneside = 0
+            for neg in range(BORDER_MIN_COUNT):
+                beta1 = track[i - neg - 0][1]
+                beta2 = track[i - neg - 1][1]
+                good &= abs(beta1 - beta2) > TRACK_TURN_RATE * 0.2
+                oneside += np.sign(beta1 - beta2)
+            good &= abs(oneside) == BORDER_MIN_COUNT
+            border[i] = good
+        for i in range(len(track)):
+            for neg in range(BORDER_MIN_COUNT):
+                border[i - neg] |= border[i]
 
         # Create tiles
         for i in range(len(track)):
@@ -617,51 +352,44 @@ class CarRacingBezier(gym.Env, EzPickle):
                     ([b1_l, b1_r, b2_r, b2_l], (1, 1, 1) if i % 2 == 0 else (1, 0, 0))
                 )
         self.track = track
-
         return True
 
-    def reset_sparse_state(self):
-        if self.sparse_rewards:
-            self.accumulated_rewards = 0.0
-            self.set_goal()
-
     def reset(self):
-        if self.fixed_environment:
-            self.seed(self.level_seed)
-
         self._destroy()
         self.reward = 0.0
         self.prev_reward = 0.0
         self.tile_visited_count = 0
         self.t = 0.0
         self.road_poly = []
-        self.track_data = None
 
-        self.steps = 0
-
-        self._create_track()
-
-        beta0, x0, y0 = self.track[0][1:4]
-        x0 -= self.x_offset
-        y0 -= self.y_offset
-        self.car = Car(self.world, beta0, x0, y0)
-
-        self.goal_bin = None
-        self.reset_sparse_state()
+        while True:
+            success = self._create_track()
+            if success:
+                break
+            if self.verbose == 1:
+                print(
+                    "retry to generate track (normal if there are not many"
+                    "instances of this message)"
+                )
+        self.car = Car(self.world, *self.track[0][1:4])
 
         return self.step(None)[0]
+
+    def reset_random(self):
+        return self.reset()
+
+    def reset_agent(self):
+        return self.reset()
 
     def step(self, action):
         if action is not None:
             self.car.steer(-action[0])
             self.car.gas(action[1])
             self.car.brake(action[2])
-
+            
         self.car.step(1.0 / FPS)
         self.world.Step(1.0 / FPS, 6 * 30, 2 * 30)
         self.t += 1.0 / FPS
-
-        self.steps += 1
 
         self.state = self.render("state_pixels")
 
@@ -677,31 +405,16 @@ class CarRacingBezier(gym.Env, EzPickle):
             if self.tile_visited_count == len(self.track):
                 done = True
             x, y = self.car.hull.position
-            if abs(x) > self.playfield or abs(y) > self.playfield:
+            if abs(x) > PLAYFIELD or abs(y) > PLAYFIELD:
                 done = True
-                step_reward = -100
+                step_reward = -100   
 
-        if self.sparse_rewards:
-            self.accumulated_rewards += step_reward
-
-            revealed_reward = 0
-            if self.goal_reached:
-                revealed_reward = self.accumulated_rewards
-
-                self.accumulated_rewards = 0.0
-                done = True
-        else:
-            revealed_reward = step_reward
-
-        if self.clip_reward:
-            revealed_reward = min(max(revealed_reward, -self.clip_reward), self.clip_reward)
-
-        return self.state, revealed_reward, done, {}
+        return self.state, step_reward, done, {}
 
     def render(self, mode="human"):
-        assert mode in ["human", "state_pixels", "rgb_array", "level", "sketch"]
+        assert mode in ["human", "state_pixels", "rgb_array"]
         if self.viewer is None:
-            from envs.box2d import rendering
+            from gym.envs.classic_control import rendering
 
             self.viewer = rendering.Viewer(WINDOW_W, WINDOW_H)
             self.score_label = pyglet.text.Label(
@@ -719,15 +432,7 @@ class CarRacingBezier(gym.Env, EzPickle):
             return  # reset() not called yet
 
         # Animate zoom first second:
-        if self.birdseye or mode in ['level', 'sketch']:
-            zoom_coef = self.full_zoom
-        else:
-            zoom_coef = ZOOM
-        if self.animate_zoom:
-            zoom = 0.1 * SCALE * max(1 - self.t, 0) + zoom_coef * SCALE * min(self.t, 1)
-        else:
-            zoom = zoom_coef * SCALE
-
+        zoom = ZOOM*SCALE
         scroll_x = self.car.hull.position[0]
         scroll_y = self.car.hull.position[1]
         angle = -self.car.hull.angle
@@ -735,21 +440,13 @@ class CarRacingBezier(gym.Env, EzPickle):
         if np.linalg.norm(vel) > 0.5:
             angle = math.atan2(vel[0], vel[1])
         self.transform.set_scale(zoom, zoom)
-
-        if self.birdseye or mode in ['level', 'sketch']:
-            self.transform.set_translation(
-                WINDOW_W / 2,
-                WINDOW_H / 2,
-            )
-            self.transform.set_rotation(0)
-        else:
-            self.transform.set_translation(
-                WINDOW_W / 2
-                - (scroll_x * zoom * math.cos(angle) - scroll_y * zoom * math.sin(angle)),
-                WINDOW_H / 4
-                - (scroll_x * zoom * math.sin(angle) + scroll_y * zoom * math.cos(angle)),
-            )
-            self.transform.set_rotation(angle)
+        self.transform.set_translation(
+            WINDOW_W / 2
+            - (scroll_x * zoom * math.cos(angle) - scroll_y * zoom * math.sin(angle)),
+            WINDOW_H / 4
+            - (scroll_x * zoom * math.sin(angle) + scroll_y * zoom * math.cos(angle)),
+        )
+        self.transform.set_rotation(angle)
 
         self.car.draw(self.viewer, mode != "state_pixels")
 
@@ -763,7 +460,7 @@ class CarRacingBezier(gym.Env, EzPickle):
         if mode == "rgb_array":
             VP_W = VIDEO_W
             VP_H = VIDEO_H
-        elif mode in ["state_pixels", "sketch"]:
+        elif mode == "state_pixels":
             VP_W = STATE_W
             VP_H = STATE_H
         else:
@@ -782,9 +479,7 @@ class CarRacingBezier(gym.Env, EzPickle):
             geom.render()
         self.viewer.onetime_geoms = []
         t.disable()
-
-        if mode not in ['level', 'sketch'] and self.show_indicators:
-            self.render_indicators(WINDOW_W, WINDOW_H)
+        self.render_indicators(WINDOW_W, WINDOW_H)
 
         if mode == "human":
             win.flip()
@@ -807,21 +502,21 @@ class CarRacingBezier(gym.Env, EzPickle):
     def render_road(self):
         colors = [0.4, 0.8, 0.4, 1.0] * 4
         polygons_ = [
-            +self.playfield,
-            +self.playfield,
+            +PLAYFIELD,
+            +PLAYFIELD,
             0,
-            +self.playfield,
-            -self.playfield,
+            +PLAYFIELD,
+            -PLAYFIELD,
             0,
-            -self.playfield,
-            -self.playfield,
+            -PLAYFIELD,
+            -PLAYFIELD,
             0,
-            -self.playfield,
-            +self.playfield,
+            -PLAYFIELD,
+            +PLAYFIELD,
             0,
         ]
 
-        k = self.playfield / 20.0
+        k = PLAYFIELD / 20.0
         colors.extend([0.4, 0.9, 0.4, 1.0] * 4 * 20 * 20)
         for x in range(-20, 20, 2):
             for y in range(-20, 20, 2):
@@ -918,36 +613,8 @@ class CarRacingBezier(gym.Env, EzPickle):
         self.score_label.draw()
 
 
-if hasattr(__loader__, 'name'):
-  module_path = __loader__.name
-elif hasattr(__loader__, 'fullname'):
-  module_path = __loader__.fullname
-
-try:
-    gym_register(id='CarRacing-Bezier-v0', entry_point=module_path + ':CarRacingBezier')
-except:
-    pass
-
 if __name__ == "__main__":
     from pyglet.window import key
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--track_name', 
-        type=str, 
-        default=None, 
-        help='Name of preexisting track.')
-    parser.add_argument(
-        '--birdseye', 
-        action='store_true',
-        default=False, 
-        help='Show a fixed birdseye view of track.')
-    parser.add_argument(
-        '--seed', 
-        type=int,
-        default=None, 
-        help='PRNG seed.')
-    args = parser.parse_args()
 
     a = np.array([0.0, 0.0, 0.0])
 
@@ -974,7 +641,7 @@ if __name__ == "__main__":
         if k == key.DOWN:
             a[2] = 0
 
-    env = CarRacingBezier(track_name=args.track_name, birdseye=args.birdseye, seed=args.seed)
+    env = CarRacing()
     env.render()
     env.viewer.window.on_key_press = key_press
     env.viewer.window.on_key_release = key_release
@@ -982,7 +649,7 @@ if __name__ == "__main__":
     if record_video:
         from gym.wrappers.monitor import Monitor
 
-        env = Monitor(env, "videos/", force=True)
+        env = Monitor(env, "/tmp/video-test", force=True)
     isopen = True
     while isopen:
         env.reset()
@@ -1000,3 +667,12 @@ if __name__ == "__main__":
             if done or restart or isopen == False:
                 break
     env.close()
+
+if hasattr(__loader__, 'name'):
+  module_path = __loader__.name
+elif hasattr(__loader__, 'fullname'):
+  module_path = __loader__.fullname
+
+gym_register(id='CarRacing-Vanilla-v0', 
+    entry_point=module_path + ':CarRacing',
+    max_episode_steps=1000)

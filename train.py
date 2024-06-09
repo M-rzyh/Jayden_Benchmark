@@ -1,80 +1,66 @@
-"""Launches an experiment on a given environment and algorithm.
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 
-Many parameters can be given in the command line, see the help for more infos.
-
-Examples:
-    python benchmark/launch_experiment.py --algo pcn --env-id deep-sea-treasure-v0 --num-timesteps 1000000 --gamma 0.99 --ref-point 0 -25 --auto-tag True --wandb-entity openrlbenchmark --seed 0 --init-hyperparams "scaling_factor:np.array([1, 1, 1])"
-"""
-
-import argparse
+import sys
 import os
-import subprocess
+import time
 import timeit
+import logging
+from arguments import parser
+
 import torch
-from distutils.util import strtobool
-
-import mo_gymnasium as mo_gym
-import numpy as np
+import gym
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-import requests
-from gymnasium.wrappers import FlattenObservation
-from gymnasium.wrappers.record_video import RecordVideo
-from mo_gymnasium.utils import MORecordEpisodeStatistics
+from baselines.logger import HumanOutputFormat
 
-from mo_utils.evaluation import seed_everything
-from mo_utils.experiments import (
-    ALGOS,
-    ENVS_WITH_KNOWN_PARETO_FRONT,
-    StoreDict,
-)
+display = None
+
+# if sys.platform.startswith('linux'):
+#     print('Setting up virtual display')
+
+#     import pyvirtualdisplay
+#     display = pyvirtualdisplay.Display(visible=0, size=(1400, 900), color_depth=24)
+#     display.start()
+
+from ued_mo_envs.multigrid import *
+from ued_mo_envs.multigrid.adversarial import *
+from ued_mo_envs.mo_car_racing.old import *
+from ued_mo_envs.bipedalwalker import *
+from ued_mo_envs.mo_lunarlander import *
+from ued_mo_envs.runners.adversarial_runner import AdversarialRunner
 from ued_utils import make_agent, FileWriter, safe_checkpoint, create_parallel_env, make_plr_args, save_images
-from runners.experiment_runner import ExperimentRunner
+from eval import Evaluator
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--algo", type=str, help="Name of the algorithm to run", choices=ALGOS.keys(), required=True)
-    parser.add_argument("--env-id", type=str, help="MO-Gymnasium id of the environment to run", required=True)
-    parser.add_argument("--num-timesteps", type=int, help="Number of timesteps to train for", required=True)
-    parser.add_argument("--gamma", type=float, help="Discount factor to apply to the environment and algorithm", required=True)
-    parser.add_argument(
-        "--ref-point", type=float, nargs="+", help="Reference point to use for the hypervolume calculation", required=True
+
+if __name__ == '__main__':
+    os.environ["OMP_NUM_THREADS"] = "1"
+
+    args = parser.parse_args()
+
+    # === Configure logging ==
+    if args.xpid is None:
+        args.xpid = "lr-%s" % time.strftime("%Y%m%d-%H%M%S")
+    log_dir = os.path.expandvars(os.path.expanduser(args.log_dir))
+    filewriter = FileWriter(
+        xpid=args.xpid, xp_args=args.__dict__, rootdir=log_dir
     )
-    parser.add_argument("--seed", type=int, help="Random seed to use", default=42)
-    parser.add_argument("--wandb-entity", type=str, help="Wandb entity to use", required=False)
-    parser.add_argument(
-        "--record-video",
-        type=lambda x: bool(strtobool(x)),
-        default=False,
-        nargs="?",
-        const=True,
-        help="if toggled, the runs will be recorded with RecordVideo wrapper.",
-    )
-    parser.add_argument("--record-video-ep-freq", type=int, default=5, help="Record video frequency (in episodes).")
-    parser.add_argument(
-        "--init-hyperparams",
-        type=str,
-        nargs="+",
-        action=StoreDict,
-        help="Override hyperparameters to use for the initiation of the algorithm. Example: --init-hyperparams learning_rate:0.001 final_epsilon:0.1",
-        default={},
-    )
+    screenshot_dir = os.path.join(log_dir, args.xpid, 'screenshots')
+    if not os.path.exists(screenshot_dir):
+        os.makedirs(screenshot_dir, exist_ok=True)
 
-    parser.add_argument(
-        "--train-hyperparams",
-        type=str,
-        nargs="+",
-        action=StoreDict,
-        help="Override hyperparameters to use for the train method algorithm. Example: --train-hyperparams num_eval_weights_for_front:10 timesteps_per_iter:10000",
-        default={},
-    )
+    def log_stats(stats):
+        filewriter.log(stats)
+        if args.verbose:
+            HumanOutputFormat(sys.stdout).writekvs(stats)
 
-    return parser.parse_args()
-
-
-
-def main():
-    args = parse_args()
-    print(args)
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)
+    else:
+        logging.disable(logging.CRITICAL)
 
     # === Determine device ====
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -82,6 +68,39 @@ def main():
     if 'cuda' in device.type:
         torch.backends.cudnn.benchmark = True
         print('Using CUDA\n')
+
+    # === Create parallel envs ===
+    venv, ued_venv = create_parallel_env(args)
+
+    # is_training_env = args.ued_algo in ['paired', 'flexible_paired', 'minimax', 'perm']
+    # is_paired = args.ued_algo in ['paired', 'flexible_paired']
+
+    agent = make_agent(name='agent', env=venv, args=args, device=device)
+    adversary_agent, adversary_env = None, None
+    # if is_paired:
+    #     adversary_agent = make_agent(name='adversary_agent', env=venv, args=args, device=device)
+
+    # if is_training_env:
+    #     adversary_env = make_agent(name='adversary_env', env=venv, args=args, device=device)
+    # if args.ued_algo == 'domain_randomization' and args.use_plr and not args.use_reset_random_dr:
+    #     adversary_env = make_agent(name='adversary_env', env=venv, args=args, device=device)
+    #     adversary_env.random()
+
+    # === Create runner ===
+    plr_args = None
+    # if args.use_plr:
+    #     plr_args = make_plr_args(args, venv.observation_space, venv.action_space)
+    train_runner = AdversarialRunner(
+        args=args,
+        venv=venv,
+        agent=agent,
+        ued_venv=ued_venv,
+        adversary_agent=adversary_agent,
+        adversary_env=adversary_env,
+        flexible_protagonist=False,
+        train=True,
+        plr_args=plr_args,
+        device=device)
 
     # === Configure checkpointing ===
     timer = timeit.default_timer
@@ -107,85 +126,21 @@ def main():
         logging.info("Saved checkpoint to %s", checkpoint_path)
 
 
-    # if args.algo == "pgmorl":
-    #     # PGMORL creates its own environments because it requires wrappers
-    #     print(f"Instantiating {args.algo} on {args.env_id}")
-    #     eval_env = mo_gym.make(args.env_id)
-    #     algo = ALGOS[args.algo](
-    #         env_id=args.env_id,
-    #         origin=np.array(args.ref_point),
-    #         gamma=args.gamma,
-    #         log=True,
-    #         seed=args.seed,
-    #         wandb_entity=args.wandb_entity,
-    #         **args.init_hyperparams,
-    #     )
-    #     print(algo.get_config())
+    # === Load checkpoint ===
+    if args.checkpoint and os.path.exists(checkpoint_path):
+        checkpoint_states = torch.load(checkpoint_path, map_location=lambda storage, loc: storage)
+        last_logged_update_at_restart = filewriter.latest_tick() # ticks are 0-indexed updates
+        train_runner.load_state_dict(checkpoint_states['runner_state_dict'])
+        initial_update_count = train_runner.num_updates
+        logging.info(f"Resuming preempted job after {initial_update_count} updates\n") # 0-indexed next update
+    elif args.xpid_finetune and not os.path.exists(checkpoint_path):
+        checkpoint_states = torch.load(base_checkpoint_path)
+        state_dict = checkpoint_states['runner_state_dict']
+        agent_state_dict = state_dict.get('agent_state_dict')
+        optimizer_state_dict = state_dict.get('optimizer_state_dict')
+        train_runner.agents['agent'].algo.actor_critic.load_state_dict(agent_state_dict['agent'])
+        train_runner.agents['agent'].algo.optimizer.load_state_dict(optimizer_state_dict['agent'])
 
-    #     print("Training starts... Let's roll!")
-    #     algo.train(
-    #         total_timesteps=args.num_timesteps,
-    #         eval_env=eval_env,
-    #         ref_point=np.array(args.ref_point),
-    #         known_pareto_front=None,
-    #         **args.train_hyperparams,
-    #     )
-
-    # else:
-    # env = mo_gym.make(args.env_id)
-    # eval_env = mo_gym.make(args.env_id, render_mode="rgb_array" if args.record_video else None)
-    # env = MORecordEpisodeStatistics(env, gamma=args.gamma)
-
-    # if "highway" in args.env_id:
-    #     env = FlattenObservation(env)
-    #     eval_env = FlattenObservation(eval_env)
-
-    # if args.record_video:
-    #     eval_env = RecordVideo(
-    #         eval_env,
-    #         video_folder=f"videos/{args.algo}-{args.env_id}",
-    #         episode_trigger=lambda ep: ep % args.record_video_ep_freq == 0,
-    #     )
-
-    print(f"Instantiating {args.algo} on {args.env_id}")
-    if args.algo == "ols":
-        args.init_hyperparams["experiment_name"] = "MultiPolicy MO Q-Learning (OLS)"
-    elif args.algo == "gpi-ls":
-        args.init_hyperparams["experiment_name"] = "MultiPolicy MO Q-Learning (GPI-LS)"
-
-    # === Create parallel envs ===
-    venv, ued_venv = create_parallel_env(args)
-
-    seed_everything(args.seed)
-
-    algo = ALGOS[args.algo](
-        env=venv,
-        gamma=args.gamma,
-        log=True,
-        seed=args.seed,
-        wandb_entity=args.wandb_entity,
-        **args.init_hyperparams,
-    )
-    # if args.env_id in ENVS_WITH_KNOWN_PARETO_FRONT:
-    #     known_pareto_front = env.unwrapped.pareto_front(gamma=args.gamma)
-    # else:
-    #     known_pareto_front = None
-
-    print(algo.get_config())
-
-    # === Create runner ===
-    train_runner = ExperimentRunner(
-        args=args,
-        venv=venv,
-        agent=agent,
-        ued_venv=ued_venv,
-        adversary_agent=adversary_agent,
-        adversary_env=adversary_env,
-        flexible_protagonist=False,
-        train=True,
-        plr_args=plr_args,
-        device=device)
-    
     # === Set up Evaluator ===
     evaluator = None
     if args.test_env_names:
@@ -200,11 +155,10 @@ def main():
             use_global_policy=args.use_global_policy,
             device=device)
 
-    num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
-    initial_update_count = 0
-
     # === Train ===
-    print("Training starts... Let's roll!")
+    last_checkpoint_idx = getattr(train_runner, args.checkpoint_basis)
+    update_start_time = timer()
+    num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
     for j in range(initial_update_count, num_updates):
         stats = train_runner.run()
 
@@ -250,32 +204,35 @@ def main():
 
         if save_screenshot:
             level_info = train_runner.sampled_level_info
-            venv.reset_agent()
-            images = venv.get_images()
-            if args.use_editor and level_info:
-                save_images(
-                    images[:args.screenshot_batch_size],
-                    os.path.join(
+            if args.env_name.startswith('BipedalWalker'):
+                encodings = venv.get_level()
+                df = bipedalwalker_df_from_encodings(args.env_name, encodings)
+                if args.use_editor and level_info:
+                    df.to_csv(os.path.join(
                         screenshot_dir,
-                        f"update{j}-replay{level_info['level_replay']}-n_edits{level_info['num_edits'][0]}.png"),
-                    normalize=True, channels_first=False)
+                        f"update{j}-replay{level_info['level_replay']}-n_edits{level_info['num_edits'][0]}.csv"))
+                else:
+                    df.to_csv(os.path.join(
+                        screenshot_dir,
+                        f'update{j}.csv'))
             else:
-                save_images(
-                    images[:args.screenshot_batch_size],
-                    os.path.join(screenshot_dir, f'update{j}.png'),
-                    normalize=True, channels_first=False)
-            plt.close()
-    # algo.train(
-    #     total_timesteps=args.num_timesteps,
-    #     eval_env=eval_env,
-    #     ref_point=np.array(args.ref_point),
-    #     known_pareto_front=known_pareto_front,
-    #     **args.train_hyperparams,
-    # )
+                venv.reset_agent()
+                images = venv.get_images()
+                if args.use_editor and level_info:
+                    save_images(
+                        images[:args.screenshot_batch_size],
+                        os.path.join(
+                            screenshot_dir,
+                            f"update{j}-replay{level_info['level_replay']}-n_edits{level_info['num_edits'][0]}.png"),
+                        normalize=True, channels_first=False)
+                else:
+                    save_images(
+                        images[:args.screenshot_batch_size],
+                        os.path.join(screenshot_dir, f'update{j}.png'),
+                        normalize=True, channels_first=False)
+                plt.close()
+
     evaluator.close()
     venv.close()
-
-
-if __name__ == "__main__":
-    os.environ["OMP_NUM_THREADS"] = "1"
-    main()
+    if display:
+        display.stop()

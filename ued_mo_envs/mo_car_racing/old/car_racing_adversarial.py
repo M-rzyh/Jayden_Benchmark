@@ -11,10 +11,10 @@ import random
 import numpy as np
 import gym
 from gym.envs.box2d.car_dynamics import Car
-from envs.registration import register as gym_register
+from ued_mo_envs.registration import register as gym_register
 
 from .car_racing_bezier import CarRacingBezier
-from envs.box2d import *
+from ued_mo_envs.mo_car_racing.old import *
 
 class CarRacingBezierAdversarial(CarRacingBezier):
 	def __init__(self, 
@@ -34,7 +34,7 @@ class CarRacingBezierAdversarial(CarRacingBezier):
 		choose_start_pos=False,
 		use_categorical=False,
 		clip_reward=None,
-    sparse_rewards=False,
+    	sparse_rewards=False,
 		num_goal_bins=24,
 		verbose=1):
 

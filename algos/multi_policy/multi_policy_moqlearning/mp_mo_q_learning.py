@@ -7,13 +7,13 @@ from typing_extensions import override
 import gymnasium as gym
 import numpy as np
 
-from algos.common.evaluation import (
+from mo_utils.evaluation import (
     log_all_multi_policy_metrics,
     policy_evaluation_mo,
 )
-from mo_utilsorithm import MOAgent
-from mo_utilsation import weighted_sum
-from mo_utilsimport equally_spaced_weights, random_weights
+from mo_utils.morl_algorithm import MOAgent
+from mo_utils.scalarization import weighted_sum
+from mo_utils.weights import equally_spaced_weights, random_weights
 from algos.multi_policy.linear_support.linear_support import LinearSupport
 from algos.single_policy.ser.mo_q_learning import MOQLearning
 

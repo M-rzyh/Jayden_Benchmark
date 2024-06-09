@@ -16,10 +16,10 @@ import torch as th
 import wandb
 from scipy.optimize import least_squares
 
-from algos.common.evaluation import log_all_multi_policy_metrics
-from mo_utilsorithm import MOAgent
-from mo_utilsmport ParetoArchive
-from mo_utilsnce_indicators import hypervolume, sparsity
+from mo_utils.evaluation import log_all_multi_policy_metrics
+from mo_utils.morl_algorithm import MOAgent
+from mo_utils.pareto import ParetoArchive
+from mo_utils.performance_indicators import hypervolume, sparsity
 from algos.single_policy.ser.mo_ppo import MOPPO, MOPPONet, make_env
 
 

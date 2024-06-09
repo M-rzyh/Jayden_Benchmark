@@ -15,10 +15,10 @@ import numpy as np
 import torch
 from torchvision import utils as vutils
 
-from envs.registration import make as gym_make
+from ued_mo_envs.registration import make as gym_make
 from .make_agent import make_agent
 from .filewriter import FileWriter
-from envs.wrappers import ParallelAdversarialVecEnv, VecMonitor, VecNormalize, \
+from ued_mo_envs.wrappers import ParallelAdversarialVecEnv, VecMonitor, VecNormalize, \
     VecPreprocessImageWrapper, VecFrameStack, MultiGridFullyObsWrapper, CarRacingWrapper, TimeLimit
 
 

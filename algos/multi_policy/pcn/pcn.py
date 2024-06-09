@@ -12,10 +12,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
-from algos.common.evaluation import log_all_multi_policy_metrics
-from mo_utilsorithm import MOAgent, MOPolicy
-from mo_utilsmport get_non_dominated_inds
-from mo_utilsnce_indicators import hypervolume
+from mo_utils.evaluation import log_all_multi_policy_metrics
+from mo_utils.morl_algorithm import MOAgent, MOPolicy
+from mo_utils.pareto import get_non_dominated_inds
+from mo_utils.performance_indicators import hypervolume
 
 
 def crowding_distance(points):

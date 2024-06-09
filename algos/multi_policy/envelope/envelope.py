@@ -11,22 +11,22 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-from algos.common.buffer import ReplayBuffer
-from mo_utilson import (
+from mo_utils.buffer import ReplayBuffer
+from mo_utils.evaluation import (
     log_all_multi_policy_metrics,
     log_episode_info,
 )
-from mo_utilsorithm import MOAgent, MOPolicy
-from mo_utils import (
+from mo_utils.morl_algorithm import MOAgent, MOPolicy
+from mo_utils.networks import (
     NatureCNN,
     get_grad_norm,
     layer_init,
     mlp,
     polyak_update,
 )
-from mo_utilszed_buffer import PrioritizedReplayBuffer
-from mo_utilsport linearly_decaying_value
-from mo_utilsimport equally_spaced_weights, random_weights
+from mo_utils.prioritized_buffer import PrioritizedReplayBuffer
+from mo_utils.utils import linearly_decaying_value
+from mo_utils.weights import equally_spaced_weights, random_weights
 
 
 class QNet(nn.Module):

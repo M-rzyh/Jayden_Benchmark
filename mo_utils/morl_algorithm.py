@@ -47,19 +47,6 @@ class MOPolicy(ABC):
             np.array or int: Action
         """
     
-    # to check
-    # @abstractmethod
-    # def act(self, obs: Union[th.Tensor, np.ndarray], w: Optional[Union[th.Tensor, np.ndarray]]):
-    #     """Non-greedy action selection. Used for training.
-
-    #     Args:
-    #         obs (np.array): Observation
-    #         w (optional np.array): weight for scalarization
-
-    #     Returns:
-    #         np.array or int: Action logits or Action
-    #     """
-    
     @abstractmethod
     def update(self, weight: Optional[Union[th.Tensor, np.ndarray]]) -> None:
         """Update algorithm's parameters (e.g. using experiences from the buffer)."""

@@ -18,10 +18,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-from algos.common.buffer import ReplayBuffer
-from mo_utilson import log_episode_info
-from mo_utilsorithm import MOPolicy
-from mo_utils import mlp, polyak_update
+from mo_utils.buffer import ReplayBuffer
+from mo_utils.evaluation import log_episode_info
+from mo_utils.morl_algorithm import MOPolicy
+from mo_utils.networks import mlp, polyak_update
 
 
 # ALGO LOGIC: initialize agent here:

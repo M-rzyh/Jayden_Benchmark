@@ -6,11 +6,11 @@ import gymnasium as gym
 import numpy as np
 import wandb
 
-from algos.common.evaluation import log_all_multi_policy_metrics
-from mo_utilsorithm import MOAgent
-from mo_utilsmport get_non_dominated
-from mo_utilsnce_indicators import hypervolume
-from mo_utilsport linearly_decaying_value
+from mo_utils.evaluation import log_all_multi_policy_metrics
+from mo_utils.morl_algorithm import MOAgent
+from mo_utils.pareto import get_non_dominated
+from mo_utils.performance_indicators import hypervolume
+from mo_utils.utils import linearly_decaying_value
 
 
 class PQL(MOAgent):

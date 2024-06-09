@@ -4,10 +4,10 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-from envs.registration import register as gym_register
+from ued_mo_envs.registration import register as gym_register
 
-from .racetracks import RaceTrack
-from .racetracks import formula1
+from benchmarks import RaceTrack
+from benchmarks import formula1
 from .car_racing_bezier import CarRacingBezier
 
 

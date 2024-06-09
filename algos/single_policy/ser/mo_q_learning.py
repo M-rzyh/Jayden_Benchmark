@@ -7,11 +7,11 @@ import gymnasium as gym
 import numpy as np
 import wandb
 
-from algos.common.evaluation import log_episode_info
-from mo_utilssed.tabular_model import TabularModel
-from mo_utilsorithm import MOAgent, MOPolicy
-from mo_utilsation import weighted_sum
-from mo_utilsport linearly_decaying_value
+from mo_utils.evaluation import log_episode_info
+from mo_utils.model_based.tabular_model import TabularModel
+from mo_utils.morl_algorithm import MOAgent, MOPolicy
+from mo_utils.scalarization import weighted_sum
+from mo_utils.utils import linearly_decaying_value
 
 
 class MOQLearning(MOPolicy, MOAgent):

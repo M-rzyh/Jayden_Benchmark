@@ -2,6 +2,7 @@
 import time
 
 import mo_gymnasium as mo_gym
+import gymnasium as gym
 import numpy as np
 import torch as th
 from mo_gymnasium.envs.deep_sea_treasure.deep_sea_treasure import CONCAVE_MAP
@@ -24,6 +25,9 @@ from algos.multi_policy.pgmorl.pgmorl import PGMORL
 from algos.single_policy.esr.eupg import EUPG
 from algos.single_policy.ser.mo_q_learning import MOQLearning
 
+
+from ued_mo_envs.registration import make as gym_make
+from ued_mo_envs.ued_env_wrapper import UEDMOEnvWrapper
 
 def test_pql():
     env_id = "deep-sea-treasure-v0"
@@ -283,6 +287,39 @@ def test_capql():
     agent = CAPQL(
         env,
         log=False,
+    )
+
+    agent.train(
+        total_timesteps=1000,
+        eval_env=eval_env,
+        ref_point=np.array([0.0, 0.0]),
+        eval_freq=100,
+    )
+
+    scalar_return, scalarized_disc_return, vec_ret, vec_disc_ret = eval_mo(agent, env=eval_env, w=np.array([0.5, 0.5]))
+    assert scalar_return != 0
+    assert scalarized_disc_return != 0
+    assert len(vec_ret) == 2
+    assert len(vec_disc_ret) == 2
+
+
+def test_capql_dr():
+    env = gym_make("MOLunarLanderUED-v0", seed=88)
+    eval_env = gym_make("MOLunarLanderUED-v0", seed=88)
+    env = UEDMOEnvWrapper(env, 
+                          ued_algo="domain_randomization", 
+                          test_env=[
+                                "MOLunarLanderUED-v0",
+                                "LunarLanderEvalOne",
+                                "LunarLanderEvalTwo",
+                                "LunarLanderEvalThree",
+                                "LunarLanderEvalFour"
+                              ])
+
+    agent = CAPQL(
+        env,
+        log=False,  
+        is_ued=True
     )
 
     agent.train(

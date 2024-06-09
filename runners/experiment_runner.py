@@ -9,7 +9,7 @@ import torch
 from baselines.common.running_mean_std import RunningMeanStd
 
 from level_replay import LevelSampler, LevelStore
-from envs.wrappers import VecPreprocessImageWrapper
+from ued_mo_envs.wrappers import VecPreprocessImageWrapper
 from ued_utils import \
     array_to_csv, \
     is_discrete_actions, \

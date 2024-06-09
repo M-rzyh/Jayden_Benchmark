@@ -16,7 +16,7 @@ import re
 import importlib
 import warnings
 
-from gym import error, logger
+from gymnasium import error, logger
 
 # This format is true today, but it's *not* an official spec.
 # [username/](env-name)-v(version)    env-name is group 1, version is group 2
@@ -120,7 +120,7 @@ class EnvRegistry(object):
         if hasattr(env, "_reset") and hasattr(env, "_step") and not getattr(env, "_gym_disable_underscore_compat", False):
             patch_deprecated_methods(env)
         if (env.spec.max_episode_steps is not None) and not spec.tags.get('vnc'):
-            from envs.wrappers import TimeLimit
+            from ued_mo_envs.wrappers import TimeLimit
             env = TimeLimit(env, max_episode_steps=env.spec.max_episode_steps)
         return env
 
