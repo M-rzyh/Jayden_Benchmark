@@ -30,7 +30,7 @@ from ued_mo_envs.multigrid import *
 from ued_mo_envs.multigrid.adversarial import *
 from ued_mo_envs.mo_car_racing.old import *
 from ued_mo_envs.bipedalwalker import *
-from ued_mo_envs.mo_lunarlander import *
+from ued_mo_envs.mo_lunar_lander import *
 from ued_mo_envs.runners.adversarial_runner import AdversarialRunner
 from ued_utils import make_agent, FileWriter, safe_checkpoint, create_parallel_env, make_plr_args, save_images
 from eval import Evaluator

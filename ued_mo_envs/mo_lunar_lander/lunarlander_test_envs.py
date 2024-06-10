@@ -18,8 +18,6 @@ class LunarLanderEvalOne(MOLunarLander):
         wind_power = params[0][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalTwo(MOLunarLander):
     def __init__(self, continuous = True):
@@ -27,8 +25,6 @@ class LunarLanderEvalTwo(MOLunarLander):
         wind_power = params[1][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalThree(MOLunarLander):
     def __init__(self, continuous = True):
@@ -36,8 +32,6 @@ class LunarLanderEvalThree(MOLunarLander):
         wind_power = params[2][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalFour(MOLunarLander):
     def __init__(self, continuous = True):
@@ -45,8 +39,6 @@ class LunarLanderEvalFour(MOLunarLander):
         wind_power = params[3][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalFive(MOLunarLander):
     def __init__(self, continuous = True):
@@ -54,8 +46,6 @@ class LunarLanderEvalFive(MOLunarLander):
         wind_power = params[4][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalSix(MOLunarLander):
     def __init__(self, continuous = True):
@@ -63,8 +53,6 @@ class LunarLanderEvalSix(MOLunarLander):
         wind_power = params[5][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalSeven(MOLunarLander):
     def __init__(self, continuous = True):
@@ -72,8 +60,6 @@ class LunarLanderEvalSeven(MOLunarLander):
         wind_power = params[6][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalEight(MOLunarLander):
     def __init__(self, continuous = True):
@@ -81,8 +67,6 @@ class LunarLanderEvalEight(MOLunarLander):
         wind_power = params[7][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalNine(MOLunarLander):
     def __init__(self, continuous = True):
@@ -90,8 +74,6 @@ class LunarLanderEvalNine(MOLunarLander):
         wind_power = params[8][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 class LunarLanderEvalTen(MOLunarLander):
     def __init__(self, continuous = True):
@@ -99,8 +81,6 @@ class LunarLanderEvalTen(MOLunarLander):
         wind_power = params[9][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-    # def reset(self):
-    #     return super()._reset()
 
 # if hasattr(__loader__, 'name'):
 #   module_path = __loader__.name

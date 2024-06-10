@@ -62,7 +62,6 @@ class MOLunarLanderUED(MOLunarLander, UEDEnv):
         """
         Reset the environment with a new parameters. Please call self.reset() after this.
         """
-        print('Resetting with random parameters')
         params_max = self.param_info['param_max']
         params_min = self.param_info['param_min']
         new_params = [
@@ -119,9 +118,7 @@ class MOLunarLanderUED(MOLunarLander, UEDEnv):
     def generate_random_z(self):
         return np.random.uniform(size=(self.random_z_dim,)).astype(np.float32)
 
-    def reset_to_level(self, level):
-        self.reset()
-
+    def reset_to_level(self, level, seed):
         if isinstance(level, str):
             encoding = list(np.fromstring(level))
         else:
@@ -133,7 +130,7 @@ class MOLunarLanderUED(MOLunarLander, UEDEnv):
         self.level_params_vec = encoding
         self._update_params(*self.level_params_vec)
 
-        return super().reset()
+        return super().reset(seed=seed)
 
     def get_complexity_info(self):
         info = {
