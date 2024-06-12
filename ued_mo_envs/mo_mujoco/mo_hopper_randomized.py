@@ -1,0 +1,320 @@
+"""Implementation of the Hopper environment supporting
+domain randomization optimization.
+
+For all details: https://www.gymlibrary.ml/environments/mujoco/hopper/
+"""
+from typing import Dict, Tuple, Union
+
+import numpy as np
+import gymnasium as gym
+from gymnasium.utils import EzPickle
+from gymnasium.spaces import Box
+from ued_mo_envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
+from ued_mo_envs.ued_env_wrapper import UEDEnv
+
+DEFAULT_CAMERA_CONFIG = {
+    "trackbodyid": 2,
+    "distance": 3.0,
+    "lookat": np.array((0.0, 0.0, 1.15)),
+    "elevation": -20.0,
+}
+
+class MOHopperUED(RandomMujocoEnv, EzPickle):
+    """
+    ## Description
+    Multi-objective version of the HopperEnv environment.
+
+    See [Gymnasium's env](https://gymnasium.farama.org/environments/mujoco/hopper/) for more information.
+
+    The original Gymnasium's 'Hopper-v4' is recovered by the following linear scalarization:
+
+    env = mo_gym.make('mo-hopper-v4', cost_objective=False)
+    LinearReward(env, weight=np.array([1.0, 0.0]))
+
+    ## Episode End
+    ### Termination
+    If `terminate_when_unhealthy is True` (the default), the environment terminates when the Hopper is unhealthy.
+    The Hopper is unhealthy if any of the following happens:
+
+    1. An element of `observation[1:]` (if  `exclude_current_positions_from_observation=True`, otherwise `observation[2:]`) is no longer contained in the closed interval specified by the `healthy_state_range` argument (default is $[-100, 100]$).
+    2. The height of the hopper (`observation[0]` if  `exclude_current_positions_from_observation=True`, otherwise `observation[1]`) is no longer contained in the closed interval specified by the `healthy_z_range` argument (default is $[0.7, +\infty]$) (usually meaning that it has fallen).
+    3. The angle of the torso (`observation[1]` if  `exclude_current_positions_from_observation=True`, otherwise `observation[2]`) is no longer contained in the closed interval specified by the `healthy_angle_range` argument (default is $[-0.2, 0.2]$).
+
+    ## Reward Space
+    The reward is 3-dimensional:
+    - 0: Reward for going forward on the x-axis
+    - 1: Reward for jumping high on the z-axis
+    - 2: Control cost of the action
+    If the cost_objective flag is set to False, the reward is 2-dimensional, and the cost is added to other objectives.
+
+    ## Credits:
+    - Adapted by Jayden Teoh
+    - Domain randomization by https://github.com/gabrieletiboni/random-envs
+    """
+
+    metadata = {
+        "render_modes": [
+            "human",
+            "rgb_array",
+            "depth_array",
+        ],
+    }
+
+    def __init__(
+        self,
+        xml_file: str = "hopper.xml",
+        frame_skip: int = 4,
+        default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
+        forward_reward_weight: float = 1.0,
+        ctrl_cost_weight: float = 1e-3,
+        healthy_reward: float = 1.0,
+        terminate_when_unhealthy: bool = True,
+        healthy_state_range: Tuple[float, float] = (-100.0, 100.0),
+        healthy_z_range: Tuple[float, float] = (0.7, float("inf")),
+        healthy_angle_range: Tuple[float, float] = (-0.2, 0.2),
+        reset_noise_scale: float = 5e-3,
+        exclude_current_positions_from_observation: bool = True,
+        cost_objective=True, 
+        dr: bool = False, 
+        noisy: bool = False,
+        **kwargs
+    ):
+        # UEDEnv.__init__(self)
+
+        EzPickle.__init__(
+            self,
+            xml_file,
+            frame_skip,
+            default_camera_config,
+            forward_reward_weight,
+            ctrl_cost_weight,
+            healthy_reward,
+            terminate_when_unhealthy,
+            healthy_state_range,
+            healthy_z_range,
+            healthy_angle_range,
+            reset_noise_scale,
+            exclude_current_positions_from_observation,
+            **kwargs,
+        )
+
+        self._forward_reward_weight = forward_reward_weight
+
+        self._ctrl_cost_weight = ctrl_cost_weight
+
+        self._healthy_reward = healthy_reward
+        self._terminate_when_unhealthy = terminate_when_unhealthy
+
+        self._healthy_state_range = healthy_state_range
+        self._healthy_z_range = healthy_z_range
+        self._healthy_angle_range = healthy_angle_range
+
+        self._reset_noise_scale = reset_noise_scale
+
+        self._exclude_current_positions_from_observation = (
+            exclude_current_positions_from_observation
+        )
+
+        RandomMujocoEnv.__init__(
+            self,
+            xml_file,
+            frame_skip,
+            observation_space=None,
+            default_camera_config=default_camera_config,
+            **kwargs,
+        )
+
+        self.metadata = {
+            "render_modes": [
+                "human",
+                "rgb_array",
+                "depth_array",
+            ],
+            "render_fps": int(np.round(1.0 / self.dt)),
+        }
+
+        obs_size = (
+            self.data.qpos.size
+            + self.data.qvel.size
+            - exclude_current_positions_from_observation
+        )
+        self.observation_space = Box(
+            low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64
+        )
+
+        self.observation_structure = {
+            "skipped_qpos": 1 * exclude_current_positions_from_observation,
+            "qpos": self.data.qpos.size
+            - 1 * exclude_current_positions_from_observation,
+            "qvel": self.data.qvel.size,
+        }
+
+        # ================== Domain Randomization ==================
+        self.dr_training = dr
+        self.noisy = noisy
+        self.noise_level = 1e-4
+        self.original_masses = np.copy(self.model.body_mass[1:])
+        self.task_dim = self.original_masses.shape[0]
+
+        self.min_task = np.zeros(self.task_dim)
+        self.max_task = np.zeros(self.task_dim)
+
+        self.mean_task = np.zeros(self.task_dim)
+        self.stdev_task = np.zeros(self.task_dim)
+
+        self.dyn_ind_to_name = {0: 'torsomass', 1: 'thighmass', 2: 'legmass', 3: 'footmass'}
+
+        self.cost_objective = cost_objective
+        self.reward_dim = 4 if cost_objective else 3
+        self.reward_space = Box(low=-np.inf, high=np.inf, shape=(self.reward_dim,))
+        
+        self.set_task_search_bounds() # set the randomization bounds
+        
+    def get_search_bounds_mean(self, index):
+        """Get search bounds for the mean of the parameters optimized,
+        the stdev bounds are set accordingly in dropo.
+        """
+        search_bounds_mean = {
+               'torsomass': (0.5, 10.0),
+               'thighmass': (0.5, 10.0),
+               'legmass': (0.5, 10.0),
+               'footmass': (0.5, 10.0),
+        }
+        return search_bounds_mean[self.dyn_ind_to_name[index]]
+
+    def get_task_lower_bound(self, index):
+        """Returns lowest feasible value for each dynamics
+
+        Used for resampling unfeasible values during domain randomization
+        """
+        lowest_value = {
+            'torsomass': 0.1,
+            'thighmass': 0.1,
+            'legmass': 0.1,
+            'footmass': 0.1
+        }
+
+        return lowest_value[self.dyn_ind_to_name[index]]
+
+
+    def get_task(self):
+        masses = np.array( self.model.body_mass[1:] )
+        return masses
+
+    def set_task(self, *task):
+        print("Hiiiiii", task)
+        self.model.body_mass[1:] = task
+
+    @property
+    def healthy_reward(self):
+        return (
+            float(self.is_healthy or self._terminate_when_unhealthy)
+            * self._healthy_reward
+        )
+
+    def control_cost(self, action):
+        control_cost = self._ctrl_cost_weight * np.sum(np.square(action))
+        return control_cost
+
+    @property
+    def is_healthy(self):
+        z, angle = self.data.qpos[1:3]
+        state = self.state_vector()[2:]
+
+        min_state, max_state = self._healthy_state_range
+        min_z, max_z = self._healthy_z_range
+        min_angle, max_angle = self._healthy_angle_range
+
+        healthy_state = np.all(np.logical_and(min_state < state, state < max_state))
+        healthy_z = min_z < z < max_z
+        healthy_angle = min_angle < angle < max_angle
+
+        is_healthy = all((healthy_state, healthy_z, healthy_angle))
+
+        return is_healthy
+
+    @property
+    def terminated(self):
+        terminated = not self.is_healthy if self._terminate_when_unhealthy else False
+        return terminated
+
+    def step(self, action):
+        posbefore = self.data.qpos[0]
+        self.do_simulation(action, self.frame_skip)
+        posafter, height, ang = self.data.qpos[0:3]
+        x_velocity = (posafter - posbefore) / self.dt
+
+        healthy_reward = self.healthy_reward
+        obs = self._get_obs()
+        terminated = self.terminated
+
+        height = 10 * (height - self.init_qpos[1])
+        
+        energy_cost = self.control_cost(action)
+        forward_reward = self._forward_reward_weight * x_velocity + self.healthy_reward
+
+        if self.cost_objective:
+            vec_reward = np.array([forward_reward, height, healthy_reward, -energy_cost], dtype=np.float32)
+        else:
+            vec_reward = np.array([forward_reward, height, healthy_reward], dtype=np.float32)
+            vec_reward -= self._ctrl_cost_weight * energy_cost
+
+        info = {
+            "x_position": posafter,
+            "x_velocity": x_velocity,
+            "height_reward": height,
+            "energy_reward": -energy_cost,
+        }
+
+        return obs, vec_reward, terminated, False, info
+
+    def _get_obs(self):
+        position = self.data.qpos.flat.copy()
+        velocity = np.clip(self.data.qvel.flat.copy(), -10, 10)
+
+        if self._exclude_current_positions_from_observation:
+            position = position[1:]
+        
+        obs = np.concatenate((position, velocity)).ravel()
+        if self.noisy:
+            obs += np.sqrt(self.noise_level)*np.random.randn(obs.shape[0])
+
+        return obs
+
+    def reset_model(self):
+        noise_low = -self._reset_noise_scale
+        noise_high = self._reset_noise_scale
+
+        qpos = self.init_qpos + self.np_random.uniform(
+            low=noise_low, high=noise_high, size=self.model.nq
+        )
+        qvel = self.init_qvel + self.np_random.uniform(
+            low=noise_low, high=noise_high, size=self.model.nv
+        )
+
+        self.set_state(qpos, qvel)
+
+        if self.dr_training:
+            self.set_random_task() # Sample new dynamics
+            
+        return self._get_obs()
+    
+    def reset_random(self):
+        self.set_random_task()
+        masses = np.array(self.model.body_mass)
+        print("masses: ", masses)
+        self.reset()
+
+
+gym.envs.register(
+        id="RandomHopper-v0",
+        entry_point="%s:RandomHopperEnv" % __name__,
+        max_episode_steps=500
+)
+
+gym.envs.register(
+        id="RandomHopperNoisy-v0",
+        entry_point="%s:RandomHopperEnv" % __name__,
+        max_episode_steps=500,
+        kwargs={"noisy": True}
+)

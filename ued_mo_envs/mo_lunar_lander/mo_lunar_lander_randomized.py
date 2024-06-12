@@ -17,6 +17,7 @@ class MOLunarLanderUED(MOLunarLander, UEDEnv):
     DEFAULT_PARAMS = [-10.0,15.0]
 
     def __init__(self, seed = 0, random_z_dim = 10, continuous = True):
+        UEDEnv.__init__(self)
         MOLunarLander.__init__(self, enable_wind=True, continuous=continuous)
 
         self.passable = True
@@ -70,19 +71,6 @@ class MOLunarLanderUED(MOLunarLander, UEDEnv):
         ]
         self._update_params(*new_params)
         # return self.reset()
-
-    # def reset(self):
-    #     self.adversary_step_count = 0
-    #     self.level_params_vec = self.DEFAULT_PARAMS
-    #     self._update_params(*self.level_params_vec)
-
-    #     obs = {
-    #         'image': self.get_obs(),
-    #         'time_step': [self.adversary_step_count],
-    #         'random_z': self.generate_random_z()
-    #     }
-
-    #     return obs, {}
 
     def step_adversary(self, action):
         param_max = self.param_info['param_max'][self.adversary_step_count]

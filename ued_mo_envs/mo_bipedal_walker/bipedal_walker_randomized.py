@@ -14,6 +14,7 @@ import torch
 from gymnasium.envs.box2d.bipedal_walker import BipedalWalker, BipedalWalkerHardcore
 
 from .mo_bipedal_walker import MOBipedalWalker
+from ued_mo_envs.ued_env_wrapper import UEDEnv
 from collections import namedtuple
 
 EnvConfig = namedtuple('EnvConfig', [
@@ -78,8 +79,9 @@ def rand_int_seed():
     return int.from_bytes(os.urandom(4), byteorder="little")
 
 
-class MOBipedalWalkerUED(MOBipedalWalker):
+class MOBipedalWalkerUED(MOBipedalWalker, UEDEnv):
     def __init__(self, mode='full', poet=False, random_z_dim=10, seed=0):
+        UEDEnv.__init__(self)
         self.mode = mode
         self.level_seed = seed
         self.poet = poet # POET didn't use the stairs, not clear why
@@ -311,11 +313,6 @@ class MOBipedalWalkerUED(MOBipedalWalker):
         return self.encoding
 
     def reset_random(self):
-        """
-        Must reset randomly as step_adversary would otherwise do
-        """
-        # action will be between [-1,1]
-        # this maps to a range, depending on the index
         param_ranges = self.param_ranges
 
         rand_norm_params = np.random.rand(len(param_ranges))
@@ -327,7 +324,6 @@ class MOBipedalWalkerUED(MOBipedalWalker):
         self.level_seed = rand_int_seed()
 
         self._reset_env_config()
-
         return super().reset(seed=self.level_seed)
 
     @property

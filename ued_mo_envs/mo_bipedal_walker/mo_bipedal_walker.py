@@ -72,13 +72,20 @@ class MOBipedalWalker(BipedalWalker):  # no need for EzPickle, it's already in B
 
         # Result forward reward, balance reward, energy cost 
         # reward range is estimated for forward reward but not for balance reward and energy cost
+        # self.reward_space = spaces.Box(
+        #     low=np.array([-100, 0, -1]),
+        #     high=np.array([100, 0.1, 0]),
+        #     shape=(3,),
+        #     dtype=np.float32,
+        # )
+        # self.reward_dim = 3
         self.reward_space = spaces.Box(
-            low=np.array([-100, 0, -1]),
-            high=np.array([100, 1, 0]),
-            shape=(3,),
+            low=np.array([-100, -1]),
+            high=np.array([100, 0]),
+            shape=(2,),
             dtype=np.float32,
         )
-        self.reward_dim = 3
+        self.reward_dim = 2
         self.original_prev_shaping = None
 
     def re_init(self, env_config):
@@ -433,31 +440,28 @@ class MOBipedalWalker(BipedalWalker):  # no need for EzPickle, it's already in B
 
         self.scroll = pos.x - VIEWPORT_W / SCALE / 5
 
-        vector_reward = np.zeros(3, dtype=np.float32)
+        vector_reward = np.zeros(2, dtype=np.float32)
         original_reward = 0
-        shaping = (
-            130 * pos[0] / SCALE
-        )  # moving forward is a way to receive reward (normalized to get 300 on completion)
-        original_shaping = shaping - 5.0 * abs(
-            state[0]
-        )  # keep head straight, other than that and falling, any behavior is unpunished
+        shaping = 130 * pos[0] / SCALE # moving forward is a way to receive reward (normalized to get 300 on completion)
+        shaping -= 5.0 * abs(state[0])  # keep head straight, other than that and falling, any behavior is unpunished
 
         if self.prev_shaping is not None:
             # we separate balance reward from forward reward in multi-objective setting
-            original_reward = original_shaping - self.original_prev_shaping
+            original_reward = shaping - self.original_prev_shaping
             vector_reward[0] = shaping - self.prev_shaping
         self.prev_shaping = shaping
         self.original_prev_shaping = shaping
 
         # Reward for balance (keeping hull angle close to zero)
-        max_angle = np.pi / 4  # Maximum angle before considering the walker has fallen
-        angle_proportion = max(0, (max_angle - abs(state[0])) / max_angle)
-        vector_reward[1] = angle_proportion * 1  # Rescaled to a range of [0, 1]
+        # max_angle = np.pi / 4  # Maximum angle before considering the walker has fallen
+        # angle_proportion = max(0, (max_angle - abs(state[0])) / max_angle)
+        # # print("angle:", state[0], "angle proportion:", angle_proportion)
+        # vector_reward[1] = angle_proportion * 0.1  # Rescaled to a range of [0, 0.1]
 
         for a in action:
             original_reward -= 0.00035 * MOTORS_TORQUE * np.clip(np.abs(a), 0, 1)
             # use 0.003125 instead of 0.00035 => 4 (number of actions) * -0.003125 * 80 (default motors torque) = -1
-            vector_reward[2] -= 0.003125 * MOTORS_TORQUE * np.clip(np.abs(a), 0, 1)
+            vector_reward[1] -= 0.003125 * MOTORS_TORQUE * np.clip(np.abs(a), 0, 1)
 
         terminated = False
         if self.game_over or pos[0] < 0:
@@ -466,6 +470,8 @@ class MOBipedalWalker(BipedalWalker):  # no need for EzPickle, it's already in B
             terminated = True
         if pos[0] > (TERRAIN_LENGTH - TERRAIN_GRASS) * TERRAIN_STEP:
             terminated = True
+
+        print("shaping", vector_reward[0], "energy cost", vector_reward[1], "original reward", original_reward)
 
         if self.render_mode == "human":
             self.render()

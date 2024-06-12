@@ -5,7 +5,7 @@ def register_envs():
     try:
         gym.envs.register(
             id="MOLunarLanderUED-v0",
-            entry_point="ued_mo_envs.mo_lunar_lander.adversarial:MOLunarLanderUED",
+            entry_point="ued_mo_envs.mo_lunar_lander.mo_lunar_lander_randomized:MOLunarLanderUED",
             max_episode_steps=500,
         )
     except Exception as e:
@@ -90,6 +90,36 @@ def register_envs():
             id="BipedalWalker-Med-Roughness-v0",
             entry_point="ued_mo_envs.mo_bipedal_walker.bipedalwalker_test_envs:BipedalWalkerMedRoughness",
             max_episode_steps=2000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+
+    # ================== Registering Mujoco ==================
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahUED-v0",
+            entry_point="ued_mo_envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahUED",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHopperUED-v0",
+            entry_point="ued_mo_envs.mo_mujoco.mo_hopper_randomized:MOHopperUED",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    
+    try:
+        gym.envs.register(
+            id="MOHumanoidUED-v0",
+            entry_point="ued_mo_envs.mo_mujoco.mo_humanoid_randomized:MOHumanoidUED",
+            max_episode_steps=1000,
         )
     except Exception as e:
         print(f"Unexpected error: {e}, {type(e)}")
