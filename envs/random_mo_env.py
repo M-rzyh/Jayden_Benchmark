@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from distutils.util import strtobool
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Iterator
 import numpy as np
 import gymnasium as gym
 import mo_gymnasium as mo_gym
+from gymnasium.vector import AsyncVectorEnv
 import wandb
 
 from pymoo.util.ref_dirs import get_reference_directions
@@ -32,6 +33,30 @@ class UEDEnv(ABC):
     def encoding(self):
         pass
 
+# class MOAsyncVectorEnv(AsyncVectorEnv):
+#     """Vectorized environment that parallely runs multiple environments."""
+
+#     def __init__(
+#         self,
+#         env_fns: Iterator[callable],
+#         copy: bool = True,
+#     ):
+#         """Vectorized environment that serially runs multiple environments.
+
+#         Args:
+#             env_fns: env constructors
+#             copy: If ``True``, then the :meth:`reset` and :meth:`step` methods return a copy of the observations.
+#         """
+#         AyncVectorEnv.__init__(self, env_fns, copy=copy)
+#         # Just overrides the rewards memory to add the number of objectives
+#         self.reward_space = self.envs[0].unwrapped.reward_space
+#         self._rewards = np.zeros(
+#             (
+#                 self.num_envs,
+#                 self.reward_space.shape[0],
+#             ),
+#             dtype=np.float64,
+#         )
 
 class RandomMOEnvWrapper(gym.Wrapper):
     def __init__(self, 
@@ -45,7 +70,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
         make_fn = [
             lambda env_name=env_name: gym.make(env_name, **kwargs) for env_name in test_envs
         ]
-        self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
+        self.test_envs = gym.vector.AsyncVectorEnv(make_fn)
         
 
     # def step(self, action):
@@ -185,7 +210,6 @@ class RandomMOEnvWrapper(gym.Wrapper):
                 columns=[f"objective_{j}" for j in range(1, reward_dim + 1)],
                 data=[p.tolist() for p in filtered_front],
             )
-            print(f"Front for {self.test_env_names[i]}: {filtered_front}")
             wandb.log({f"eval/front/{self.test_env_names[i]}": front})
 
     def _report(

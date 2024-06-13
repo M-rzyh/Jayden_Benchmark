@@ -96,15 +96,56 @@ def register_envs():
 
 
     # ================== Registering Mujoco ==================
+
+    # HalfCheetah
     try:
         gym.envs.register(
-            id="MOHalfCheehtahUED-v0",
+            id="MOHalfCheehtahUED-v5",
             entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahUED",
             max_episode_steps=1000,
         )
     except Exception as e:
         print(f"Unexpected error: {e}, {type(e)}")
 
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahLight-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahLight",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahHeavy-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahHeavy",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahSlippery-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahSlippery",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahHard-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahHard",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    # Hopper
     try:
         gym.envs.register(
             id="MOHopperUED-v5",
@@ -143,8 +184,8 @@ def register_envs():
 
     try:
         gym.envs.register(
-            id="MOHopperHighDamping-v5",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperHighDamping",
+            id="MOHopperLowDamping-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperLowDamping",
             max_episode_steps=1000,
         )
 
@@ -152,6 +193,17 @@ def register_envs():
         print(f"Unexpected error: {e}, {type(e)}")
 
     
+    try:
+        gym.envs.register(
+            id="MOHopperHard-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperHard",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    
+    # Humanoid
     try:
         gym.envs.register(
             id="MOHumanoidUED-v0",

@@ -37,22 +37,33 @@ def test_capql_dr():
     #                             "BipedalWalker-Med-StumpHeight-v0",
     #                             "BipedalWalker-Med-Roughness-v0"
     #                         ])
-    env = gym.make("MOHopperUED-v5")
-    eval_env = gym.make("MOHopperUED-v5")
+    # env = gym.make("MOHopperUED-v5")
+    # eval_env = gym.make("MOHopperUED-v5")
+    # env = RandomMOEnvWrapper(env, 
+    #                       generalization_algo="domain_randomization", 
+    #                       test_env=[
+    #                             "MOHopperUED-v5",
+    #                             "MOHopperLight-v5",
+    #                             "MOHopperHeavy-v5",
+    #                             "MOHopperSlippery-v5",
+    #                             "MOHopperHighDamping-v5",
+    #                       ])
+
+    env = gym.make("MOHalfCheehtahUED-v5")
+    eval_env = gym.make("MOHalfCheehtahUED-v5")
     env = RandomMOEnvWrapper(env, 
                           generalization_algo="domain_randomization", 
-                          test_env=[
-                                "MOHopperUED-v5",
-                                "MOHopperLight-v5",
-                                "MOHopperHeavy-v5",
-                                "MOHopperSlippery-v5",
-                                "MOHopperHighDamping-v5",
+                          test_envs=[
+                                "MOHalfCheehtahLight-v5",
+                                "MOHalfCheehtahHeavy-v5",
+                                "MOHalfCheehtahSlippery-v5",
+                                "MOHalfCheehtahHard-v5",
+                                "MOHalfCheehtahUED-v5"
                           ])
     
     agent = CAPQL(
         env,
         log=False,  
-        test_generalization=True
     )
 
     agent.train(
@@ -60,6 +71,7 @@ def test_capql_dr():
         eval_env=eval_env,
         ref_point=np.array([0.0, 0.0]),
         eval_freq=1,
+        test_generalization=True
     )
 
     weights = [

@@ -150,19 +150,19 @@ def make_env(args):
 
         def wrap_mario(env):
             from gymnasium.wrappers import (
+                FrameStack,
+                GrayScaleObservation,
                 ResizeObservation,
                 TimeLimit,
             )
-            from gymnasium.wrappers.transform_observation import GrayscaleObservation
-            from gymnasium.wrappers.stateful_observation import FrameStackObservation
             from mo_gymnasium.envs.mario.joypad_space import JoypadSpace
             from mo_gymnasium.utils import MOMaxAndSkipObservation
 
             env = JoypadSpace(env, SIMPLE_MOVEMENT)
             env = MOMaxAndSkipObservation(env, skip=4)
             env = ResizeObservation(env, (84, 84))
-            env = GrayscaleObservation(env)
-            env = FrameStackObservation(env, 4)
+            env = GrayScaleObservation(env)
+            env = FrameStack(env, 4)
             env = TimeLimit(env, max_episode_steps=1000)
             return env
 
