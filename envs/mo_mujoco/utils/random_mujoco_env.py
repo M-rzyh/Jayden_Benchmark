@@ -1,6 +1,6 @@
 
 from collections import OrderedDict
-from typing import Optional, Dict, Union, Tuple
+from typing import Optional, Dict, Union, Tuple, List
 import os
 from os import path
 
@@ -53,6 +53,7 @@ class RandomMujocoEnv(RandomEnv):
             default_camera_config: Optional[Dict[str, Union[float, int]]] = None,
             max_geom: int = 1000,
             visual_options: Dict[int, bool] = {},
+            task: Optional[List[float]] = None,
         ):
         """Base abstract class for mujoco based environments.
 
@@ -116,6 +117,9 @@ class RandomMujocoEnv(RandomEnv):
             visual_options
         )
 
+        if task is not None: # set initial/fixed task if provided
+            self.set_task(*task)
+
     def set_verbosity(self, verbose):
         self.verbose = verbose
 
@@ -140,25 +144,6 @@ class RandomMujocoEnv(RandomEnv):
         low, high = bounds.T
         self.action_space = spaces.Box(low=low, high=high, dtype=np.float32)
         return self.action_space
-
-    # methods to override:
-    # ----------------------------
-
-    def reset_model(self):
-        """
-        Reset the robot degrees of freedom (qpos and qvel).
-        Implement this in each subclass.
-        """
-        raise NotImplementedError
-
-    def viewer_setup(self):
-        """
-        This method is called when the viewer is initialized.
-        Optionally implement this method, if you need to tinker with camera position
-        and so forth.
-        """
-        pass
-  
 
     def reset(
         self,
@@ -216,23 +201,6 @@ class RandomMujocoEnv(RandomEnv):
     def get_body_com(self, body_name):
         """Return the cartesian position of a body frame."""
         return self.data.body(body_name).xpos
-
-    def reset(
-        self,
-        *,
-        seed: Optional[int] = None,
-        options: Optional[dict] = None,
-    ):
-        super().reset(seed=seed)
-
-        mujoco.mj_resetData(self.model, self.data)
-
-        ob = self.reset_model()
-        info = self._get_reset_info()
-
-        if self.render_mode == "human":
-            self.render()
-        return ob, info
 
     @property
     def dt(self) -> float:

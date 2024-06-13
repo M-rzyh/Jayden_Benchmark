@@ -9,8 +9,8 @@ import numpy as np
 import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
-from ued_mo_envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from ued_mo_envs.ued_env_wrapper import UEDEnv
+from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
+from envs.random_mo_env import UEDEnv
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 2,
@@ -66,7 +66,7 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         frame_skip: int = 4,
         default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
         forward_reward_weight: float = 1.0,
-        ctrl_cost_weight: float = 1e-3,
+        ctrl_cost_weight: float = 1.0,
         healthy_reward: float = 1.0,
         terminate_when_unhealthy: bool = True,
         healthy_state_range: Tuple[float, float] = (-100.0, 100.0),
@@ -153,8 +153,9 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         self.dr_training = dr
         self.noisy = noisy
         self.noise_level = 1e-4
-        self.original_masses = np.copy(self.model.body_mass[1:])
-        self.task_dim = self.original_masses.shape[0]
+        self.original_task = np.copy(self.get_task())
+        self.nominal_values = np.concatenate([self.original_task])
+        self.task_dim = self.nominal_values.shape[0]
 
         self.min_task = np.zeros(self.task_dim)
         self.max_task = np.zeros(self.task_dim)
@@ -162,10 +163,11 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         self.mean_task = np.zeros(self.task_dim)
         self.stdev_task = np.zeros(self.task_dim)
 
-        self.dyn_ind_to_name = {0: 'torsomass', 1: 'thighmass', 2: 'legmass', 3: 'footmass'}
+        self.dyn_ind_to_name = {0: 'torsomass', 1: 'thighmass', 2: 'legmass', 3: 'footmass',
+                                4: 'damping0', 5: 'damping1', 6: 'damping2', 7: 'friction'}
 
         self.cost_objective = cost_objective
-        self.reward_dim = 4 if cost_objective else 3
+        self.reward_dim = 3 if cost_objective else 2
         self.reward_space = Box(low=-np.inf, high=np.inf, shape=(self.reward_dim,))
         
         self.set_task_search_bounds() # set the randomization bounds
@@ -175,10 +177,14 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         the stdev bounds are set accordingly in dropo.
         """
         search_bounds_mean = {
-               'torsomass': (0.5, 10.0),
-               'thighmass': (0.5, 10.0),
-               'legmass': (0.5, 10.0),
-               'footmass': (0.5, 10.0),
+               'torsomass': (0.1, 10.0),
+               'thighmass': (0.1, 10.0),
+               'legmass': (0.1, 10.0),
+               'footmass': (0.1, 10.0),
+               'damping0': (0.1, 3.),
+               'damping1': (0.1, 3.),
+               'damping2': (0.1, 3.),
+               'friction': (0.1, 3.)
         }
         return search_bounds_mean[self.dyn_ind_to_name[index]]
 
@@ -188,22 +194,29 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         Used for resampling unfeasible values during domain randomization
         """
         lowest_value = {
-            'torsomass': 0.1,
-            'thighmass': 0.1,
-            'legmass': 0.1,
-            'footmass': 0.1
+            'torsomass': 0.001,
+            'thighmass': 0.001,
+            'legmass': 0.001,
+            'footmass': 0.001,
+            'damping0': 0.05,
+            'damping1': 0.05,
+            'damping2': 0.05,
+            'friction': 0.01
         }
 
         return lowest_value[self.dyn_ind_to_name[index]]
 
 
     def get_task(self):
-        masses = np.array( self.model.body_mass[1:] )
-        return masses
+        masses = np.array(self.model.body_mass[1:])
+        damping = np.array(self.model.dof_damping[3:])
+        friction = np.array([self.model.pair_friction[0, 0]])
+        return np.concatenate([masses, damping, friction])
 
     def set_task(self, *task):
-        print("Hiiiiii", task)
-        self.model.body_mass[1:] = task
+        self.model.body_mass[1:] = task[:4]
+        self.model.dof_damping[3:] = task[4:7]  # damping on the three actuated joints
+        self.model.pair_friction[0, :2] = np.repeat(task[7], 2)
 
     @property
     def healthy_reward(self):
@@ -244,20 +257,22 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         posafter, height, ang = self.data.qpos[0:3]
         x_velocity = (posafter - posbefore) / self.dt
 
-        healthy_reward = self.healthy_reward
         obs = self._get_obs()
         terminated = self.terminated
 
-        height = 10 * (height - self.init_qpos[1])
+        height = height - self.init_qpos[1] # difference from initial height
         
         energy_cost = self.control_cost(action)
-        forward_reward = self._forward_reward_weight * x_velocity + self.healthy_reward
+        forward_reward = self._forward_reward_weight * x_velocity
+        healthy_reward = self.healthy_reward
 
         if self.cost_objective:
-            vec_reward = np.array([forward_reward, height, healthy_reward, -energy_cost], dtype=np.float32)
+            vec_reward = np.array([forward_reward, height, -energy_cost], dtype=np.float32)
         else:
-            vec_reward = np.array([forward_reward, height, healthy_reward], dtype=np.float32)
-            vec_reward -= self._ctrl_cost_weight * energy_cost
+            vec_reward = np.array([forward_reward, height], dtype=np.float32)
+            vec_reward -= energy_cost
+
+        # vec_reward += healthy_reward
 
         info = {
             "x_position": posafter,
@@ -299,11 +314,15 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
             
         return self._get_obs()
     
+    def _get_reset_info(self):
+        return {
+            "x_position": self.data.qpos[0],
+            "z_distance_from_origin": self.data.qpos[1] - self.init_qpos[1],
+        }
+    
     def reset_random(self):
         self.set_random_task()
-        masses = np.array(self.model.body_mass)
-        print("masses: ", masses)
-        self.reset()
+        # self.reset()
 
 
 gym.envs.register(

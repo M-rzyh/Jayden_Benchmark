@@ -14,7 +14,7 @@ import torch
 from gymnasium.envs.box2d.bipedal_walker import BipedalWalker, BipedalWalkerHardcore
 
 from .mo_bipedal_walker import MOBipedalWalker
-from ued_mo_envs.ued_env_wrapper import UEDEnv
+from envs.random_mo_env import UEDEnv
 from collections import namedtuple
 
 EnvConfig = namedtuple('EnvConfig', [
@@ -324,7 +324,7 @@ class MOBipedalWalkerUED(MOBipedalWalker, UEDEnv):
         self.level_seed = rand_int_seed()
 
         self._reset_env_config()
-        return super().reset(seed=self.level_seed)
+        # return super().reset(seed=self.level_seed)
 
     @property
     def processed_action_dim(self):

@@ -26,8 +26,8 @@ from algos.single_policy.esr.eupg import EUPG
 from algos.single_policy.ser.mo_q_learning import MOQLearning
 
 
-from ued_mo_envs.registration import make as gym_make
-from ued_mo_envs.ued_env_wrapper import UEDMOEnvWrapper
+from envs.registration import make as gym_make
+from envs.random_mo_env import RandomMOEnvWrapper
 
 def test_pql():
     env_id = "deep-sea-treasure-v0"
@@ -306,8 +306,8 @@ def test_capql():
 def test_capql_dr():
     env = gym_make("MOLunarLanderUED-v0", seed=88)
     eval_env = gym_make("MOLunarLanderUED-v0", seed=88)
-    env = UEDMOEnvWrapper(env, 
-                          ued_algo="domain_randomization", 
+    env = RandomMOEnvWrapper(env, 
+                          generalization_algo="domain_randomization", 
                           test_env=[
                                 "MOLunarLanderUED-v0",
                                 "LunarLanderEvalOne",
@@ -319,7 +319,7 @@ def test_capql_dr():
     agent = CAPQL(
         env,
         log=False,  
-        is_ued=True
+        test_generalization=True
     )
 
     agent.train(

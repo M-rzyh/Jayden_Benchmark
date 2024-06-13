@@ -1,0 +1,17 @@
+mo-gymnasium>=1.0.1
+gymnasium==1.0.0a2
+numpy>=1.21.0
+torch>=1.12.0
+pygame>=2.1.0
+scipy>=1.7.3
+pymoo>=0.6.0
+wandb>=0.14.0
+imageio
+moviepy
+seaborn
+cvxpy
+fire
+box2d-py
+gym_super_mario_bros
+pycddlib
+mujoco==3.1.6

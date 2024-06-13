@@ -16,8 +16,8 @@ import numpy as np
 import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
-from ued_mo_envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from ued_mo_envs.ued_env_wrapper import UEDEnv
+from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
+from envs.random_mo_env import UEDEnv
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 1,
@@ -145,7 +145,6 @@ class MOHumanoidUED(RandomMujocoEnv, EzPickle):
         self.noise_level = 1e-3
         self.original_masses = np.copy(self.model.body_mass[1:])
         self.original_damping = np.copy(self.model.dof_damping[6:])
-        print("masses: ", self.original_masses, "damping:", self.original_damping)
 
         self.task_dim = self.original_masses.shape[0] + self.original_damping.shape[0]
 
@@ -386,12 +385,19 @@ class MOHumanoidUED(RandomMujocoEnv, EzPickle):
             self.set_random_task() # Sample new dynamics
             
         return self._get_obs()
+    
+    def _get_reset_info(self):
+        return {
+            "x_position": self.data.qpos[0],
+            "y_position": self.data.qpos[1],
+            "tendon_length": self.data.ten_length,
+            "tendon_velocity": self.data.ten_velocity,
+            "distance_from_origin": np.linalg.norm(self.data.qpos[0:2], ord=2),
+        }
 
     def reset_random(self):
         self.set_random_task()
-        masses = np.array(self.model.body_mass)
-        print("masses: ", masses, "damping:", self.model.dof_damping[6:])
-        self.reset()
+        # self.reset()
 
 
 gym.envs.register(

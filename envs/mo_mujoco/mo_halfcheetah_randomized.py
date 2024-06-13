@@ -12,8 +12,8 @@ import numpy as np
 import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
-from ued_mo_envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from ued_mo_envs.ued_env_wrapper import UEDEnv
+from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
+from envs.random_mo_env import UEDEnv
 from copy import deepcopy
 
 DEFAULT_CAMERA_CONFIG = {
@@ -230,10 +230,12 @@ class MOHalfCheehtahUED(RandomMujocoEnv, EzPickle):
             self.set_random_task() # Sample new dynamics
 
         return self._get_obs()
+
+    def _get_reset_info(self):
+        return {
+            "x_position": self.data.qpos[0],
+        }
     
     def reset_random(self):
         self.set_random_task()
-        masses = np.array(self.model.body_mass)
-        friction = np.array(self.model.pair_friction)
-        print("masses: ", masses, "friction: ", friction)
-        self.reset()
+        # self.reset()

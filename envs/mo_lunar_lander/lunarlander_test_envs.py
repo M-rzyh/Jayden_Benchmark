@@ -1,4 +1,3 @@
-from ued_mo_envs.registration import register as gym_register
 from .mo_lunar_lander import MOLunarLander
 #fixed params that were randomized initially
 params = [[ -3.58211243,   0.20845414],
@@ -81,38 +80,3 @@ class LunarLanderEvalTen(MOLunarLander):
         wind_power = params[9][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
-
-# if hasattr(__loader__, 'name'):
-#   module_path = __loader__.name
-# elif hasattr(__loader__, 'fullname'):
-#   module_path = __loader__.fullname
-# gym_register(id = 'LunarLander-Eval-One-v0',
-#              entry_point=module_path + ':LunarLanderEvalOne',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Two-v0',
-#              entry_point=module_path + ':LunarLanderEvalTwo',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Three-v0',
-#              entry_point=module_path + ':LunarLanderEvalThree',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Four-v0',
-#              entry_point=module_path + ':LunarLanderEvalFour',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Five-v0',
-#              entry_point=module_path + ':LunarLanderEvalFive',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Six-v0',
-#              entry_point=module_path + ':LunarLanderEvalSix',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Seven-v0',
-#              entry_point=module_path + ':LunarLanderEvalSeven',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Eight-v0',
-#              entry_point=module_path + ':LunarLanderEvalEight',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Nine-v0',
-#              entry_point=module_path + ':LunarLanderEvalNine',
-#              max_episode_steps=500)
-# gym_register(id = 'LunarLander-Eval-Ten-v0',
-#              entry_point=module_path + ':LunarLanderEvalTen',
-#              max_episode_steps=500)

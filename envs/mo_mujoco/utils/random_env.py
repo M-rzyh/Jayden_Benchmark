@@ -30,7 +30,7 @@ class RandomEnv(gym.Env):
     # ----------------------------
 
     def sample_task(self):
-        """Sample random dynamics parameters"""
+        """Sample random dynamics parameters uniformly"""
         return np.random.uniform(self.min_task, self.max_task, self.min_task.shape)
 
     def set_task_search_bounds(self):

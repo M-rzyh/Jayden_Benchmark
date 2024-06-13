@@ -3,9 +3,8 @@ import numpy as np
 from mo_utils.evaluation import policy_evaluation_mo
 from algos.multi_policy.capql.capql import CAPQL
 
-from ued_mo_envs.registration import make as gym_make
-from ued_mo_envs.ued_env_wrapper import UEDMOEnvWrapper
-from ued_mo_envs.register_envs import register_envs
+from envs.random_mo_env import RandomMOEnvWrapper
+from envs.register_envs import register_envs
 from mo_utils.evaluation import seed_everything
 
 import gymnasium as gym
@@ -15,8 +14,8 @@ def test_capql_dr():
     seed_everything(0)
     # env = gym.make("MOLunarLanderUED-v0", continuous=True)
     # eval_env = gym.make("MOLunarLanderUED-v0", continuous=True)
-    # env = UEDMOEnvWrapper(env, 
-    #                       ued_algo="domain_randomization", 
+    # env = RandomMOEnvWrapper(env, 
+    #                       generalization_algo="domain_randomization", 
     #                       test_env=[
     #                             "MOLunarLanderUED-v0",
     #                             "LunarLanderEvalOne",
@@ -28,8 +27,8 @@ def test_capql_dr():
 
     # env = gym.make("MOBipedalWalkerUED-v0")
     # eval_env = gym.make("MOBipedalWalkerUED-v0")
-    # env = UEDMOEnvWrapper(env, 
-    #                       ued_algo="domain_randomization", 
+    # env = RandomMOEnvWrapper(env, 
+    #                       generalization_algo="domain_randomization", 
     #                       test_env=[
     #                             "BipedalWalker-v3",
     #                             "BipedalWalkerHardcore-v3",
@@ -38,18 +37,22 @@ def test_capql_dr():
     #                             "BipedalWalker-Med-StumpHeight-v0",
     #                             "BipedalWalker-Med-Roughness-v0"
     #                         ])
-    env = gym.make("MOHumanoidUED-v0")
-    eval_env = gym.make("MOHumanoidUED-v0")
-    env = UEDMOEnvWrapper(env, 
-                          ued_algo="domain_randomization", 
+    env = gym.make("MOHopperUED-v5")
+    eval_env = gym.make("MOHopperUED-v5")
+    env = RandomMOEnvWrapper(env, 
+                          generalization_algo="domain_randomization", 
                           test_env=[
-                              "MOHumanoidUED-v0"
+                                "MOHopperUED-v5",
+                                "MOHopperLight-v5",
+                                "MOHopperHeavy-v5",
+                                "MOHopperSlippery-v5",
+                                "MOHopperHighDamping-v5",
                           ])
     
     agent = CAPQL(
         env,
         log=False,  
-        is_ued=True
+        test_generalization=True
     )
 
     agent.train(

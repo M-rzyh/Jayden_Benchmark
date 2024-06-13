@@ -23,7 +23,7 @@ from mo_utils.networks import layer_init, mlp, polyak_update
 from mo_utils.weights import equally_spaced_weights
 
 import gymnasium as gym
-from ued_mo_envs.ued_env_wrapper import UEDMOEnvWrapper
+from envs.random_mo_env import RandomMOEnvWrapper
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -186,7 +186,7 @@ class CAPQL(MOAgent, MOPolicy):
 
     def __init__(
         self,
-        env: Union[gym.Env, UEDMOEnvWrapper],
+        env: Union[gym.Env, RandomMOEnvWrapper],
         learning_rate: float = 3e-4,
         gamma: float = 0.99,
         tau: float = 0.005,
@@ -202,7 +202,6 @@ class CAPQL(MOAgent, MOPolicy):
         wandb_entity: Optional[str] = None,
         log: bool = True,
         seed: Optional[int] = None,
-        is_ued: bool = False,
         device: Union[th.device, str] = "auto",
     ):
         """CAPQL algorithm with continuous actions.
@@ -269,8 +268,6 @@ class CAPQL(MOAgent, MOPolicy):
         self.log = log
         if self.log:
             self.setup_wandb(project_name, experiment_name, wandb_entity)
-
-        self.is_ued = is_ued
 
     def get_config(self):
         """Get the configuration of the agent."""
@@ -393,6 +390,7 @@ class CAPQL(MOAgent, MOPolicy):
         eval_freq: int = 10000,
         reset_num_timesteps: bool = False,
         checkpoints: bool = False,
+        test_generalization: bool = False,
     ):
         """Train the agent.
 
@@ -430,7 +428,7 @@ class CAPQL(MOAgent, MOPolicy):
         self.global_step = 0 if reset_num_timesteps else self.global_step
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
 
-        if self.is_ued:
+        if test_generalization:
             self.env.unwrapped.reset_random()
         obs, info = self.env.reset()
         for _ in range(1, total_timesteps + 1):
@@ -459,7 +457,7 @@ class CAPQL(MOAgent, MOPolicy):
                 self.update()
 
             if terminated or truncated:
-                if self.is_ued:
+                if test_generalization:
                     self.env.unwrapped.reset_random()
                 obs, info = self.env.reset()
                 self.num_episodes += 1
@@ -471,7 +469,7 @@ class CAPQL(MOAgent, MOPolicy):
 
             if self.log and self.global_step % eval_freq == 0:
                 # Evaluation
-                if self.is_ued:
+                if test_generalization:
                     self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
                 else:
                     returns_test_tasks = [

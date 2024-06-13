@@ -3,8 +3,8 @@ import gymnasium as gym
 import torch
 import numpy as np
 from .mo_lunar_lander import MOLunarLander
-from ued_mo_envs.registration import register as gym_register
-from ued_mo_envs.ued_env_wrapper import UEDEnv
+from envs.registration import register as gym_register
+from envs.random_mo_env import UEDEnv
 
 def rand_int_seed():
     return int.from_bytes(os.urandom(4), byteorder="little")

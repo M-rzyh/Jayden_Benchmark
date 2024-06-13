@@ -12,6 +12,7 @@ import torch.nn
 import wandb
 from gymnasium import spaces
 from mo_gymnasium.utils import MOSyncVectorEnv
+from envs.random_mo_env import RandomMOEnvWrapper
 
 from mo_utils.evaluation import (
     eval_mo_reward_conditioned,
@@ -178,7 +179,7 @@ class MOPolicy(ABC):
 class MOAgent(ABC):
     """An MORL Agent, can contain one or multiple MOPolicies. Contains helpers to extract features from the environment, setup logging etc."""
 
-    def __init__(self, env: Optional[gym.Env], device: Union[th.device, str] = "auto", seed: Optional[int] = None) -> None:
+    def __init__(self, env: Optional[Union[gym.Env, RandomMOEnvWrapper]], device: Union[th.device, str] = "auto", seed: Optional[int] = None) -> None:
         """Initializes the agent.
 
         Args:
@@ -194,7 +195,7 @@ class MOAgent(ABC):
         self.seed = seed
         self.np_random = np.random.default_rng(self.seed)
 
-    def extract_env_info(self, env: Optional[gym.Env]) -> None:
+    def extract_env_info(self, env: Optional[Union[gym.Env, RandomMOEnvWrapper]]) -> None:
         """Extracts all the features of the environment: observation space, action space, ...
 
         Args:

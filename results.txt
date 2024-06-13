@@ -1,8 +1,0 @@
-Weights: [0.8 0.2], Scalar Return: -33.30569355948655, Scalarized Discounted Return: -1.7159217164872131, Vector Return: [   0.59855273 -168.92267871], Vector Discounted Return: [ 0.31068199 -9.82233656]
-Weights: [0.7 0.3], Scalar Return: -41.63105952358508, Scalarized Discounted Return: -2.375889517281321, Vector Return: [   0.75562522 -140.53332392], Vector Discounted Return: [ 0.4098527 -8.8759547]
-Weights: [0.6 0.4], Scalar Return: -44.389930600047634, Scalarized Discounted Return: -3.0346469288407167, Vector Return: [   0.57335053 -111.8348523 ], Vector Discounted Return: [ 0.26253739 -7.98042341]
-Weights: [0.5 0.5], Scalar Return: -90.20257310995054, Scalarized Discounted Return: -5.41266854257933, Vector Return: [  -0.3205667  -180.08457952], Vector Discounted Return: [ -0.3768516  -10.44848549]
-Weights: [0.4 0.6], Scalar Return: -114.81653682612486, Scalarized Discounted Return: -6.418758116112636, Vector Return: [ 2.63829418e-02 -1.91378483e+02], Vector Discounted Return: [ -0.1107342  -10.62410739]
-Weights: [0.3 0.7], Scalar Return: -157.12542629581148, Scalarized Discounted Return: -8.1080566213166, Vector Return: [-4.19711671e-02 -2.24446907e+02], Vector Discounted Return: [ -0.12224527 -11.5305472 ]
-Weights: [0.2 0.8], Scalar Return: -169.99613641628972, Scalarized Discounted Return: -8.926231708381, Vector Return: [-1.74814515e-01 -2.12451467e+02], Vector Discounted Return: [ -0.21049803 -11.10516513]
-Weights: [0.1 0.9], Scalar Return: -162.60614791856005, Scalarized Discounted Return: -9.575284115018095, Vector Return: [   0.52221106 -180.73152114], Vector Discounted Return: [  0.17315925 -10.65844449]
