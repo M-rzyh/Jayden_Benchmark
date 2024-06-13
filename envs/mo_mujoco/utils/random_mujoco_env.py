@@ -103,7 +103,7 @@ class RandomMujocoEnv(RandomEnv):
         self.camera_name = camera_name
         self.camera_id = camera_id
 
-        from gymnasium.envs.mujoco.mujoco_rendering import MujocoRenderer
+        from .mujoco_rendering import MujocoRenderer
 
         self.mujoco_renderer = MujocoRenderer(
             self.model,

@@ -3,7 +3,7 @@ domain randomization optimization.
 
 For all details: https://www.gymlibrary.ml/environments/mujoco/hopper/
 """
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, Optional, List
 
 import numpy as np
 import gymnasium as gym
@@ -77,7 +77,7 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         cost_objective=True, 
         dr: bool = False, 
         noisy: bool = False,
-        **kwargs
+        task: Optional[List[float]] = None,
     ):
         # UEDEnv.__init__(self)
 
@@ -95,7 +95,7 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
             healthy_angle_range,
             reset_noise_scale,
             exclude_current_positions_from_observation,
-            **kwargs,
+            task,
         )
 
         self._forward_reward_weight = forward_reward_weight
@@ -121,7 +121,7 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
             frame_skip,
             observation_space=None,
             default_camera_config=default_camera_config,
-            **kwargs,
+            task=task,
         )
 
         self.metadata = {

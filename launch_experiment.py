@@ -17,9 +17,9 @@ import numpy as np
 import requests
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from gymnasium.wrappers import FlattenObservation
-from gymnasium.wrappers.rendering import RecordVideo
+from gymnasium.wrappers.record_video import RecordVideo
 
-from mo_utils.wrappers import MORecordEpisodeStatistics
+from mo_gymnasium.utils import MORecordEpisodeStatistics
 from mo_utils.evaluation import seed_everything
 from mo_utils.experiments import (
     ALGOS,
@@ -126,15 +126,15 @@ def parse_train_args(args):
 
 
 def make_env(args):
-    if "mario" in args.env_id:
-        env = mo_gym.make(args.env_id, death_as_penalty=True)
-        eval_env = mo_gym.make(args.env_id, death_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
-    else:
-        env = mo_gym.make(args.env_id)
-        eval_env = mo_gym.make(args.env_id, render_mode="rgb_array" if args.record_video else None)
-    
+    if not args.test_generalization:
+        if "mario" in args.env_id:
+            env = mo_gym.make(args.env_id, death_as_penalty=True)
+            eval_env = mo_gym.make(args.env_id, death_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
+        else:
+            env = mo_gym.make(args.env_id)
+            eval_env = mo_gym.make(args.env_id, render_mode="rgb_array" if args.record_video else None)
     # non-static environment to test generalization, environments are not part of the MO-Gymnasium
-    if args.test_generalization:
+    else:
         env = gym.make(args.env_id)
         eval_env = gym.make(args.env_id)
 
