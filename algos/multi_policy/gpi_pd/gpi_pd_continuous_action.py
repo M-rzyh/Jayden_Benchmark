@@ -503,6 +503,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         eval_env=None,
         eval_freq: int = 1000,
         reset_num_timesteps: bool = False,
+        test_generalization: bool = False,
     ):
         """Train the agent.
 
@@ -522,6 +523,8 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         self.global_step = 0 if reset_num_timesteps else self.global_step
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
 
+        if test_generalization:
+            self.env.unwrapped.reset_random()
         obs, info = self.env.reset()
         for _ in range(1, total_timesteps + 1):
             self.global_step += 1
@@ -574,6 +577,8 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                     plot.close()
 
             if terminated or truncated:
+                if test_generalization:
+                    self.env.unwrapped.reset_random()
                 obs, info = self.env.reset()
                 self.num_episodes += 1
 
@@ -600,6 +605,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
         checkpoints: bool = True,
+        test_generalization: bool = False,
     ):
         """Train the agent.
 
@@ -670,6 +676,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 change_weight_every_episode=weight_selection_algo == "gpi-ls",
                 eval_env=eval_env,
                 eval_freq=eval_freq,
+                test_generalization=test_generalization,
             )
 
             if weight_selection_algo == "ols":
@@ -682,22 +689,25 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
 
             if self.log and self.global_step % eval_mo_freq == 0:
                 # Evaluation
-                gpi_returns_test_tasks = [
-                    policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
-                ]
-                log_all_multi_policy_metrics(
-                    current_front=gpi_returns_test_tasks,
-                    hv_ref_point=ref_point,
-                    reward_dim=self.reward_dim,
-                    global_step=self.global_step,
-                    n_sample_weights=num_eval_weights_for_eval,
-                    ref_front=known_pareto_front,
-                )
-                # This is the EU computed in the paper
-                mean_gpi_returns_test_tasks = np.mean(
-                    [np.dot(ew, q) for ew, q in zip(eval_weights, gpi_returns_test_tasks)], axis=0
-                )
-                wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
+                if test_generalization:
+                    self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                else:
+                    gpi_returns_test_tasks = [
+                        policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
+                    ]
+                    log_all_multi_policy_metrics(
+                        current_front=gpi_returns_test_tasks,
+                        hv_ref_point=ref_point,
+                        reward_dim=self.reward_dim,
+                        global_step=self.global_step,
+                        n_sample_weights=num_eval_weights_for_eval,
+                        ref_front=known_pareto_front,
+                    )
+                    # This is the EU computed in the paper
+                    mean_gpi_returns_test_tasks = np.mean(
+                        [np.dot(ew, q) for ew, q in zip(eval_weights, gpi_returns_test_tasks)], axis=0
+                    )
+                    wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
 
             # Checkpoint
             if checkpoints:

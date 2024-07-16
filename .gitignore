@@ -137,3 +137,7 @@ videos/
 
 # vscode
 .vscode/
+
+# results and scripts
+*.out
+*.sh
