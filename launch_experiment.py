@@ -77,6 +77,15 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--eval-hyperparams",
+        type=str,
+        nargs="+",
+        action=StoreDict,
+        help="Override hyperparameters to use for the evaluation. Example: --train-hyperparams num_eval_weights_for_front:10 timesteps_per_iter:10000",
+        default={},
+    )
+
+    parser.add_argument(
         '--test-envs',
         type=str,
         default='',

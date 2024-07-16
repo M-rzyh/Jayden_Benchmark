@@ -14,7 +14,7 @@ import torch
 from gymnasium.envs.box2d.bipedal_walker import BipedalWalker, BipedalWalkerHardcore
 
 from .mo_bipedal_walker import MOBipedalWalker
-from envs.random_mo_env import UEDEnv
+from envs.random_mo_env import DREnv
 from collections import namedtuple
 
 EnvConfig = namedtuple('EnvConfig', [
@@ -79,9 +79,9 @@ def rand_int_seed():
     return int.from_bytes(os.urandom(4), byteorder="little")
 
 
-class MOBipedalWalkerUED(MOBipedalWalker, UEDEnv):
+class MOBipedalWalkerDR(MOBipedalWalker, DREnv):
     def __init__(self, mode='full', poet=False, random_z_dim=10, seed=0):
-        UEDEnv.__init__(self)
+        DREnv.__init__(self)
         self.mode = mode
         self.level_seed = seed
         self.poet = poet # POET didn't use the stairs, not clear why
@@ -106,7 +106,7 @@ class MOBipedalWalkerUED(MOBipedalWalker, UEDEnv):
         self.random_z_dim = random_z_dim
         self.passable = True
 
-        # Level vec is the *tunable* UED params
+        # Level vec is the *tunable* DR params
         self.level_params_vec = DEFAULT_LEVEL_PARAMS_VEC
         if self.poet:
             self.level_params_vec = self.level_params_vec[:5]
@@ -392,19 +392,19 @@ class MOBipedalWalkerUED(MOBipedalWalker, UEDEnv):
         return obs, 0, done, {}
 
 
-class BipedalWalkerFull(MOBipedalWalkerUED):
+class BipedalWalkerFull(MOBipedalWalkerDR):
   def __init__(self, seed=0):
     super().__init__(mode='full', seed=seed)
 
-class BipedalWalkerEasy(MOBipedalWalkerUED):
+class BipedalWalkerEasy(MOBipedalWalkerDR):
   def __init__(self, seed=0):
     super().__init__(mode='easy', seed=seed)
 
-class BipedalWalkerPOET(MOBipedalWalkerUED):
+class BipedalWalkerPOET(MOBipedalWalkerDR):
   def __init__(self, seed=0):
     super().__init__(mode='full', poet=True, seed=seed)
 
-class BipedalWalkerEasyPOET(MOBipedalWalkerUED):
+class BipedalWalkerEasyPOET(MOBipedalWalkerDR):
   def __init__(self, seed=0):
     super().__init__(mode='easy', poet=True, seed=seed)
 

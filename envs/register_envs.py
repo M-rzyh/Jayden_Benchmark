@@ -4,8 +4,8 @@ def register_envs():
     # ================== Registering LunarLander ==================
     try:
         gym.envs.register(
-            id="MOLunarLanderUED-v0",
-            entry_point="envs.mo_lunar_lander.mo_lunar_lander_randomized:MOLunarLanderUED",
+            id="MOLunarLanderDR-v0",
+            entry_point="envs.mo_lunar_lander.mo_lunar_lander_randomized:MOLunarLanderDR",
             max_episode_steps=500,
         )
     except Exception as e:
@@ -50,8 +50,8 @@ def register_envs():
     # ================== Registering BipedalWalker ==================
     try:
         gym.envs.register(
-            id='MOBipedalWalkerUED-v0',
-            entry_point="envs.mo_bipedal_walker.bipedal_walker_randomized:MOBipedalWalkerUED",
+            id='MOBipedalWalkerDR-v0',
+            entry_point="envs.mo_bipedal_walker.bipedal_walker_randomized:MOBipedalWalkerDR",
             max_episode_steps=2000,
         )
     except Exception as e:
@@ -100,8 +100,8 @@ def register_envs():
     # HalfCheetah
     try:
         gym.envs.register(
-            id="MOHalfCheehtahUED-v5",
-            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahUED",
+            id="MOHalfCheehtahDR-v5",
+            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahDR",
             max_episode_steps=1000,
         )
     except Exception as e:
@@ -148,8 +148,8 @@ def register_envs():
     # Hopper
     try:
         gym.envs.register(
-            id="MOHopperUED-v5",
-            entry_point="envs.mo_mujoco.mo_hopper_randomized:MOHopperUED",
+            id="MOHopperDR-v5",
+            entry_point="envs.mo_mujoco.mo_hopper_randomized:MOHopperDR",
             max_episode_steps=1000,
         )
     except Exception as e:
@@ -206,8 +206,8 @@ def register_envs():
     # Humanoid
     try:
         gym.envs.register(
-            id="MOHumanoidUED-v0",
-            entry_point="envs.mo_mujoco.mo_humanoid_randomized:MOHumanoidUED",
+            id="MOHumanoidDR-v0",
+            entry_point="envs.mo_mujoco.mo_humanoid_randomized:MOHumanoidDR",
             max_episode_steps=1000,
         )
     except Exception as e:

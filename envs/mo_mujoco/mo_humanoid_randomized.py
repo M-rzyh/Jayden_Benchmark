@@ -17,7 +17,7 @@ import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
 from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from envs.random_mo_env import UEDEnv
+from envs.random_mo_env import DREnv
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 1,
@@ -31,7 +31,7 @@ def mass_center(model, data):
     xpos = data.xipos
     return (np.sum(mass * xpos, axis=0) / np.sum(mass))[0:2].copy()
 
-class MOHumanoidUED(RandomMujocoEnv, EzPickle):
+class MOHumanoidDR(RandomMujocoEnv, EzPickle):
 
     metadata = {
         "render_modes": [
@@ -62,7 +62,7 @@ class MOHumanoidUED(RandomMujocoEnv, EzPickle):
         noisy: bool = False,
         **kwargs
     ):
-        # UEDEnv.__init__(self)
+        # DREnv.__init__(self)
         EzPickle.__init__(self,
                           forward_reward_weight,
                           ctrl_cost_weight,

@@ -4,12 +4,12 @@ import torch
 import numpy as np
 from .mo_lunar_lander import MOLunarLander
 from envs.registration import register as gym_register
-from envs.random_mo_env import UEDEnv
+from envs.random_mo_env import DREnv
 
 def rand_int_seed():
     return int.from_bytes(os.urandom(4), byteorder="little")
 
-class MOLunarLanderUED(MOLunarLander, UEDEnv):
+class MOLunarLanderDR(MOLunarLander, DREnv):
     param_info = {'names': ['gravity', 'wind_power'],
                   'param_max': [0.0, 20.0],
                   'param_min': [-12.0, 0.0]
@@ -17,7 +17,7 @@ class MOLunarLanderUED(MOLunarLander, UEDEnv):
     DEFAULT_PARAMS = [-10.0,15.0]
 
     def __init__(self, seed = 0, random_z_dim = 10, continuous = True):
-        UEDEnv.__init__(self)
+        DREnv.__init__(self)
         MOLunarLander.__init__(self, enable_wind=True, continuous=continuous)
 
         self.passable = True
@@ -143,7 +143,7 @@ class MOLunarLanderUED(MOLunarLander, UEDEnv):
 # elif hasattr(__loader__, 'fullname'):
 #   module_path = __loader__.fullname
 
-# gym_register(id='MOLunarLanderUED-v0',
-#              entry_point=module_path + ':MOLunarLanderUED',
+# gym_register(id='MOLunarLanderDR-v0',
+#              entry_point=module_path + ':MOLunarLanderDR',
 #              max_episode_steps=500)
 

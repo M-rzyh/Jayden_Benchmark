@@ -304,12 +304,12 @@ def test_capql():
 
 
 def test_capql_dr():
-    env = gym_make("MOLunarLanderUED-v0", seed=88)
-    eval_env = gym_make("MOLunarLanderUED-v0", seed=88)
+    env = gym_make("MOLunarLanderDR-v0", seed=88)
+    eval_env = gym_make("MOLunarLanderDR-v0", seed=88)
     env = RandomMOEnvWrapper(env, 
                           generalization_algo="domain_randomization", 
                           test_env=[
-                                "MOLunarLanderUED-v0",
+                                "MOLunarLanderDR-v0",
                                 "LunarLanderEvalOne",
                                 "LunarLanderEvalTwo",
                                 "LunarLanderEvalThree",

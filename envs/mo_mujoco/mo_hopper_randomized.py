@@ -10,7 +10,7 @@ import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
 from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from envs.random_mo_env import UEDEnv
+from envs.random_mo_env import DREnv
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 2,
@@ -19,7 +19,7 @@ DEFAULT_CAMERA_CONFIG = {
     "elevation": -20.0,
 }
 
-class MOHopperUED(RandomMujocoEnv, EzPickle):
+class MOHopperDR(RandomMujocoEnv, EzPickle):
     """
     ## Description
     Multi-objective version of the HopperEnv environment.
@@ -79,7 +79,7 @@ class MOHopperUED(RandomMujocoEnv, EzPickle):
         noisy: bool = False,
         task: Optional[List[float]] = None,
     ):
-        # UEDEnv.__init__(self)
+        # DREnv.__init__(self)
 
         EzPickle.__init__(
             self,

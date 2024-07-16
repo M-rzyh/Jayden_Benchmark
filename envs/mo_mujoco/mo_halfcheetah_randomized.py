@@ -13,14 +13,14 @@ import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
 from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from envs.random_mo_env import UEDEnv
+from envs.random_mo_env import DREnv
 from copy import deepcopy
 
 DEFAULT_CAMERA_CONFIG = {
     "distance": 4.0,
 }
 
-class MOHalfCheehtahUED(RandomMujocoEnv, EzPickle):
+class MOHalfCheehtahDR(RandomMujocoEnv, EzPickle):
     """
     ## Description
     Multi-objective version of the HalfCheetahEnv environment with randomizable environment parameters.
@@ -55,7 +55,7 @@ class MOHalfCheehtahUED(RandomMujocoEnv, EzPickle):
         noisy: bool = False,
         **kwargs
     ):
-        # UEDEnv.__init__(self)
+        # DREnv.__init__(self)
         EzPickle.__init__(
             self,
             xml_file,

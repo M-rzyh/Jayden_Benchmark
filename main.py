@@ -12,12 +12,12 @@ import gymnasium as gym
 def test_capql_dr():
     register_envs()
     seed_everything(0)
-    # env = gym.make("MOLunarLanderUED-v0", continuous=True)
-    # eval_env = gym.make("MOLunarLanderUED-v0", continuous=True)
+    # env = gym.make("MOLunarLanderDR-v0", continuous=True)
+    # eval_env = gym.make("MOLunarLanderDR-v0", continuous=True)
     # env = RandomMOEnvWrapper(env, 
     #                       generalization_algo="domain_randomization", 
     #                       test_env=[
-    #                             "MOLunarLanderUED-v0",
+    #                             "MOLunarLanderDR-v0",
     #                             "LunarLanderEvalOne",
     #                             "LunarLanderEvalTwo",
     #                             "LunarLanderEvalThree",
@@ -25,8 +25,8 @@ def test_capql_dr():
     #                           ],
     #                       continuous=True)
 
-    # env = gym.make("MOBipedalWalkerUED-v0")
-    # eval_env = gym.make("MOBipedalWalkerUED-v0")
+    # env = gym.make("MOBipedalWalkerDR-v0")
+    # eval_env = gym.make("MOBipedalWalkerDR-v0")
     # env = RandomMOEnvWrapper(env, 
     #                       generalization_algo="domain_randomization", 
     #                       test_env=[
@@ -37,20 +37,20 @@ def test_capql_dr():
     #                             "BipedalWalker-Med-StumpHeight-v0",
     #                             "BipedalWalker-Med-Roughness-v0"
     #                         ])
-    # env = gym.make("MOHopperUED-v5")
-    # eval_env = gym.make("MOHopperUED-v5")
+    # env = gym.make("MOHopperDR-v5")
+    # eval_env = gym.make("MOHopperDR-v5")
     # env = RandomMOEnvWrapper(env, 
     #                       generalization_algo="domain_randomization", 
     #                       test_env=[
-    #                             "MOHopperUED-v5",
+    #                             "MOHopperDR-v5",
     #                             "MOHopperLight-v5",
     #                             "MOHopperHeavy-v5",
     #                             "MOHopperSlippery-v5",
     #                             "MOHopperHighDamping-v5",
     #                       ])
 
-    env = gym.make("MOHalfCheehtahUED-v5")
-    eval_env = gym.make("MOHalfCheehtahUED-v5")
+    env = gym.make("MOHalfCheehtahDR-v5")
+    eval_env = gym.make("MOHalfCheehtahDR-v5")
     env = RandomMOEnvWrapper(env, 
                           generalization_algo="domain_randomization", 
                           test_envs=[
@@ -58,7 +58,7 @@ def test_capql_dr():
                                 "MOHalfCheehtahHeavy-v5",
                                 "MOHalfCheehtahSlippery-v5",
                                 "MOHalfCheehtahHard-v5",
-                                "MOHalfCheehtahUED-v5"
+                                "MOHalfCheehtahDR-v5"
                           ])
     
     agent = CAPQL(

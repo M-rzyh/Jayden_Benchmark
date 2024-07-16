@@ -16,7 +16,7 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 
-class UEDEnv(ABC):
+class DREnv(ABC):
     def __init__(self):
         pass
     
