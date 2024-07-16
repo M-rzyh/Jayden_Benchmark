@@ -141,3 +141,4 @@ videos/
 # results and scripts
 *.out
 *.sh
+temp/

@@ -148,6 +148,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
         reward_dim: int,
         global_step: int,
         n_sample_weights: int,
+        discounted: bool,
     ):
         """Logs all metrics for multi-policy training (one for each test environment).
 
@@ -163,7 +164,9 @@ class RandomMOEnvWrapper(gym.Wrapper):
             global_step: global step for logging
             n_sample_weights: number of weights to sample for EUM and MUL computation
             ref_front: reference front, if known
+            discounted: if using discounted values or not
         """
+        disc_str = "discounted_" if discounted else ""
         for i, current_front in enumerate(current_fronts):
             filtered_front = list(filter_pareto_dominated(current_front))
             hv = hypervolume(hv_ref_point, filtered_front)
@@ -173,10 +176,10 @@ class RandomMOEnvWrapper(gym.Wrapper):
 
             wandb.log(
                 {
-                    f"eval/hypervolume/{self.test_env_names[i]}": hv,
-                    f"eval/sparsity/{self.test_env_names[i]}": sp,
-                    f"eval/eum/{self.test_env_names[i]}": eum,
-                    f"eval/cardinality/{self.test_env_names[i]}": card,
+                    f"eval/{disc_str}hypervolume/{self.test_env_names[i]}": hv,
+                    f"eval/{disc_str}sparsity/{self.test_env_names[i]}": sp,
+                    f"eval/{disc_str}eum/{self.test_env_names[i]}": eum,
+                    f"eval/{disc_str}cardinality/{self.test_env_names[i]}": card,
                     "global_step": global_step,
                 },
                 commit=False,
@@ -185,7 +188,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
                 columns=[f"objective_{j}" for j in range(1, reward_dim + 1)],
                 data=[p.tolist() for p in filtered_front],
             )
-            wandb.log({f"eval/front/{self.test_env_names[i]}": front})
+            wandb.log({f"eval/{disc_str}front/{self.test_env_names[i]}": front})
 
     def _report(
         self,
@@ -246,13 +249,26 @@ class RandomMOEnvWrapper(gym.Wrapper):
             global_step=global_step
         )
 
+        vec_returns = np.stack(vec_returns, axis=1)
         disc_vec_returns = np.stack(disc_vec_returns, axis=1)
         n_sample_weights = len(eval_weights)
+        
+        # Undiscounted values
+        self.log_all_multi_policy_metrics(
+            current_fronts=vec_returns,
+            hv_ref_point=ref_point,
+            reward_dim=reward_dim,
+            global_step=global_step,
+            n_sample_weights=n_sample_weights,
+            discounted=False
+        )
 
+        # Discounted values
         self.log_all_multi_policy_metrics(
             current_fronts=disc_vec_returns,
             hv_ref_point=ref_point,
             reward_dim=reward_dim,
             global_step=global_step,
             n_sample_weights=n_sample_weights,
+            discounted=True
         )
