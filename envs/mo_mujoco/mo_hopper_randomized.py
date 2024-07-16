@@ -66,7 +66,7 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
         frame_skip: int = 4,
         default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
         forward_reward_weight: float = 1.0,
-        ctrl_cost_weight: float = 1.0,
+        ctrl_cost_weight: float = 1e-3,
         healthy_reward: float = 1.0,
         terminate_when_unhealthy: bool = True,
         healthy_state_range: Tuple[float, float] = (-100.0, 100.0),
@@ -246,42 +246,52 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
 
         return is_healthy
 
-    @property
-    def terminated(self):
-        terminated = not self.is_healthy if self._terminate_when_unhealthy else False
-        return terminated
-
-    def step(self, action):
-        posbefore = self.data.qpos[0]
-        self.do_simulation(action, self.frame_skip)
-        posafter, height, ang = self.data.qpos[0:3]
-        x_velocity = (posafter - posbefore) / self.dt
-
-        obs = self._get_obs()
-        terminated = self.terminated
-
-        height = height - self.init_qpos[1] # difference from initial height
-        
-        energy_cost = self.control_cost(action)
+    def _get_rew(self, x_velocity: float, action):
         forward_reward = self._forward_reward_weight * x_velocity
         healthy_reward = self.healthy_reward
+        rewards = forward_reward + healthy_reward
 
-        if self.cost_objective:
-            vec_reward = np.array([forward_reward, height, -energy_cost], dtype=np.float32)
-        else:
-            vec_reward = np.array([forward_reward, height], dtype=np.float32)
-            vec_reward -= energy_cost
+        ctrl_cost = self.control_cost(action)
+        costs = ctrl_cost
 
-        # vec_reward += healthy_reward
+        reward = rewards - costs
 
-        info = {
-            "x_position": posafter,
-            "x_velocity": x_velocity,
-            "height_reward": height,
-            "energy_reward": -energy_cost,
+        reward_info = {
+            "reward_forward": forward_reward,
+            "reward_ctrl": -ctrl_cost,
+            "reward_survive": healthy_reward,
         }
 
-        return obs, vec_reward, terminated, False, info
+        return reward, reward_info
+
+    def step(self, action):
+        x_position_before = self.data.qpos[0]
+        self.do_simulation(action, self.frame_skip)
+        x_position_after = self.data.qpos[0]
+        x_velocity = (x_position_after - x_position_before) / self.dt
+
+        observation = self._get_obs()
+        reward, reward_info = self._get_rew(x_velocity, action)
+        terminated = (not self.is_healthy) and self._terminate_when_unhealthy
+        info = {
+            "original_scalar_reward": reward,
+            "x_position": x_position_after,
+            "z_distance_from_origin": self.data.qpos[1] - self.init_qpos[1],
+            "x_velocity": x_velocity,
+            **reward_info,
+        }
+
+        height = 10 * info["z_distance_from_origin"]
+        energy_cost = np.sum(np.square(action))
+        if self.cost_objective:
+            vec_reward = np.array([x_velocity, height, -energy_cost], dtype=np.float32)
+        else:
+            vec_reward = np.array([x_velocity, height], dtype=np.float32)
+            vec_reward -= self._ctrl_cost_weight * energy_cost
+
+        vec_reward += info["reward_survive"]
+
+        return observation, vec_reward, terminated, False, info
 
     def _get_obs(self):
         position = self.data.qpos.flat.copy()

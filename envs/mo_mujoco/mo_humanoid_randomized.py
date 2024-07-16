@@ -136,8 +136,8 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
             "ten_velocity": 0,
         }
 
-        self.reward_space = Box(low=-np.inf, high=np.inf, shape=(4,))
-        self.reward_dim = 4
+        self.reward_space = Box(low=-np.inf, high=np.inf, shape=(2,))
+        self.reward_dim = 2
 
         # ================== Domain Randomization ==================
         self.dr_training = dr
@@ -282,11 +282,26 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
         is_healthy = min_z < self.data.qpos[2] < max_z
 
         return is_healthy
+    
+    def _get_rew(self, x_velocity: float, action):
+        forward_reward = self._forward_reward_weight * x_velocity
+        healthy_reward = self.healthy_reward
+        rewards = forward_reward + healthy_reward
 
-    @property
-    def terminated(self):
-        terminated = (not self.is_healthy) and self._terminate_when_unhealthy
-        return terminated
+        ctrl_cost = self.control_cost(action)
+        contact_cost = self.contact_cost
+        costs = ctrl_cost + contact_cost
+
+        reward = rewards - costs
+
+        reward_info = {
+            "reward_survive": healthy_reward,
+            "reward_forward": forward_reward,
+            "reward_ctrl": -ctrl_cost,
+            "reward_contact": -contact_cost,
+        }
+
+        return reward, reward_info
 
 
     def step(self, action):
@@ -318,7 +333,10 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
             "y_velocity": y_velocity,
         }
 
-        vec_reward = np.array([forward_reward, healthy_reward, -ctrl_cost, -contact_cost])
+        costs = 10 * ctrl_cost
+
+        vec_reward = np.array([forward_reward, costs])
+        vec_reward += healthy_reward
 
         return observation, vec_reward, terminated, False, info
 

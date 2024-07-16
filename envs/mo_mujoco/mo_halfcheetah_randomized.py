@@ -180,26 +180,37 @@ class MOHalfCheehtahDR(RandomMujocoEnv, EzPickle):
     def control_cost(self, action):
         control_cost = self._ctrl_cost_weight * np.sum(np.square(action))
         return control_cost
-
-    def step(self, action):
-        xposbefore = self.data.qpos[0]
-        self.do_simulation(action, self.frame_skip)
-        xposafter = self.data.qpos[0]
-        x_velocity = (xposafter - xposbefore)/self.dt
-
-        ctrl_cost = self.control_cost(action)
+    
+    def _get_rew(self, x_velocity: float, action):
         forward_reward = self._forward_reward_weight * x_velocity
-        ob = self._get_obs()
-        terminated = False
-        vec_reward = np.array([forward_reward, -ctrl_cost], dtype=np.float32)
-        info = {
-            "x_position": xposafter,
-            "x_velocity": x_velocity,
-            "reward_run": forward_reward,
+        ctrl_cost = self.control_cost(action)
+
+        reward = forward_reward - ctrl_cost
+
+        reward_info = {
+            "reward_forward": forward_reward,
             "reward_ctrl": -ctrl_cost,
         }
+        return reward, reward_info
 
-        return ob, vec_reward, terminated, False, info
+    def step(self, action):
+        x_position_before = self.data.qpos[0]
+        self.do_simulation(action, self.frame_skip)
+        x_position_after = self.data.qpos[0]
+        x_velocity = (x_position_after - x_position_before) / self.dt
+
+        observation = self._get_obs()
+        reward, reward_info = self._get_rew(x_velocity, action)
+        info = {
+            "original_scalar_reward": reward,
+            "x_position": x_position_after, 
+            "x_velocity": x_velocity, 
+            **reward_info
+        }
+        terminated = False
+        vec_reward = np.array([info["reward_forward"], info["reward_ctrl"]], dtype=np.float32)
+
+        return observation, vec_reward, terminated, False, info
 
     def _get_obs(self):
         position = self.data.qpos.flat.copy()
