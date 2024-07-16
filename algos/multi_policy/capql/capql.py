@@ -200,6 +200,7 @@ class CAPQL(MOAgent, MOPolicy):
         project_name: str = "MORL-Baselines",
         experiment_name: str = "CAPQL",
         wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -224,6 +225,7 @@ class CAPQL(MOAgent, MOPolicy):
             project_name (str, optional): The name of the project. Defaults to "MORL Baselines".
             experiment_name (str, optional): The name of the experiment. Defaults to "GPI-PD Continuous Action".
             wandb_entity (Optional[str], optional): The wandb entity. Defaults to None.
+            wandb_group: The wandb group to use for logging.
             log (bool, optional): Whether to log to wandb. Defaults to True.
             seed (Optional[int], optional): The seed to use. Defaults to None.
             device (Union[th.device, str], optional): The device to use for training. Defaults to "auto".
@@ -267,7 +269,7 @@ class CAPQL(MOAgent, MOPolicy):
 
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
 
     def get_config(self):
         """Get the configuration of the agent."""

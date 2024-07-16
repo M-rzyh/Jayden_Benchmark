@@ -110,10 +110,10 @@ class Envelope(MOPolicy, MOAgent):
         project_name: str = "MORL-Baselines",
         experiment_name: str = "Envelope",
         wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
-        group: Optional[str] = None,
     ):
         """Envelope Q-learning algorithm.
 
@@ -142,10 +142,10 @@ class Envelope(MOPolicy, MOAgent):
             project_name: The name of the project, for wandb logging.
             experiment_name: The name of the experiment, for wandb logging.
             wandb_entity: The entity of the project, for wandb logging.
+            wandb_group: The wandb group to use for logging.
             log: Whether to log to wandb.
             seed: The seed for the random number generator.
             device: The device to use for training.
-            group: The wandb group to use for logging.
         """
         MOAgent.__init__(self, env, device=device, seed=seed)
         MOPolicy.__init__(self, device)
@@ -199,7 +199,7 @@ class Envelope(MOPolicy, MOAgent):
 
         self.log = log
         if log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, group)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
 
     @override
     def get_config(self):

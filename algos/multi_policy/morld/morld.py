@@ -73,6 +73,7 @@ class MORLD(MOAgent):
         project_name: str = "MORL-Baselines",
         experiment_name: str = "MORL-D",
         wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         log: bool = True,
         device: Union[th.device, str] = "auto",
     ):
@@ -99,6 +100,7 @@ class MORLD(MOAgent):
             project_name: For wandb logging
             experiment_name: For wandb logging
             wandb_entity: For wandb logging
+            wandb_group: The wandb group to use for logging.
             log: For wandb logging
             device: torch device
         """
@@ -200,7 +202,7 @@ class MORLD(MOAgent):
         ]
         self.archive = ParetoArchive()
         if self.log:
-            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity)
+            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group)
 
         if self.shared_buffer:
             self.__share_buffers()

@@ -128,6 +128,7 @@ class PCN(MOAgent, MOPolicy):
         project_name: str = "MORL-Baselines",
         experiment_name: str = "PCN",
         wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -146,6 +147,7 @@ class PCN(MOAgent, MOPolicy):
             project_name (str, optional): Name of the project for wandb. Defaults to "MORL-Baselines".
             experiment_name (str, optional): Name of the experiment for wandb. Defaults to "PCN".
             wandb_entity (Optional[str], optional): Entity for wandb. Defaults to None.
+            wandb_group: The wandb group to use for logging.
             log (bool, optional): Whether to log to wandb. Defaults to True.
             seed (Optional[int], optional): Seed for reproducibility. Defaults to None.
             device (Union[th.device, str], optional): Device to use. Defaults to "auto".
@@ -182,7 +184,7 @@ class PCN(MOAgent, MOPolicy):
         self.log = log
         if log:
             experiment_name += " continuous action" if self.continuous_action else ""
-            self.setup_wandb(project_name, experiment_name, wandb_entity)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
 
     def get_config(self) -> dict:
         """Get configuration of PCN model."""

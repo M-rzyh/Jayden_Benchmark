@@ -124,6 +124,7 @@ class GPIPD(MOPolicy, MOAgent):
         project_name: str = "MORL-Baselines",
         experiment_name: str = "GPI-PD",
         wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -169,6 +170,7 @@ class GPIPD(MOPolicy, MOAgent):
             project_name: The name of the project.
             experiment_name: The name of the experiment.
             wandb_entity: The name of the wandb entity.
+            wandb_group: The wandb group to use for logging.
             log: Whether to log.
             seed: The seed for random number generators.
             device: The device to use.
@@ -270,7 +272,7 @@ class GPIPD(MOPolicy, MOAgent):
         # logging
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
 
     def get_config(self):
         """Return the configuration of the agent."""

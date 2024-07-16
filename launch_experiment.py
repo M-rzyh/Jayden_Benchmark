@@ -41,6 +41,7 @@ def parse_args():
     )
     parser.add_argument("--seed", type=int, help="Random seed to use", default=42)
     parser.add_argument("--wandb-entity", type=str, help="Wandb entity to use", required=False)
+    parser.add_argument("--wandb-group", type=str, help="Wandb group to use for logging", required=False)
     parser.add_argument(
         "--auto-tag",
         type=lambda x: bool(strtobool(x)),
@@ -215,6 +216,7 @@ def main():
             log=True,
             seed=args.seed,
             wandb_entity=args.wandb_entity,
+            wandb_group=args.wandb_group,
             **args.init_hyperparams,
         )
         print(algo.get_config())
@@ -243,6 +245,7 @@ def main():
             log=True,
             seed=args.seed,
             wandb_entity=args.wandb_entity,
+            wandb_group=args.wandb_group,
             **args.init_hyperparams,
         )
         if args.env_id in ENVS_WITH_KNOWN_PARETO_FRONT:

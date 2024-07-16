@@ -44,6 +44,7 @@ class MOQLearning(MOPolicy, MOAgent):
         project_name: str = "MORL-baselines",
         experiment_name: str = "MO Q-Learning",
         wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         log: bool = True,
         seed: Optional[int] = None,
         parent_rng: Optional[np.random.Generator] = None,
@@ -72,6 +73,7 @@ class MOQLearning(MOPolicy, MOAgent):
             project_name: The name of the project used for logging.
             experiment_name: The name of the experiment used for logging.
             wandb_entity: The entity to use for logging.
+            wandb_group: The wandb group to use for logging.
             log: Whether to log or not.
             seed: The seed to use for the experiment.
             parent_rng: The random number generator to use. If None, a new one is created.
@@ -116,7 +118,7 @@ class MOQLearning(MOPolicy, MOAgent):
 
         self.log = log
         if self.log and parent_rng is None:
-            self.setup_wandb(project_name, experiment_name, wandb_entity)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
 
     def __act(self, obs: np.array) -> int:
         # epsilon-greedy

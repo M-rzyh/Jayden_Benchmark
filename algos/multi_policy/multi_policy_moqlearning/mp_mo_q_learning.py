@@ -43,6 +43,7 @@ class MPMOQLearning(MOAgent):
         project_name: str = "MORL-Baselines",
         experiment_name: str = "MultiPolicy MO Q-Learning",
         wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         seed: Optional[int] = None,
         log: bool = True,
     ):
@@ -66,6 +67,7 @@ class MPMOQLearning(MOAgent):
             project_name: The name of the project for logging.
             experiment_name: The name of the experiment for logging.
             wandb_entity: The entity to use for logging.
+            wandb_group: The wandb group to use for logging.
             seed: The seed to use for reproducibility.
             log: Whether to log or not.
         """
@@ -99,7 +101,7 @@ class MPMOQLearning(MOAgent):
         self.log = log
 
         if self.log:
-            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity)
+            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group)
 
     @override
     def get_config(self) -> dict:

@@ -94,9 +94,9 @@ def train(worker_data: WorkerInitData) -> WorkerDoneData:
             env_id=args.env_id,
             origin=np.array(args.ref_point),
             wandb_entity=args.wandb_entity,
+            wandb_group=group,
             **config,
             seed=seed,
-            group=group,
         )
 
         # Launch the agent training
@@ -113,7 +113,13 @@ def train(worker_data: WorkerInitData) -> WorkerDoneData:
         env = MORecordEpisodeStatistics(mo_gym.make(args.env_id), gamma=config["gamma"])
         eval_env = mo_gym.make(args.env_id)
 
-        algo = ALGOS[args.algo](env=env, wandb_entity=args.wandb_entity, **config, seed=seed, group=group)
+        algo = ALGOS[args.algo](
+            env=env, 
+            wandb_entity=args.wandb_entity,
+            wandb_group=group, 
+            **config, 
+            seed=seed,
+        )
 
         if args.env_id in ENVS_WITH_KNOWN_PARETO_FRONT:
             known_pareto_front = env.unwrapped.pareto_front(gamma=config["gamma"])

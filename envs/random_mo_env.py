@@ -254,14 +254,21 @@ class RandomMOEnvWrapper(gym.Wrapper):
         n_sample_weights = len(eval_weights)
         
         # Undiscounted values
-        self.log_all_multi_policy_metrics(
-            current_fronts=vec_returns,
-            hv_ref_point=ref_point,
-            reward_dim=reward_dim,
-            global_step=global_step,
-            n_sample_weights=n_sample_weights,
-            discounted=False
-        )
+        # self.log_all_multi_policy_metrics(
+        #     current_fronts=vec_returns,
+        #     hv_ref_point=ref_point,
+        #     reward_dim=reward_dim,
+        #     global_step=global_step,
+        #     n_sample_weights=n_sample_weights,
+        #     discounted=False
+        # )
+        for i, current_front in enumerate(vec_returns):
+            filtered_front = list(filter_pareto_dominated(current_front))
+            front = wandb.Table(
+                columns=[f"objective_{j}" for j in range(1, reward_dim + 1)],
+                data=[p.tolist() for p in filtered_front],
+            )
+            wandb.log({f"eval/front/{self.test_env_names[i]}": front})
 
         # Discounted values
         self.log_all_multi_policy_metrics(
