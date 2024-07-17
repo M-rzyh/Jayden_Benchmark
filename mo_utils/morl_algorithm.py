@@ -269,7 +269,7 @@ class MOAgent(ABC):
             monitor_gym=monitor_gym,
             save_code=True,
             group=group,
-            tags=[experiment_name]
+            tags=[experiment_name, env_id]
         )
         # The default "step" of wandb is not the actual time step (gloabl_step) of the MDP
         wandb.define_metric("*", step_metric="global_step")
