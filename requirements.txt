@@ -12,6 +12,6 @@ seaborn
 cvxpy
 fire
 gym_super_mario_bros
-# pycddlib
+pycddlib
 mujoco==3.1.6
 requests

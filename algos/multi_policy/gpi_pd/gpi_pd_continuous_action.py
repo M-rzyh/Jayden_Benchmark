@@ -458,7 +458,11 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
 
     @th.no_grad()
     def eval(
-        self, obs: Union[np.ndarray, th.Tensor], w: Union[np.ndarray, th.Tensor], torch_action=False
+        self, 
+        obs: Union[np.ndarray, th.Tensor], 
+        w: Union[np.ndarray, th.Tensor], 
+        torch_action: Optional[bool] = False,
+        num_envs: Optional[int] = 1
     ) -> Union[np.ndarray, th.Tensor]:
         """Evaluate the policy action for the given observation and weight vector."""
         if isinstance(obs, np.ndarray):
@@ -466,27 +470,28 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             w = th.tensor(w).float().to(self.device)
 
         if self.use_gpi:
-            obs = obs.repeat(len(self.weight_support), 1)
-            actions_original = self.policy(obs, self.stacked_weight_support)
+            obs = obs.unsqueeze(1).repeat(1, len(self.weight_support), 1)
+            stacked_weight_support = self.stacked_weight_support.repeat(num_envs, 1, 1)
+            actions_original = self.policy(obs, stacked_weight_support)
 
             obs = obs.repeat(len(self.weight_support), 1, 1)
             actions = actions_original.repeat(len(self.weight_support), 1, 1)
-            stackedM = self.stacked_weight_support.repeat_interleave(len(self.weight_support), dim=0).view(
-                len(self.weight_support), len(self.weight_support), self.reward_dim
+            stackedM = self.stacked_weight_support.repeat_interleave(len(self.weight_support)*num_envs, dim=0).view(
+                len(self.weight_support)*num_envs, len(self.weight_support), self.reward_dim
             )
             values = self.q_nets[0](obs, actions, stackedM)
-
-            scalar_values = th.einsum("par,r->pa", values, w)
+            values = values.view(num_envs, len(self.weight_support), len(self.weight_support), -1)
+            scalar_values = th.einsum("bpar,br->bpa", values, w)
             max_q, a = th.max(scalar_values, dim=1)
-            policy_index = th.argmax(max_q)  # max_i max_a q(s,a,w_i)
-            action = a[policy_index].detach().item()
-            action = actions_original[action]
+            policy_index = th.argmax(max_q, dim=1)  
+            action = a[th.arange(num_envs), policy_index].detach().cpu().numpy()
+            action = actions_original[th.arange(num_envs), action, :]
         else:
             action = self.policy(obs, w)
 
         if not torch_action:
             action = action.detach().cpu().numpy()
-
+        
         return action
 
     def set_weight_support(self, weight_list: List[np.ndarray]):

@@ -37,7 +37,12 @@ class MOPolicy(ABC):
         self.global_step = 0
     
     @abstractmethod
-    def eval(self, obs: np.ndarray, w: Optional[np.ndarray]) -> Union[int, np.ndarray]:
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        w: Optional[np.ndarray],
+        **kwargs
+    ) -> Union[int, np.ndarray]:
         """Gives the best action for the given observation.
 
         Args:

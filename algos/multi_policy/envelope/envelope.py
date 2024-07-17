@@ -375,7 +375,11 @@ class Envelope(MOPolicy, MOAgent):
                 wandb.log({"metrics/mean_priority": np.mean(priority)})
 
     @override
-    def eval(self, obs: np.ndarray, w: np.ndarray) -> int:
+    def eval(self, 
+             obs: np.ndarray, 
+             w: np.ndarray,
+             num_envs: Optional[int] = 1
+    ) -> int:
         obs = th.as_tensor(obs).float().to(self.device)
         w = th.as_tensor(w).float().to(self.device)
         return self.max_action(obs, w)
