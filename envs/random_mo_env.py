@@ -17,6 +17,23 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 
+# TODO: implement this for all dr envs
+class DREnv(ABC):
+    def __init__(self):
+        pass
+    
+    @abstractmethod
+    def reset_random(self):
+        pass
+
+    @abstractmethod
+    def reset_agent(self):
+        pass
+
+    @property
+    def encoding(self):
+        pass
+
 
 def make_env(gym_id, algo_name, render_mode, record_video_freq, **kwargs):
     def thunk():
