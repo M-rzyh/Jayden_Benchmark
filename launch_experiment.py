@@ -128,7 +128,7 @@ def parse_train_args(args):
     args.test_generalization = False if "test_generalization" not in args.train_hyperparams else args.train_hyperparams["test_generalization"]
     if args.test_generalization:
         assert "test_envs" != '', "test_envs must be provided if test_generalization is True"
-        assert args.record_video == False, "cannot record video when testing generalization because environments are vectorized"
+        # assert args.record_video == False, "cannot record video when testing generalization because environments are vectorized"
         args.test_envs = args.test_envs.split(",")
         args.generalization_algo = "domain_randomization" if "generalization_algo" not in args.train_hyperparams else args.train_hyperparams["generalization_algo"]
     
