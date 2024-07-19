@@ -451,7 +451,7 @@ class MORLD(MOAgent):
             obs = th.tensor(obs).float().to(self.device)
 
         policy = self.select_nearest_policy(w)
-        action = policy.wrapped.actor.get_action(obs) # MOSAC Policy
+        action, _, _ = policy.wrapped.actor.get_action(obs) # MOSAC Policy
 
         if not torch_action:
             action = action.detach().cpu().numpy()
