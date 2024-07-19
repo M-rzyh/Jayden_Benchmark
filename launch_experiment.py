@@ -145,8 +145,8 @@ def make_env(args):
             eval_env = mo_gym.make(args.env_id, render_mode="rgb_array" if args.record_video else None)
     # non-static environment to test generalization, environments are not part of the MO-Gymnasium
     else:
-        env = gym.make(args.env_id)
-        eval_env = gym.make(args.env_id)
+        env = mo_gym.make(args.env_id)
+        eval_env = mo_gym.make(args.env_id)
 
     env = MORecordEpisodeStatistics(env, gamma=args.gamma)
 

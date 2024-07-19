@@ -60,18 +60,19 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
         include_cfrc_ext_in_observation: bool = True,
         dr: bool = False, 
         noisy: bool = False,
-        **kwargs
+        **kwargs,
     ):
         # DREnv.__init__(self)
         EzPickle.__init__(self,
-                          forward_reward_weight,
-                          ctrl_cost_weight,
-                          healthy_reward,
-                          terminate_when_unhealthy,
-                          healthy_z_range,
-                          reset_noise_scale,
-                          exclude_current_positions_from_observation,
-                          )
+            forward_reward_weight,
+            ctrl_cost_weight,
+            healthy_reward,
+            terminate_when_unhealthy,
+            healthy_z_range,
+            reset_noise_scale,
+            exclude_current_positions_from_observation,
+            **kwargs,
+        )
         self._forward_reward_weight = forward_reward_weight
         self._ctrl_cost_weight = ctrl_cost_weight
         self._contact_cost_weight = contact_cost_weight

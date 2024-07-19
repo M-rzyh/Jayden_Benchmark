@@ -53,7 +53,7 @@ class MOHalfCheehtahDR(RandomMujocoEnv, EzPickle):
         exclude_current_positions_from_observation: bool = True,
         dr: bool = False, 
         noisy: bool = False,
-        **kwargs
+        **kwargs,
     ):
         # DREnv.__init__(self)
         EzPickle.__init__(

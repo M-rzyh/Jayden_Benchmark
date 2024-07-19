@@ -78,6 +78,7 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
         dr: bool = False, 
         noisy: bool = False,
         task: Optional[List[float]] = None,
+        **kwargs,
     ):
         # DREnv.__init__(self)
 
@@ -96,6 +97,7 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
             reset_noise_scale,
             exclude_current_positions_from_observation,
             task,
+            **kwargs,
         )
 
         self._forward_reward_weight = forward_reward_weight
@@ -122,6 +124,7 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
             observation_space=None,
             default_camera_config=default_camera_config,
             task=task,
+            **kwargs,
         )
 
         self.metadata = {
