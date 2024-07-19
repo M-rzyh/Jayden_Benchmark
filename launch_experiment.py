@@ -185,7 +185,7 @@ def make_env(args):
         env = wrap_mario(env)
         eval_env = wrap_mario(eval_env)
 
-    if args.record_video:
+    if args.record_video and not args.test_generalization:
         eval_env = RecordVideo(
             eval_env,
             video_folder=f"videos/{args.algo}-{args.env_id}",

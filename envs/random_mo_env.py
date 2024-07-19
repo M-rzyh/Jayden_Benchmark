@@ -36,12 +36,10 @@ class DREnv(ABC):
 
 
 def make_env(gym_id, algo_name, render_mode, record_video_freq, **kwargs):
-    def thunk():
-        env = gym.make(gym_id, **kwargs)
-        if render_mode == 'rgb_array':
-            env = RecordVideo(env, f"videos/{algo_name}/", episode_trigger=lambda t: t % record_video_freq == 0)
-        return env
-    return thunk
+    env = gym.make(gym_id, **kwargs)
+    if render_mode == 'rgb_array':
+        env = RecordVideo(env, f"videos/{algo_name}/", episode_trigger=lambda t: t % record_video_freq == 0)
+    return env
 
 class RandomMOEnvWrapper(gym.Wrapper):
     def __init__(self, 
