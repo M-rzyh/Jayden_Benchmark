@@ -426,7 +426,7 @@ class MORLD(MOAgent):
         # Iterate through each policy in the population
         for policy in self.population:
             # Calculate the Euclidean distance between the policy's weights and the given weights
-            distance = np.linalg.norm(policy.weights - given_weight)
+            distance = self.dist_metric(policy.weights, given_weight)
             
             # Update the minimum distance and selected policy if the current distance is smaller
             if distance < min_distance:
@@ -443,12 +443,15 @@ class MORLD(MOAgent):
         torch_action=False,
         **kwargs
     ) -> Union[np.ndarray, th.Tensor]:
-        """Evaluate the policy action for the given observation and weight vector."""
+        """
+        Evaluate the policy action for the given observation and weight vector.
+        Implemented for testing generalization.
+        """
         if isinstance(obs, np.ndarray):
             obs = th.tensor(obs).float().to(self.device)
 
         policy = self.select_nearest_policy(self.population, w)
-        action = policy.actor.get_action(obs)
+        action = policy.actor.get_action(obs) # MOSAC Policy
 
         if not torch_action:
             action = action.detach().cpu().numpy()
