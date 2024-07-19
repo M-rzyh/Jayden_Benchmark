@@ -35,17 +35,20 @@ class DREnv(ABC):
         pass
 
 
-def make_env(gym_id, algo_name, record_video, record_video_freq, **kwargs):
+def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs):
     env = gym.make(gym_id, 
                    render_mode="rgb_array" if record_video else None, 
                    **kwargs)
     if record_video:
         env = RecordVideo(
             env, 
-            f"videos/{algo_name}/{gym_id}/", 
+            f"videos/{algo_name}/{seed}/{gym_id}/", 
             episode_trigger=lambda t: t % record_video_freq == 0,
             disable_logger=True
         )
+    env.reset(seed=seed)
+    env.action_space.seed(seed)
+    env.observation_space.seed(seed)
     return env
 
 class RandomMOEnvWrapper(gym.Wrapper):
@@ -64,7 +67,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
         self.algo_name = algo_name
         self.test_env_names = test_envs
         make_fn = [
-            lambda env_name=env_name: make_env(env_name, algo_name, record_video, record_video_freq, **kwargs) for env_name in test_envs
+            lambda env_name=env_name: make_env(env_name, algo_name, seed, record_video, record_video_freq, **kwargs) for env_name in test_envs
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
 
