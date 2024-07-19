@@ -40,7 +40,12 @@ def make_env(gym_id, algo_name, record_video, record_video_freq, **kwargs):
                    render_mode="rgb_array" if record_video else None, 
                    **kwargs)
     if record_video:
-        env = RecordVideo(env, f"videos/{algo_name}/", episode_trigger=lambda t: t % record_video_freq == 0)
+        env = RecordVideo(
+            env, 
+            f"videos/{algo_name}/{gym_id}/", 
+            episode_trigger=lambda t: t % record_video_freq == 0,
+            disable_logger=True
+        )
     return env
 
 class RandomMOEnvWrapper(gym.Wrapper):
@@ -51,11 +56,12 @@ class RandomMOEnvWrapper(gym.Wrapper):
                  generalization_algo: str,
                  test_envs: List[str],
                  record_video: bool,
-                 record_video_freq: int = 100,
+                 record_video_freq: int = 200, # len(eval_weights) * rep % record_video_freq == 0
                  save_metrics: List[str] = ['hv', 'eum'],
                  **kwargs):
         super().__init__(env)
         self.is_dr = generalization_algo == 'domain_randomization'
+        self.algo_name = algo_name
         self.test_env_names = test_envs
         make_fn = [
             lambda env_name=env_name: make_env(env_name, algo_name, record_video, record_video_freq, **kwargs) for env_name in test_envs
@@ -220,7 +226,11 @@ class RandomMOEnvWrapper(gym.Wrapper):
                 if save_metric in metrics.keys():
                     if metrics[save_metric] > self.best_metrics[j][i]:
                         self.best_metrics[j][i] = hv
-                        agent.save(filename=f"seed{self.seed}_best_{self.test_env_names[i]}_{save_metric}_step{global_step}", save_replay_buffer=False)
+                        agent.save(
+                            save_dir=f"weights/{agent.experiment_name}/best_{save_metric}",
+                            filename=f"{self.test_env_names[i]}_seed{self.seed}", 
+                            save_replay_buffer=False
+                        )
 
 
     def _report(
