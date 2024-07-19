@@ -450,7 +450,7 @@ class MORLD(MOAgent):
         if isinstance(obs, np.ndarray):
             obs = th.tensor(obs).float().to(self.device)
 
-        policy = self.select_nearest_policy(self.population, w)
+        policy = self.select_nearest_policy(w)
         action = policy.actor.get_action(obs) # MOSAC Policy
 
         if not torch_action:
