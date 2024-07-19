@@ -5,6 +5,7 @@ The implementation of this file is largely based on CleanRL's SAC implementation
 https://github.com/vwxyzjn/cleanrl/blob/28fd178ca182bd83c75ed0d49d52e235ca6cdc88/cleanrl/sac_continuous_action.py
 """
 
+import os
 import time
 from copy import deepcopy
 from typing import Optional, Tuple, Union
@@ -337,6 +338,25 @@ class MOSAC(MOPolicy):
     def set_weights(self, weights: np.ndarray):
         self.weights = weights
         self.weights_tensor = th.from_numpy(self.weights).float().to(self.device)
+
+
+    def save(self, save_dir="weights/", filename=None, save_replay_buffer=True):
+        """Save the agent's weights and replay buffer."""
+        pass
+        # if not os.path.isdir(save_dir):
+        #     os.makedirs(save_dir)
+
+        # saved_params = {
+        #     "policy_state_dict": self.actor.state_dict(),
+        #     "policy_optimizer_state_dict": self.actor_optimizer.state_dict(),
+        # }
+        # for i, (q_net, target_q_net) in enumerate(zip(self.q_nets, self.target_q_nets)):
+        #     saved_params["q_net_" + str(i) + "_state_dict"] = q_net.state_dict()
+        #     saved_params["target_q_net_" + str(i) + "_state_dict"] = target_q_net.state_dict()
+        # saved_params["q_nets_optimizer_state_dict"] = self.q_optimizer.state_dict()
+        # if save_replay_buffer:
+        #     saved_params["replay_buffer"] = self.buffer
+        # th.save(saved_params, save_dir + "/" + filename + ".tar")
 
     @override
     def eval(
