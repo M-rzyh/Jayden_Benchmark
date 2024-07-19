@@ -481,7 +481,7 @@ class MORLD(MOAgent):
             reset_num_timesteps: whether to reset the number of timesteps or not
         """
         if test_generalization: # weight adaptation and archive is not supported in domain randomization
-            assert self.weight_adaptation_method, "Weight adaptation is not supported in domain randomization."
+            assert self.weight_adaptation_method is None, "Weight adaptation is not supported in domain randomization."
             assert self.policy_name == "MOSAC", "Only MOSAC is supported for domain randomization."
 
         if self.log:
