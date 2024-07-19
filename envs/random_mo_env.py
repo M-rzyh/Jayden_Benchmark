@@ -230,7 +230,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
                     if metrics[save_metric] > self.best_metrics[j][i]:
                         self.best_metrics[j][i] = hv
                         agent.save(
-                            save_dir=f"weights/{agent.experiment_name}/best_{save_metric}/seed{self.seed}/{self.test_env_names[i]}",
+                            save_dir=f"weights/{self.algo_name}/best_{save_metric}/seed{self.seed}/{self.test_env_names[i]}",
                             filename=f"{self.test_env_names[i]}", 
                             save_replay_buffer=False
                         )
