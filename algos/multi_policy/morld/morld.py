@@ -457,6 +457,10 @@ class MORLD(MOAgent):
             action = action.detach().cpu().numpy()
 
         return action
+    
+    def save(self, save_dir="weights/", filename=None, save_replay_buffer=True):
+        """Save the agent's weights and replay buffer."""
+        pass
 
     def train(
         self,
