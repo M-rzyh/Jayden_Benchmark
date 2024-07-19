@@ -57,6 +57,19 @@ class MOPolicy(ABC):
     def update(self, weight: Optional[Union[th.Tensor, np.ndarray]]) -> None:
         """Update algorithm's parameters (e.g. using experiences from the buffer)."""
 
+    @abstractmethod
+    def save(self, 
+        save_dir: Optional[str], 
+        filename: Optional[str], 
+        **kwargs
+    ) -> None:
+        """Saves the policy.
+
+        Args:
+            save_replay_buffer: whether to save the replay buffer
+            save_dir: directory to save the policy
+            filename: filename to save the policy
+        """
 
     def __report(
         self,

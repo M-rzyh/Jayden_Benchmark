@@ -338,6 +338,9 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
         vec_reward = np.array([forward_reward, costs])
         vec_reward += healthy_reward
 
+        if self.render_mode == "human":
+            self.render()
+
         return observation, vec_reward, terminated, False, info
 
     def _get_obs(self):

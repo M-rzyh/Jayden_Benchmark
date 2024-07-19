@@ -629,7 +629,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         timesteps_per_iter: int = 10000,
         eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
-        checkpoints: bool = True,
+        checkpoints: bool = False,
         test_generalization: bool = False,
     ):
         """Train the agent.

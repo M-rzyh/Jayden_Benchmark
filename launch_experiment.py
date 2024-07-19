@@ -151,7 +151,13 @@ def make_env(args):
     env = MORecordEpisodeStatistics(env, gamma=args.gamma)
 
     if args.test_generalization:
-        env = RandomMOEnvWrapper(env, test_envs=args.test_envs, generalization_algo=args.generalization_algo)
+        env = RandomMOEnvWrapper(env,
+                                 algo_name=args.algo,
+                                 seed=args.seed, 
+                                 test_envs=args.test_envs, 
+                                 generalization_algo=args.generalization_algo, 
+                                 render_mode="rgb_array" if args.record_video else None,
+                                 record_video_freq=args.record_video_ep_freq)
 
     if "highway" in args.env_id:
         env = FlattenObservation(env)

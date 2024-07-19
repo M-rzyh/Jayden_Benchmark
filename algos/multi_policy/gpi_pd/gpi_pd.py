@@ -804,7 +804,7 @@ class GPIPD(MOPolicy, MOAgent):
         weight_selection_algo: str = "gpi-ls",
         eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
-        checkpoints: bool = True,
+        checkpoints: bool = False,
     ):
         """Train agent.
 

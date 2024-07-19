@@ -209,7 +209,9 @@ class MOHalfCheehtahDR(RandomMujocoEnv, EzPickle):
         }
         terminated = False
         vec_reward = np.array([info["reward_forward"], info["reward_ctrl"]], dtype=np.float32)
-
+        
+        if self.render_mode == "human":
+            self.render()
         return observation, vec_reward, terminated, False, info
 
     def _get_obs(self):

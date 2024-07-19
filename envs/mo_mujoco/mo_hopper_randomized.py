@@ -291,6 +291,9 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
 
         vec_reward += info["reward_survive"]
 
+        if self.render_mode == "human":
+            self.render()
+
         return observation, vec_reward, terminated, False, info
 
     def _get_obs(self):

@@ -3,6 +3,7 @@ from distutils.util import strtobool
 from typing import Dict, Optional, Tuple, List
 import numpy as np
 import gymnasium as gym
+from gymnasium.wrappers.record_video import RecordVideo
 import mo_gymnasium as mo_gym
 import wandb
 
@@ -16,36 +17,37 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 
-class DREnv(ABC):
-    def __init__(self):
-        pass
-    
-    @abstractmethod
-    def reset_random(self):
-        pass
 
-    @abstractmethod
-    def reset_agent(self):
-        pass
-
-    @property
-    def encoding(self):
-        pass
-
+def make_env(gym_id, algo_name, render_mode, record_video_freq, **kwargs):
+    def thunk():
+        env = gym.make(gym_id, **kwargs)
+        if render_mode == 'rgb_array':
+            env = RecordVideo(env, f"videos/{algo_name}/", episode_trigger=lambda t: t % record_video_freq == 0)
+        return env
+    return thunk
 
 class RandomMOEnvWrapper(gym.Wrapper):
     def __init__(self, 
                  env: gym.Wrapper,
+                 algo_name: str,
+                 seed: int,
                  generalization_algo: str,
                  test_envs: List[str],
+                 render_mode: str = 'rgb_array',
+                 record_video_freq: int = 100,
+                 save_metrics: List[str] = ['hv', 'eum'],
                  **kwargs):
         super().__init__(env)
         self.is_dr = generalization_algo == 'domain_randomization'
         self.test_env_names = test_envs
         make_fn = [
-            lambda env_name=env_name: gym.make(env_name, **kwargs) for env_name in test_envs
+            lambda env_name=env_name: make_env(env_name, algo_name, render_mode, record_video_freq, **kwargs) for env_name in test_envs
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
+
+        self.save_metrics = save_metrics
+        self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
+        self.seed = seed
         
 
     # def step(self, action):
@@ -80,7 +82,6 @@ class RandomMOEnvWrapper(gym.Wrapper):
             agent: Agent
             scalarization: scalarization function, taking weights and reward as parameters
             w (np.ndarray): Weight vector
-            render (bool, optional): Whether to render the environment. Defaults to False.
 
         Returns:
             (np.ndarray, np.ndarray, np.ndarray, np.ndarray): Scalarized return, scalarized discounted return, vectorized return, vectorized discounted return. 
@@ -143,6 +144,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
     
     def log_all_multi_policy_metrics(
         self,
+        agent,
         current_fronts: np.ndarray,
         hv_ref_point: np.ndarray,
         reward_dim: int,
@@ -189,6 +191,20 @@ class RandomMOEnvWrapper(gym.Wrapper):
                 data=[p.tolist() for p in filtered_front],
             )
             wandb.log({f"eval/{disc_str}front/{self.test_env_names[i]}": front})
+
+            metrics = {
+                'hv': hv,
+                'sp': sp,
+                'eum': eum,
+                'card': card
+            }
+
+            for j, save_metric in enumerate(self.save_metrics):
+                if save_metric in metrics.keys():
+                    if metrics[save_metric] > self.best_metrics[j][i]:
+                        self.best_metrics[j][i] = hv
+                        agent.save(filename=f"seed{self.seed}_best_{self.test_env_names[i]}_{save_metric}_step{global_step}", save_replay_buffer=False)
+
 
     def _report(
         self,
@@ -272,6 +288,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
 
         # Discounted values
         self.log_all_multi_policy_metrics(
+            agent=agent,
             current_fronts=disc_vec_returns,
             hv_ref_point=ref_point,
             reward_dim=reward_dim,
