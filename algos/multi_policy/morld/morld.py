@@ -104,8 +104,7 @@ class MORLD(MOAgent):
             log: For wandb logging
             device: torch device
         """
-        self.env = env
-        super().__init__(self.env, device, seed=seed)
+        MOAgent.__init__(self, env, device=device, seed=seed)
         self.gamma = gamma
         self.seed = seed
 
@@ -416,6 +415,46 @@ class MORLD(MOAgent):
                 if len(p.wrapped.get_buffer()) > 0 and p != current:
                     p.wrapped.update()
 
+    def select_nearest_policy(self, given_weight) -> Policy:
+        """
+        Selects the policy with weights nearest to the given weight vector.
+        """
+        # Initialize variables to track the minimum distance and the selected policy
+        min_distance = float('inf')
+        selected_policy = None
+
+        # Iterate through each policy in the population
+        for policy in self.population:
+            # Calculate the Euclidean distance between the policy's weights and the given weights
+            distance = np.linalg.norm(policy.weights - given_weight)
+            
+            # Update the minimum distance and selected policy if the current distance is smaller
+            if distance < min_distance:
+                min_distance = distance
+                selected_policy = policy
+
+        return selected_policy
+
+    @th.no_grad()
+    def eval(
+        self, 
+        obs: Union[np.ndarray, th.Tensor],
+        w: Union[np.ndarray, th.Tensor], 
+        torch_action=False,
+        **kwargs
+    ) -> Union[np.ndarray, th.Tensor]:
+        """Evaluate the policy action for the given observation and weight vector."""
+        if isinstance(obs, np.ndarray):
+            obs = th.tensor(obs).float().to(self.device)
+
+        policy = self.select_nearest_policy(self.population, w)
+        action = policy.actor.get_action(obs)
+
+        if not torch_action:
+            action = action.detach().cpu().numpy()
+
+        return action
+
     def train(
         self,
         total_timesteps: int,
@@ -423,8 +462,9 @@ class MORLD(MOAgent):
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_episodes_for_front: int = 5,
-        num_eval_weights_for_eval: int = 50,
+        num_eval_weights_for_front: int = 100,
         reset_num_timesteps: bool = False,
+        test_generalization: bool = False,
     ):
         """Trains the algorithm.
 
@@ -434,16 +474,20 @@ class MORLD(MOAgent):
             ref_point: reference point for the hypervolume metric
             known_pareto_front: optimal pareto front for the problem if known
             num_eval_episodes_for_front: number of episodes for each policy evaluation
-            num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
+            num_eval_weights_for_front (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
             reset_num_timesteps: whether to reset the number of timesteps or not
         """
+        if test_generalization: # weight adaptation and archive is not supported in domain randomization
+            assert self.weight_adaptation_method, "Weight adaptation is not supported in domain randomization."
+            assert self.policy_name == "MOSAC", "Only MOSAC is supported for domain randomization."
+
         if self.log:
             self.register_additional_config(
                 {
                     "total_timesteps": total_timesteps,
                     "ref_point": ref_point.tolist(),
                     "known_front": known_pareto_front,
-                    "num_eval_weights_for_eval": num_eval_weights_for_eval,
+                    "num_eval_weights_for_front": num_eval_weights_for_front,
                     "num_eval_episodes_for_front": num_eval_episodes_for_front,
                 }
             )
@@ -453,32 +497,43 @@ class MORLD(MOAgent):
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
         start_time = time.time()
 
+        if test_generalization:
+            self.env.unwrapped.reset_random()
         obs, _ = self.env.reset()
         print("Starting training...")
-        self.__eval_all_policies(
-            eval_env, num_eval_episodes_for_front, num_eval_weights_for_eval, ref_point, known_pareto_front
-        )
+
+        if not test_generalization:
+            self.__eval_all_policies(
+                eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front
+            )
 
         while self.global_step < total_timesteps:
             # selection
             policy = self.__select_candidate()
             # policy improvement
-            policy.wrapped.train(self.exchange_every, eval_env=eval_env, start_time=start_time)
+            policy.wrapped.train(self.exchange_every, eval_env=eval_env, start_time=start_time, test_generalization=test_generalization)
             self.global_step += self.exchange_every
             print(f"Switching... global_steps: {self.global_step}")
             for p in self.population:
                 p.wrapped.global_step = self.global_step
             self.__update_others(policy)
 
-            # Update archive
-            evals = self.__eval_all_policies(
-                eval_env, num_eval_episodes_for_front, num_eval_weights_for_eval, ref_point, known_pareto_front
-            )
+            # dont allow archive and weight adaptation in domain randomization 
+            # because it is not possible to compare pareto front when environment constantly changes
+            if test_generalization:
+                eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
+                self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+            else:
+                # Update archive
+                evals = self.__eval_all_policies(
+                    eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front
+                )
+
+                # Adaptation
+                self.__adapt_weights(evals)
 
             # cooperation
             self.__share(policy)
-            # Adaptation
-            self.__adapt_weights(evals)
             self.__adapt_ref_point()
 
         print("done!")

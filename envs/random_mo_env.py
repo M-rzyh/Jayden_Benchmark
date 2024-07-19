@@ -42,7 +42,7 @@ def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs)
     if record_video:
         env = RecordVideo(
             env, 
-            f"videos/{algo_name}/{seed}/{gym_id}/", 
+            f"videos/{algo_name}/seed{seed}/{gym_id}/", 
             episode_trigger=lambda t: t % record_video_freq == 0,
             disable_logger=True
         )

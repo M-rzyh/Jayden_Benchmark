@@ -432,7 +432,13 @@ class MOSAC(MOPolicy):
                 to_log[f"losses{log_str}/alpha_loss"] = alpha_loss.item()
             wandb.log(to_log)
 
-    def train(self, total_timesteps: int, eval_env: Optional[gym.Env] = None, start_time=None):
+    def train(
+        self, 
+        total_timesteps: int, 
+        eval_env: Optional[gym.Env] = None, 
+        start_time=None, 
+        test_generalization: bool = False,
+    ):
         """Train the agent.
 
         Args:
@@ -444,6 +450,9 @@ class MOSAC(MOPolicy):
             start_time = time.time()
 
         # TRY NOT TO MODIFY: start the game
+        if test_generalization:
+            self.env.unwrapped.reset_random()
+            print("Domain randomization is activated for generalization testing.")
         obs, _ = self.env.reset()
         for step in range(total_timesteps):
             # ALGO LOGIC: put action logic here
@@ -467,6 +476,8 @@ class MOSAC(MOPolicy):
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
             obs = next_obs
             if terminated or truncated:
+                if test_generalization:
+                    self.env.unwrapped.reset_random()
                 obs, _ = self.env.reset()
                 if self.log and "episode" in infos.keys():
                     log_episode_info(infos["episode"], np.dot, self.weights, self.global_step, self.id)
