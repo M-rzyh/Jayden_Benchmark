@@ -472,7 +472,12 @@ class MOPPO(MOPolicy):
         return returns, advantages
 
     @override
-    def eval(self, obs: np.ndarray, w):
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        w: Optional[np.ndarray],
+        **kwargs,
+    ):
         """Returns the best action to perform for the given obs
 
         Returns:

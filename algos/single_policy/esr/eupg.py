@@ -210,7 +210,12 @@ class EUPG(MOPolicy, MOAgent):
 
     @th.no_grad()
     @override
-    def eval(self, obs: np.ndarray, accrued_reward: Optional[np.ndarray]) -> Union[int, np.ndarray]:
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        accrued_reward: Optional[np.ndarray],
+        **kwargs,
+    ) -> Union[int, np.ndarray]:
         if type(obs) is int:
             obs = th.as_tensor([obs]).to(self.device)
         else:

@@ -143,7 +143,12 @@ class MPMOQLearning(MOAgent):
         """Get the maximum Q-value over all policies for the given state and weights."""
         return np.max([policy.scalarized_q_values(state, w) for policy in self.policies])
 
-    def eval(self, obs: np.array, w: Optional[np.ndarray] = None) -> int:
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        w: Optional[np.ndarray] = None,
+        **kwargs,
+    ) -> int:
         """If use_gpi is True, return the action given by the GPI policy. Otherwise, chooses the best policy for w and follows it."""
         if self.use_gpi_policy:
             return self._gpi_action(obs, w)

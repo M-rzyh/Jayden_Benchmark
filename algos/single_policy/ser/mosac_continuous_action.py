@@ -339,7 +339,12 @@ class MOSAC(MOPolicy):
         self.weights_tensor = th.from_numpy(self.weights).float().to(self.device)
 
     @override
-    def eval(self, obs: np.ndarray, w: Optional[np.ndarray] = None) -> Union[int, np.ndarray]:
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        w: Optional[np.ndarray] = None,
+        **kwargs,
+    ) -> Union[int, np.ndarray]:
         """Returns the best action to perform for the given obs.
 
         Args:

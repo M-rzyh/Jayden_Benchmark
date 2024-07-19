@@ -586,7 +586,12 @@ class GPIPD(MOPolicy, MOAgent):
         return action
 
     @th.no_grad()
-    def eval(self, obs: np.ndarray, w: np.ndarray) -> int:
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        w: np.ndarray,
+        **kwargs,
+    ) -> int:
         """Select an action for the given obs and weight vector."""
         obs = th.as_tensor(obs).float().to(self.device)
         w = th.as_tensor(w).float().to(self.device)

@@ -354,7 +354,12 @@ class PCN(MOAgent, MOPolicy):
         self.desired_return = desired_return
         self.desired_horizon = desired_horizon
 
-    def eval(self, obs, w=None):
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        w: Optional[np.ndarray] = None,
+        **kwargs,
+    ):
         """Evaluate policy action for a given observation."""
         return self._act(obs, self.desired_return, self.desired_horizon, eval_mode=True)
 

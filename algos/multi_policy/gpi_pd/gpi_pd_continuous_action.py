@@ -462,9 +462,11 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         obs: Union[np.ndarray, th.Tensor], 
         w: Union[np.ndarray, th.Tensor], 
         torch_action: Optional[bool] = False,
-        num_envs: Optional[int] = 1
+        **kwargs
     ) -> Union[np.ndarray, th.Tensor]:
         """Evaluate the policy action for the given observation and weight vector."""
+        num_envs = kwargs.get('num_envs', 1)  # Default to 1 if not provided
+
         if isinstance(obs, np.ndarray):
             obs = th.tensor(obs).float().to(self.device)
             w = th.tensor(w).float().to(self.device)

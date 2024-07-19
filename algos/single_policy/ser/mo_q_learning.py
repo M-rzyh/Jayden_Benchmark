@@ -151,7 +151,12 @@ class MOQLearning(MOPolicy, MOAgent):
         return priority
 
     @override
-    def eval(self, obs: np.array, w: Optional[np.ndarray] = None) -> int:
+    def eval(
+        self, 
+        obs: np.ndarray, 
+        w: Optional[np.ndarray] = None,
+        **kwargs,
+    ) -> int:
         if self.use_gpi_policy:
             return self.parent.eval(obs, w)
         """Greedily chooses best action using the scalarization method"""

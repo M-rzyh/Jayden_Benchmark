@@ -366,7 +366,11 @@ class CAPQL(MOAgent, MOPolicy):
 
     @th.no_grad()
     def eval(
-        self, obs: Union[np.ndarray, th.Tensor], w: Union[np.ndarray, th.Tensor], torch_action=False
+        self, 
+        obs: Union[np.ndarray, th.Tensor],
+        w: Union[np.ndarray, th.Tensor], 
+        torch_action=False,
+        **kwargs
     ) -> Union[np.ndarray, th.Tensor]:
         """Evaluate the policy action for the given observation and weight vector."""
         if isinstance(obs, np.ndarray):
