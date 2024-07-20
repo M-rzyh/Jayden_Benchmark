@@ -268,7 +268,7 @@ class EUPG(MOPolicy, MOAgent):
         scalarized_return = th.scalar_tensor(scalarized_return).to(self.device)
 
         discounted_forward_rewards = self._forward_cumulative_rewards(rewards)
-        scalarized_values = self.scalarization(discounted_forward_rewards, self.weights)
+        scalarized_values = self.scalarization(discounted_forward_rewards.cpu().numpy(), self.weights)
         if isinstance(scalarized_values, np.ndarray):
             scalarized_values = th.tensor(scalarized_values).to(self.device)
         # For each sample in the batch, get the distribution over actions
