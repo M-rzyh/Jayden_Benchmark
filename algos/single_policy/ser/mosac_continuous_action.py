@@ -470,9 +470,6 @@ class MOSAC(MOPolicy):
             start_time = time.time()
 
         # TRY NOT TO MODIFY: start the game
-        if test_generalization:
-            self.env.unwrapped.reset_random()
-            print("Domain randomization is activated for generalization testing.")
         obs, _ = self.env.reset()
         for step in range(total_timesteps):
             # ALGO LOGIC: put action logic here
@@ -496,8 +493,6 @@ class MOSAC(MOPolicy):
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
             obs = next_obs
             if terminated or truncated:
-                if test_generalization:
-                    self.env.unwrapped.reset_random()
                 obs, _ = self.env.reset()
                 if self.log and "episode" in infos.keys():
                     log_episode_info(infos["episode"], np.dot, self.weights, self.global_step, self.id)

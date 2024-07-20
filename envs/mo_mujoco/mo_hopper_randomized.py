@@ -338,7 +338,6 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
     
     def reset_random(self):
         self.set_random_task()
-        # self.reset()
 
 
 gym.envs.register(

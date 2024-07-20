@@ -550,8 +550,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         self.global_step = 0 if reset_num_timesteps else self.global_step
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
 
-        if test_generalization:
-            self.env.unwrapped.reset_random()
         obs, info = self.env.reset()
         for _ in range(1, total_timesteps + 1):
             self.global_step += 1
@@ -604,8 +602,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                     plot.close()
 
             if terminated or truncated:
-                if test_generalization:
-                    self.env.unwrapped.reset_random()
                 obs, info = self.env.reset()
                 self.num_episodes += 1
 

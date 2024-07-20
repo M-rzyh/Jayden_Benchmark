@@ -504,8 +504,6 @@ class MORLD(MOAgent):
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
         start_time = time.time()
 
-        if test_generalization:
-            self.env.unwrapped.reset_random()
         obs, _ = self.env.reset()
         print("Starting training...")
 

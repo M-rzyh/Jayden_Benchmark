@@ -88,12 +88,11 @@ class RandomMOEnvWrapper(gym.Wrapper):
 
     #     return ob, reward, terminated, truncated, info
     
-    # def reset(self, *, seed=None, options=None):
-    #     if self.is_dr:
-    #         print('Environment reset!')
-    #         return self.env.unwrapped.reset_random()
+    def reset(self, *, seed=None, options=None):
+        if self.is_dr:
+            self.env.unwrapped.reset_random()
         
-    #     return super().reset()
+        return self.env.reset()
     
 
     def eval_mo(
