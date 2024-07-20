@@ -7,7 +7,6 @@ from gymnasium.wrappers.record_video import RecordVideo
 import mo_gymnasium as mo_gym
 import wandb
 
-from pymoo.util.ref_dirs import get_reference_directions
 from mo_utils.pareto import filter_pareto_dominated
 from mo_utils.performance_indicators import (
     cardinality,
@@ -59,7 +58,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
                  generalization_algo: str,
                  test_envs: List[str],
                  record_video: bool,
-                 record_video_freq: int = 200, # len(eval_weights) * rep % record_video_freq == 0
+                 record_video_freq: int = 600, # num_evals * len(eval_weights) * rep % record_video_freq == 0
                  save_metrics: List[str] = ['hv', 'eum'],
                  **kwargs):
         super().__init__(env)

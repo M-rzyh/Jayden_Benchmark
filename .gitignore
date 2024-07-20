@@ -142,3 +142,4 @@ videos/
 *.out
 *.sh
 temp/
+scripts/
