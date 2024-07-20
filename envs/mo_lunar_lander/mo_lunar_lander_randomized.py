@@ -2,7 +2,7 @@ import os
 import gymnasium as gym
 import torch
 import numpy as np
-from .mo_lunar_lander import MOLunarLander
+from .utils.mo_lunar_lander import MOLunarLander
 from envs.registration import register as gym_register
 from envs.random_mo_env import DREnv
 
@@ -136,14 +136,4 @@ class MOLunarLanderDR(MOLunarLander, DREnv):
         enc = self.level_params_vec
         enc = [str(x) for x in enc]
         return np.array(enc, dtype=self.encoding_u_chars)
-
-
-# if hasattr(__loader__, 'name'):
-#   module_path = __loader__.name
-# elif hasattr(__loader__, 'fullname'):
-#   module_path = __loader__.fullname
-
-# gym_register(id='MOLunarLanderDR-v0',
-#              entry_point=module_path + ':MOLunarLanderDR',
-#              max_episode_steps=500)
 

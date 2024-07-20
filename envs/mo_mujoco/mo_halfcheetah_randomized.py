@@ -31,7 +31,6 @@ class MOHalfCheehtahDR(RandomMujocoEnv, EzPickle):
     - 1: Control cost of the action
 
     ## Credits:
-    - Adapted by Jayden Teoh
     - Domain randomization by https://github.com/gabrieletiboni/random-envs
     """
     metadata = {

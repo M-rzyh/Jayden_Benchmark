@@ -1,4 +1,6 @@
-from .mo_lunar_lander import MOLunarLander
+from envs.mo_lunar_lander.utils.mo_lunar_lander import MOLunarLander
+import gymnasium as gym
+
 #fixed params that were randomized initially
 params = [[ -3.58211243,   0.20845414],
           [-10.02311556,   5.33210306],
@@ -80,3 +82,49 @@ class LunarLanderEvalTen(MOLunarLander):
         wind_power = params[9][1]
         super().__init__(gravity = gravity, wind_power = wind_power, \
                         enable_wind = True, continuous = continuous)
+        
+def register_lunar_lander():
+    try:
+        gym.envs.register(
+            id="MOLunarLanderDR-v0",
+            entry_point="envs.mo_lunar_lander.mo_lunar_lander_randomized:MOLunarLanderDR",
+            max_episode_steps=500,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="LunarLanderEvalOne",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:LunarLanderEvalOne",
+            max_episode_steps=500,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="LunarLanderEvalTwo",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:LunarLanderEvalTwo",
+            max_episode_steps=500,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="LunarLanderEvalThree",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:LunarLanderEvalThree",
+            max_episode_steps=500,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="LunarLanderEvalFour",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:LunarLanderEvalFour",
+            max_episode_steps=500,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")

@@ -10,8 +10,8 @@ import numpy as np
 import torch
 from typing import Optional
 
-from .bipedal_walker_randomized import EnvConfig
-from .mo_bipedal_walker import MOBipedalWalker
+from envs.mo_bipedal_walker.mo_bipedal_walker_randomized import EnvConfig
+from envs.mo_bipedal_walker.utils.mo_bipedal_walker import MOBipedalWalker
 
 def get_config(name='default',
                 ground_roughness=0,
@@ -266,3 +266,51 @@ class BipedalWalkerPOETRose3b(BipedalWalkerPOETRose):
 #     gym_register(id=f'BipedalWalker-POET-Rose-{id}-v0',
 #                  entry_point=module_path + f':BipedalWalkerPOETRose{id}',
 #                  max_episode_steps=2000)
+
+
+def register_bipedal_walker():
+    try:
+        gym.envs.register(
+            id='MOBipedalWalkerDR-v0',
+            entry_point="envs.mo_bipedal_walker.bipedal_walker_randomized:MOBipedalWalkerDR",
+            max_episode_steps=2000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id='BipedalWalker-Med-Stairs-v0',
+            entry_point="envs.mo_bipedal_walker.bipedalwalker_test_envs:BipedalWalkerMedStairs",
+            max_episode_steps=2000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id='BipedalWalker-Med-PitGap-v0',
+            entry_point="envs.mo_bipedal_walker.bipedalwalker_test_envs:BipedalWalkerMedPits",
+            max_episode_steps=2000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="BipedalWalker-Med-StumpHeight-v0",
+            entry_point="envs.mo_bipedal_walker.bipedalwalker_test_envs:BipedalWalkerMedStumps",
+            max_episode_steps=2000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+
+    try:
+        gym.envs.register(
+            id="BipedalWalker-Med-Roughness-v0",
+            entry_point="envs.mo_bipedal_walker.bipedalwalker_test_envs:BipedalWalkerMedRoughness",
+            max_episode_steps=2000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")

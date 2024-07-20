@@ -60,8 +60,6 @@ class MOBipedalWalker(BipedalWalker):  # no need for EzPickle, it's already in B
     References:
     - [Gymnasium's env](https://gymnasium.farama.org/environments/box2d/bipedal_walker/)
     - [Meta Research's DCD repo](https://github.com/facebookresearch/dcd)
-    
-    Adapted by Jayden Teoh, 2024 (https://github.com/JaydenTeoh)
     """
 
     def __init__(self, env_config, *args, **kwargs):

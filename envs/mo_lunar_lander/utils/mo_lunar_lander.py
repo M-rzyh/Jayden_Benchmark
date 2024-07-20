@@ -14,7 +14,7 @@ from gymnasium.envs.box2d.lunar_lander import (
     VIEWPORT_H,
     VIEWPORT_W,
 )
-from .lunar_lander_custom import LunarLander
+from envs.mo_lunar_lander.utils.lunar_lander_custom import LunarLander
 
 
 class MOLunarLander(LunarLander):  # no need for EzPickle, it's already in LunarLander

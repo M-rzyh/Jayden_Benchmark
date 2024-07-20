@@ -1,5 +1,6 @@
 from envs.mo_mujoco.mo_hopper_randomized import MOHopperDR
 from envs.mo_mujoco.mo_halfcheetah_randomized import MOHalfCheehtahDR
+import gymnasium as gym
 import numpy as np
 
 # ============================ Hopper ============================
@@ -71,3 +72,139 @@ class MOHalfCheehtahHard(MOHalfCheehtahDR):
         friction = np.array([0.02])
         task = np.concatenate([masses, friction])
         super().__init__(task=task, **kwargs)
+
+def register_mujoco():
+    # HalfCheetah
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahDR-v5",
+            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahDR",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+        
+
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahDefault-v5", # copy of the dr environment but renamed for clarity
+            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahDR",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahLight-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahLight",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahHeavy-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahHeavy",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahSlippery-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahSlippery",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+
+    try:
+        gym.envs.register(
+            id="MOHalfCheehtahHard-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahHard",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    # Hopper
+    try:
+        gym.envs.register(
+            id="MOHopperDR-v5",
+            entry_point="envs.mo_mujoco.mo_hopper_randomized:MOHopperDR",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHopperDefault-v5", # copy of the dr environment but renamed for clarity
+            entry_point="envs.mo_mujoco.mo_hopper_randomized:MOHopperDR",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHopperLight-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperLight",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHopperHeavy-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperHeavy",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHopperSlippery-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperSlippery",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHopperLowDamping-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperLowDamping",
+            max_episode_steps=1000,
+        )
+
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    
+    try:
+        gym.envs.register(
+            id="MOHopperHard-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHopperHard",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    
+    # Humanoid
+    try:
+        gym.envs.register(
+            id="MOHumanoidDR-v0",
+            entry_point="envs.mo_mujoco.mo_humanoid_randomized:MOHumanoidDR",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")

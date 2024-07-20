@@ -76,18 +76,6 @@ class RandomMOEnvWrapper(gym.Wrapper):
         self.seed = seed
         
 
-    # def step(self, action):
-    #     ob, reward, terminated, truncated, info = super().step(action)
-
-    #     if terminated:
-    #         if self.is_dr:
-    #             self.reset_random()
-    #             # ob = self.reset_agent()
-    #         else:
-    #             ob = self._reset()
-
-    #     return ob, reward, terminated, truncated, info
-    
     def reset(self, *, seed=None, options=None):
         if self.is_dr:
             self.env.unwrapped.reset_random()

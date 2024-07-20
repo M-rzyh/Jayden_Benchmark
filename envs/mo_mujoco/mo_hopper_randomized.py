@@ -48,7 +48,6 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
     If the cost_objective flag is set to False, the reward is 2-dimensional, and the cost is added to other objectives.
 
     ## Credits:
-    - Adapted by Jayden Teoh
     - Domain randomization by https://github.com/gabrieletiboni/random-envs
     """
 

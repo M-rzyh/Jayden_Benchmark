@@ -7,13 +7,10 @@
 import os
 
 import gymnasium as gym
-import time
 import numpy as np
 import torch
 
-from gymnasium.envs.box2d.bipedal_walker import BipedalWalker, BipedalWalkerHardcore
-
-from .mo_bipedal_walker import MOBipedalWalker
+from envs.mo_bipedal_walker.utils.mo_bipedal_walker import MOBipedalWalker
 from envs.random_mo_env import DREnv
 from collections import namedtuple
 
@@ -407,33 +404,3 @@ class BipedalWalkerPOET(MOBipedalWalkerDR):
 class BipedalWalkerEasyPOET(MOBipedalWalkerDR):
   def __init__(self, seed=0):
     super().__init__(mode='easy', poet=True, seed=seed)
-
-
-# if hasattr(__loader__, 'name'):
-#   module_path = __loader__.name
-# elif hasattr(__loader__, 'fullname'):
-#   module_path = __loader__.fullname
-
-# gym_register(id='BipedalWalker-Adversarial-v0',
-#              entry_point=module_path + ':BipedalWalkerFull',
-#              max_episode_steps=2000)
-
-# gym_register(id='BipedalWalker-Adversarial-Easy-v0',
-#              entry_point=module_path + ':BipedalWalkerEasy',
-#              max_episode_steps=2000)
-
-# gym_register(id='BipedalWalker-Vanilla-v0',
-#              entry_point=module_path + ':BipedalWalkerDebug',
-#              max_episode_steps=2000)
-
-# gym_register(id='BipedalWalker-HC-v0',
-#              entry_point=module_path + ':BipedalWalkerHC',
-#              max_episode_steps=2000)
-
-# gym_register(id='BipedalWalker-POET-v0',
-#              entry_point=module_path + ':BipedalWalkerPOET',
-#              max_episode_steps=2000)
-
-# gym_register(id='BipedalWalker-POET-Easy-v0',
-#              entry_point=module_path + ':BipedalWalkerEasyPOET',
-#              max_episode_steps=2000)
