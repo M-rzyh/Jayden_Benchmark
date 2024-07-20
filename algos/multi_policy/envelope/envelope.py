@@ -489,6 +489,7 @@ class Envelope(MOPolicy, MOAgent):
         num_eval_weights_for_eval: int = 50,
         reset_learning_starts: bool = False,
         verbose: bool = False,
+        test_generalization: bool = False,
     ):
         """Train the agent.
 
@@ -545,7 +546,7 @@ class Envelope(MOPolicy, MOAgent):
             if self.global_step < self.learning_starts:
                 action = self.env.action_space.sample()
             else:
-                action = self.act(th.as_tensor(obs).float().to(self.device), tensor_w)
+                action = self.act(th.as_tensor(np.array(obs)).float().to(self.device), tensor_w)
 
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
             self.global_step += 1
@@ -555,18 +556,21 @@ class Envelope(MOPolicy, MOAgent):
                 self.update()
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
-                current_front = [
-                    self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]
-                    for ew in eval_weights
-                ]
-                log_all_multi_policy_metrics(
-                    current_front=current_front,
-                    hv_ref_point=ref_point,
-                    reward_dim=self.reward_dim,
-                    global_step=self.global_step,
-                    n_sample_weights=num_eval_weights_for_eval,
-                    ref_front=known_pareto_front,
-                )
+                if test_generalization:
+                    self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                else:
+                    current_front = [
+                        self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]
+                        for ew in eval_weights
+                    ]
+                    log_all_multi_policy_metrics(
+                        current_front=current_front,
+                        hv_ref_point=ref_point,
+                        reward_dim=self.reward_dim,
+                        global_step=self.global_step,
+                        n_sample_weights=num_eval_weights_for_eval,
+                        ref_front=known_pareto_front,
+                    )
 
             if terminated or truncated:
                 obs, _ = self.env.reset()

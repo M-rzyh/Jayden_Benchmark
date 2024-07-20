@@ -136,7 +136,7 @@ def parse_train_args(args):
 
 
 def make_env(args):
-    if "mario" in args.env_id:
+    if "mario" in args.env_id.lower():
         env = mo_gym.make(args.env_id, death_as_penalty=True)
         eval_env = mo_gym.make(args.env_id, death_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
     else:
@@ -148,7 +148,7 @@ def make_env(args):
     if "highway" in args.env_id:
         env = FlattenObservation(env)
         eval_env = FlattenObservation(eval_env)
-    elif "mario" in args.env_id:
+    elif "mario" in args.env_id.lower():
 
         def wrap_mario(env):
             from gymnasium.wrappers import (

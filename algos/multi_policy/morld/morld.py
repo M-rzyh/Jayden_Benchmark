@@ -415,6 +415,7 @@ class MORLD(MOAgent):
                 if len(p.wrapped.get_buffer()) > 0 and p != current:
                     p.wrapped.update()
 
+    # TODO: implement this more optimally using binary search
     def select_nearest_policy(self, given_weight) -> Policy:
         """
         Selects the policy with weights nearest to the given weight vector.
@@ -440,7 +441,8 @@ class MORLD(MOAgent):
         self, 
         obs: Union[np.ndarray, th.Tensor],
         w: Union[np.ndarray, th.Tensor], 
-        torch_action=False,
+        torch_action: bool = False,
+        disc_vec_return: Optional[np.ndarray] = None,
         **kwargs
     ) -> Union[np.ndarray, th.Tensor]:
         """
@@ -450,8 +452,14 @@ class MORLD(MOAgent):
         if isinstance(obs, np.ndarray):
             obs = th.tensor(obs).float().to(self.device)
 
-        policy = self.select_nearest_policy(w)
-        action, _, _ = policy.wrapped.actor.get_action(obs) # MOSAC Policy
+        policy = self.select_nearest_policy(w) # Select the policy with weights nearest to the given weight vector
+        if self.policy_name == "MOSAC":
+            action, _, _ = policy.wrapped.actor.get_action(obs) # MOSAC Policy
+        elif self.policy_name == "EUPG":
+            action = policy.wrapped.eval(obs, disc_vec_return)
+        else:
+            raise NotImplementedError
+        
 
         if not torch_action:
             action = action.detach().cpu().numpy()
@@ -486,7 +494,6 @@ class MORLD(MOAgent):
         """
         if test_generalization: # weight adaptation and archive is not supported in domain randomization
             assert self.weight_adaptation_method is None, "Weight adaptation is not supported in domain randomization."
-            assert self.policy_name == "MOSAC", "Only MOSAC is supported for domain randomization."
 
         if self.log:
             self.register_additional_config(

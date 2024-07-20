@@ -15,8 +15,11 @@ from torch.distributions import Categorical
 from mo_utils.accrued_reward_buffer import AccruedRewardReplayBuffer
 from mo_utils.evaluation import log_episode_info
 from mo_utils.morl_algorithm import MOAgent, MOPolicy
-from mo_utils.networks import layer_init, mlp
-
+from mo_utils.networks import (
+    NatureCNN,
+    layer_init, 
+    mlp
+)
 
 class PolicyNet(nn.Module):
     """Policy network."""
@@ -36,10 +39,17 @@ class PolicyNet(nn.Module):
         self.rew_dim = rew_dim
 
         # Conditioned on accrued reward, so input takes reward
-        input_dim = obs_shape[0] + rew_dim
+        if len(obs_shape) == 1:
+            self.feature_extractor = None
+            input_dim = obs_shape[0] + rew_dim
+        elif len(obs_shape) > 1:  # Image observation
+            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
+            input_dim = self.feature_extractor.features_dim + rew_dim
 
         # |S|+|R| -> ... -> |A|
-        self.net = mlp(input_dim, action_dim, net_arch, activation_fn=nn.Tanh)
+        self.net = mlp(
+            input_dim, action_dim, net_arch[1:], activation_fn=nn.Tanh
+        )
         self.apply(layer_init)
 
     def forward(self, obs: th.Tensor, acc_reward: th.Tensor):
@@ -52,7 +62,13 @@ class PolicyNet(nn.Module):
         Returns: Probability of each action
 
         """
-        input = th.cat((obs, acc_reward), dim=acc_reward.dim() - 1)
+        if self.feature_extractor is not None:
+            features = self.feature_extractor(obs)
+            if w.dim() == 1:
+                w = w.unsqueeze(0)
+            input = th.cat((features, w), dim=features.dim() - 1)
+        else:
+            input = th.cat((obs, w), dim=acc_reward.dim() - 1)
         pi = self.net(input)
         # Normalized sigmoid
         x_exp = th.sigmoid(pi)
@@ -208,11 +224,16 @@ class EUPG(MOPolicy, MOAgent):
     def set_weights(self, weights: np.ndarray):
         self.weights = weights
 
+    # TODO: Implement the save method
+    def save(self, save_dir="weights/", filename=None, save_replay_buffer=True):
+        """Save the agent's weights and replay buffer."""
+        pass
+
     @th.no_grad()
     @override
     def eval(
         self, 
-        obs: np.ndarray, 
+        obs: Union[int, np.ndarray], 
         accrued_reward: Optional[np.ndarray],
         **kwargs,
     ) -> Union[int, np.ndarray]:
@@ -221,6 +242,7 @@ class EUPG(MOPolicy, MOAgent):
         else:
             obs = th.as_tensor(obs).to(self.device)
         accrued_reward = th.as_tensor(accrued_reward).float().to(self.device)
+        print("obs:", obs.shape, "accrued_reward:", accrued_reward.shape)
         return self.__choose_action(obs, accrued_reward)
 
     @th.no_grad()
@@ -299,7 +321,8 @@ class EUPG(MOPolicy, MOAgent):
 
             with th.no_grad():
                 # For training, takes action according to the policy
-                action = self.__choose_action(th.Tensor([obs]).to(self.device), accrued_reward_tensor)
+                print("obs:", th.Tensor([obs]).shape, "accrued_reward_tensor:", accrued_reward_tensor.shape)
+                action = self.__choose_action(th.Tensor(obs).to(self.device), accrued_reward_tensor)
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
 
             # Memory update

@@ -107,7 +107,12 @@ class RandomMOEnvWrapper(gym.Wrapper):
         mask = np.ones(self.test_envs.num_envs, dtype=bool)
 
         while not all(done):
-            actions = agent.eval(obs, np.tile(w, (self.test_envs.num_envs, 1)), num_envs = self.test_envs.num_envs)
+            actions = agent.eval(
+                            obs, 
+                            np.tile(w, (self.test_envs.num_envs, 1)), 
+                            num_envs = self.test_envs.num_envs,
+                            disc_vec_return = disc_vec_return, # used for ESR only
+                        )
             obs, r, terminated, truncated, info = self.test_envs.step(actions)
             mask &= ~terminated  # Update the mask
             vec_return[mask] += r[mask]
