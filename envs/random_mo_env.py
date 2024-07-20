@@ -3,6 +3,7 @@ from distutils.util import strtobool
 from typing import Dict, Optional, Tuple, List
 import numpy as np
 import gymnasium as gym
+from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.record_video import RecordVideo
 import mo_gymnasium as mo_gym
 import wandb
@@ -15,6 +16,7 @@ from mo_utils.performance_indicators import (
     sparsity,
 )
 from mo_utils.weights import equally_spaced_weights
+from envs.mo_super_mario.utils import wrap_mario
 
 # TODO: implement this for all dr envs
 class DREnv(ABC):
@@ -35,9 +37,25 @@ class DREnv(ABC):
 
 
 def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs):
-    env = gym.make(gym_id, 
-                   render_mode="rgb_array" if record_video else None, 
-                   **kwargs)
+    if "mario" in gym_id.lower():
+        env = gym.make(
+                    gym_id, 
+                    render_mode="rgb_array" if record_video else None, 
+                    death_as_penalty=True,
+                    **kwargs
+                )
+        env = wrap_mario(env)
+    else:
+        env = gym.make(
+                    gym_id, 
+                    render_mode="rgb_array" if record_video else None, 
+                    **kwargs
+                )
+    
+    if "highway" in gym_id.lower():
+        env = FlattenObservation(env)
+
+
     if record_video:
         env = RecordVideo(
             env, 

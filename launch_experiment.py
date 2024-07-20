@@ -15,7 +15,6 @@ import gymnasium as gym
 import mo_gymnasium as mo_gym
 import numpy as np
 import requests
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.record_video import RecordVideo
 
@@ -28,6 +27,7 @@ from mo_utils.experiments import (
 )
 from envs.random_mo_env import RandomMOEnvWrapper
 from envs.register_envs import register_envs
+from envs.mo_super_mario.utils import wrap_mario
 
 
 def parse_args():
@@ -149,25 +149,6 @@ def make_env(args):
         env = FlattenObservation(env)
         eval_env = FlattenObservation(eval_env)
     elif "mario" in args.env_id.lower():
-
-        def wrap_mario(env):
-            from gymnasium.wrappers import (
-                FrameStack,
-                GrayScaleObservation,
-                ResizeObservation,
-                TimeLimit,
-            )
-            from mo_gymnasium.envs.mario.joypad_space import JoypadSpace
-            from mo_gymnasium.utils import MOMaxAndSkipObservation
-
-            env = JoypadSpace(env, SIMPLE_MOVEMENT)
-            env = MOMaxAndSkipObservation(env, skip=4)
-            env = ResizeObservation(env, (84, 84))
-            env = GrayScaleObservation(env)
-            env = FrameStack(env, 4)
-            env = TimeLimit(env, max_episode_steps=1000)
-            return env
-
         env = wrap_mario(env)
         eval_env = wrap_mario(eval_env)
 

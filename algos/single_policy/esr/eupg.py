@@ -63,12 +63,11 @@ class PolicyNet(nn.Module):
 
         """
         if self.feature_extractor is not None:
-            features = self.feature_extractor(obs)
-            if w.dim() == 1:
-                w = w.unsqueeze(0)
-            input = th.cat((features, w), dim=features.dim() - 1)
-        else:
-            input = th.cat((obs, w), dim=acc_reward.dim() - 1)
+            obs = self.feature_extractor(obs)
+            if acc_reward.dim() == 1:
+                acc_reward = acc_reward.unsqueeze(0)
+                
+        input = th.cat((obs, acc_reward), dim=acc_reward.dim() - 1)
         pi = self.net(input)
         # Normalized sigmoid
         x_exp = th.sigmoid(pi)
@@ -104,7 +103,7 @@ class EUPG(MOPolicy, MOAgent):
         weights: np.ndarray = np.ones(2),
         id: Optional[int] = None,
         buffer_size: int = int(1e5),
-        net_arch: List = [50],
+        net_arch: List = [256, 256],
         gamma: float = 0.99,
         learning_rate: float = 1e-3,
         project_name: str = "MORL-Baselines",
@@ -242,14 +241,16 @@ class EUPG(MOPolicy, MOAgent):
         else:
             obs = th.as_tensor(obs).to(self.device)
         accrued_reward = th.as_tensor(accrued_reward).float().to(self.device)
-        print("obs:", obs.shape, "accrued_reward:", accrued_reward.shape)
         return self.__choose_action(obs, accrued_reward)
 
     @th.no_grad()
     def __choose_action(self, obs: th.Tensor, accrued_reward: th.Tensor) -> int:
         action = self.net.distribution(obs, accrued_reward)
-        action = action.sample().detach().item()
-        return action
+        action_tensor = action.sample()
+        if action_tensor.ndim > 1 or action_tensor.size(0) > 1: # if using vectorized environments
+            return action_tensor.detach().cpu().numpy()
+        
+        return action_tensor.detach().item()
 
     @override
     def update(self):
@@ -267,7 +268,9 @@ class EUPG(MOPolicy, MOAgent):
         scalarized_return = th.scalar_tensor(scalarized_return).to(self.device)
 
         discounted_forward_rewards = self._forward_cumulative_rewards(rewards)
-        scalarized_values = self.scalarization(discounted_forward_rewards)
+        scalarized_values = self.scalarization(discounted_forward_rewards, self.weights)
+        if isinstance(scalarized_values, np.ndarray):
+            scalarized_values = th.tensor(scalarized_values).to(self.device)
         # For each sample in the batch, get the distribution over actions
         current_distribution = self.net.distribution(obs, accrued_rewards)
         # Policy gradient
@@ -321,8 +324,7 @@ class EUPG(MOPolicy, MOAgent):
 
             with th.no_grad():
                 # For training, takes action according to the policy
-                print("obs:", th.Tensor([obs]).shape, "accrued_reward_tensor:", accrued_reward_tensor.shape)
-                action = self.__choose_action(th.Tensor(obs).to(self.device), accrued_reward_tensor)
+                action = self.__choose_action(th.Tensor([obs]).to(self.device), accrued_reward_tensor)
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
 
             # Memory update

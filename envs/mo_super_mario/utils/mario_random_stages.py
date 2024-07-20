@@ -117,7 +117,6 @@ class SuperMarioBrosRandomStagesEnv(gym.Env):
         else:
             world = np.random.randint(1, 9) - 1
             stage = np.random.randint(1, 5) - 1
-            print("world: ", world, "stage: ", stage)
         # Set the environment based on the world and stage.
         self.env = self.envs[world][stage]
 

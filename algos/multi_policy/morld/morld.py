@@ -135,7 +135,9 @@ class MORLD(MOAgent):
             raise Exception(f"Unsupported weight init method: ${self.weight_init_method}")
 
         self.scalarization_method = scalarization_method
-        if scalarization_method == "ws":
+        if scalarization_method == "ws" and policy_name == "MOSAC":
+            self.scalarization = th.matmul
+        elif scalarization_method == "ws":
             self.scalarization = weighted_sum
         elif scalarization_method == "tch":
             self.scalarization = tchebicheff(tau=0.5, reward_dim=self.reward_dim)
@@ -189,7 +191,7 @@ class MORLD(MOAgent):
                     id=i,
                     env=self.env,
                     weights=w,
-                    scalarization=th.matmul if scalarization_method == "ws" else self.scalarization,
+                    scalarization=self.scalarization,
                     gamma=gamma,
                     log=self.log,
                     seed=self.seed,
@@ -461,7 +463,7 @@ class MORLD(MOAgent):
             raise NotImplementedError
         
 
-        if not torch_action:
+        if not torch_action and isinstance(action, th.Tensor):
             action = action.detach().cpu().numpy()
 
         return action
