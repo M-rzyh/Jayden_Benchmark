@@ -516,7 +516,7 @@ class MORLD(MOAgent):
             # selection
             policy = self.__select_candidate()
             # policy improvement
-            policy.wrapped.train(self.exchange_every, eval_env=eval_env, start_time=start_time, test_generalization=test_generalization)
+            policy.wrapped.train(self.exchange_every, eval_env=eval_env, start_time=start_time)
             self.global_step += self.exchange_every
             print(f"Switching... global_steps: {self.global_step}")
             for p in self.population:

@@ -210,11 +210,11 @@ if __name__ == "__main__":
     seed_everything(42)
 
     register(
-        id="mo-supermario-v0",
+        id="MOSuperMarioBrosDR",
         entry_point="envs.mo_super_mario.mario_randomized:MOSuperMarioBrosDR",
         nondeterministic=True,
     )
-    env = gym.make("mo-supermario-v0", render_mode="human")
+    env = gym.make("MOSuperMarioBrosDR", render_mode="human")
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
     # env = MaxAndSkipEnv(env, 4)
     env = ResizeObservation(env, (84, 84))

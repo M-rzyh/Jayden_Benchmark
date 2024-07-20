@@ -457,7 +457,6 @@ class MOSAC(MOPolicy):
         total_timesteps: int, 
         eval_env: Optional[gym.Env] = None, 
         start_time=None, 
-        test_generalization: bool = False,
     ):
         """Train the agent.
 

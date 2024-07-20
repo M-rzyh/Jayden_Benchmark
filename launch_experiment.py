@@ -136,28 +136,14 @@ def parse_train_args(args):
 
 
 def make_env(args):
-    if not args.test_generalization:
-        if "mario" in args.env_id:
-            env = mo_gym.make(args.env_id, death_as_penalty=True)
-            eval_env = mo_gym.make(args.env_id, death_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
-        else:
-            env = mo_gym.make(args.env_id)
-            eval_env = mo_gym.make(args.env_id, render_mode="rgb_array" if args.record_video else None)
-    # non-static environment to test generalization, environments are not part of the MO-Gymnasium
+    if "mario" in args.env_id:
+        env = mo_gym.make(args.env_id, death_as_penalty=True)
+        eval_env = mo_gym.make(args.env_id, death_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
     else:
         env = mo_gym.make(args.env_id)
-        eval_env = mo_gym.make(args.env_id)
+        eval_env = mo_gym.make(args.env_id, render_mode="rgb_array" if args.record_video else None)
 
     env = MORecordEpisodeStatistics(env, gamma=args.gamma)
-
-    if args.test_generalization:
-        env = RandomMOEnvWrapper(env,
-                                 algo_name=args.algo,
-                                 seed=args.seed, 
-                                 test_envs=args.test_envs, 
-                                 generalization_algo=args.generalization_algo, 
-                                 record_video=args.record_video,
-                                 record_video_freq=args.record_video_ep_freq)
 
     if "highway" in args.env_id:
         env = FlattenObservation(env)
@@ -185,7 +171,16 @@ def make_env(args):
         env = wrap_mario(env)
         eval_env = wrap_mario(eval_env)
 
-    if args.record_video and not args.test_generalization:
+    if args.test_generalization:
+        env = RandomMOEnvWrapper(env,
+                                 algo_name=args.algo,
+                                 seed=args.seed, 
+                                 test_envs=args.test_envs, 
+                                 generalization_algo=args.generalization_algo, 
+                                 record_video=args.record_video,
+                                 record_video_freq=args.record_video_ep_freq)
+        eval_env = env # same randomizable env for evaluation
+    elif args.record_video:
         eval_env = RecordVideo(
             eval_env,
             video_folder=f"videos/{args.algo}-{args.env_id}",
