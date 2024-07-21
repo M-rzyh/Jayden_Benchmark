@@ -9,6 +9,7 @@ Examples:
 import argparse
 import os
 import subprocess
+import copy
 from distutils.util import strtobool
 
 import gymnasium as gym
@@ -160,7 +161,7 @@ def make_env(args):
                                  generalization_algo=args.generalization_algo, 
                                  record_video=args.record_video,
                                  record_video_freq=args.record_video_ep_freq)
-        eval_env = env # same randomizable env for evaluation
+        eval_env = copy.deepcopy(env) # same randomizable env for evaluation
     elif args.record_video:
         eval_env = RecordVideo(
             eval_env,
