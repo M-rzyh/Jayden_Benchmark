@@ -161,7 +161,15 @@ def make_env(args):
                                  generalization_algo=args.generalization_algo, 
                                  record_video=args.record_video,
                                  record_video_freq=args.record_video_ep_freq)
-        eval_env = copy.deepcopy(env) # same randomizable env for evaluation
+        
+        # same randomizable env for evaluation
+        eval_env = RandomMOEnvWrapper(env,
+                                      algo_name=args.algo,
+                                      seed=args.seed, 
+                                      test_envs=args.test_envs, 
+                                      generalization_algo=args.generalization_algo, 
+                                      record_video=args.record_video,
+                                      record_video_freq=args.record_video_ep_freq)
     elif args.record_video:
         eval_env = RecordVideo(
             eval_env,

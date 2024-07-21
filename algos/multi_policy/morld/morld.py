@@ -2,6 +2,7 @@
 
 See Felten, Talbi & Danoy (2024): https://arxiv.org/abs/2311.12495.
 """
+import os
 import math
 import time
 from typing import Callable, List, Optional, Tuple, Union
@@ -470,7 +471,23 @@ class MORLD(MOAgent):
     
     def save(self, save_dir="weights/", filename=None, save_replay_buffer=True):
         """Save the agent's weights and replay buffer."""
-        pass
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+
+        saved_params = {}
+
+        for i, policy in enumerate(self.population):
+            saved_params[f"policy_{i}"] = policy.wrapped.get_save_dict(save_replay_buffer)
+
+        th.save(saved_params, save_dir + "/" + filename + ".tar")
+
+    def load(self, path, load_replay_buffer=True):
+        """Load the agent weights from a file."""
+        params = th.load(path, map_location=self.device)
+
+        for i, policy in enumerate(self.population):
+            policy.wrapped.load(params[f"policy_{i}"], load_replay_buffer=load_replay_buffer)
+            policy.weights = policy.wrapped.weights
 
     def train(
         self,

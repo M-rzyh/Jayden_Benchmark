@@ -339,24 +339,60 @@ class MOSAC(MOPolicy):
         self.weights = weights
         self.weights_tensor = th.from_numpy(self.weights).float().to(self.device)
 
-    # TODO: Implement the save method
+    def get_save_dict(self, save_replay_buffer: bool = False) -> dict:
+        """Returns a dictionary of all components needed for saving the MOSAC instance."""
+        save_dict = {
+            'actor_state_dict': self.actor.state_dict(),
+            'qf1_state_dict': self.qf1.state_dict(),
+            'qf2_state_dict': self.qf2.state_dict(),
+            'qf1_target_state_dict': self.qf1_target.state_dict(),
+            'qf2_target_state_dict': self.qf2_target.state_dict(),
+            'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
+            'q_optimizer_state_dict': self.q_optimizer.state_dict(),
+            'weights': self.weights,
+            'alpha': self.alpha,
+        }
+
+        if save_replay_buffer:
+            save_dict['buffer'] = self.buffer
+
+        if self.autotune:
+            save_dict['log_alpha'] = self.log_alpha
+            save_dict['a_optimizer_state_dict'] = self.a_optimizer.state_dict()
+
+        return save_dict
+
     def save(self, save_dir="weights/", filename=None, save_replay_buffer=True):
         """Save the agent's weights and replay buffer."""
-        pass
-        # if not os.path.isdir(save_dir):
-        #     os.makedirs(save_dir)
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, filename)
+        save_dict = self.get_save_dict(save_replay_buffer)
+        th.save(save_dict, save_path)
 
-        # saved_params = {
-        #     "policy_state_dict": self.actor.state_dict(),
-        #     "policy_optimizer_state_dict": self.actor_optimizer.state_dict(),
-        # }
-        # for i, (q_net, target_q_net) in enumerate(zip(self.q_nets, self.target_q_nets)):
-        #     saved_params["q_net_" + str(i) + "_state_dict"] = q_net.state_dict()
-        #     saved_params["target_q_net_" + str(i) + "_state_dict"] = target_q_net.state_dict()
-        # saved_params["q_nets_optimizer_state_dict"] = self.q_optimizer.state_dict()
-        # if save_replay_buffer:
-        #     saved_params["replay_buffer"] = self.buffer
-        # th.save(saved_params, save_dir + "/" + filename + ".tar")
+    def load(self, save_dict: Optional[dict] = None, path: Optional[str] = None, load_replay_buffer: bool = True):
+        """Load the model and the replay buffer if specified.
+        """
+        if save_dict is None:
+            assert path is not None, "Either save_dict or path should be provided."
+            save_dict = th.load(path, map_location=self.device)
+
+        self.actor.load_state_dict(save_dict['actor_state_dict'])
+        self.qf1.load_state_dict(save_dict['qf1_state_dict'])
+        self.qf2.load_state_dict(save_dict['qf2_state_dict'])
+        self.qf1_target.load_state_dict(save_dict['qf1_target_state_dict'])
+        self.qf2_target.load_state_dict(save_dict['qf2_target_state_dict'])
+        self.actor_optimizer.load_state_dict(save_dict['actor_optimizer_state_dict'])
+        self.q_optimizer.load_state_dict(save_dict['q_optimizer_state_dict'])
+
+        if 'log_alpha' in save_dict:
+            self.log_alpha = save_dict['log_alpha']
+            self.a_optimizer.load_state_dict(save_dict['a_optimizer_state_dict'])
+
+        if load_replay_buffer:
+            self.buffer = save_dict['buffer']
+
+        self.weights = save_dict['weights']
+        self.alpha = save_dict['alpha']
 
     @override
     def eval(

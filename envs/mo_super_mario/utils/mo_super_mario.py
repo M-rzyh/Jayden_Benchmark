@@ -36,7 +36,7 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
 
     def __init__(
         self,
-        rom_mode="vanilla",
+        rom_mode="pixel",
         lost_levels=False,
         target=None,
         objectives=["x_pos", "time", "death", "coin", "enemy"],
