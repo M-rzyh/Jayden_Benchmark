@@ -380,9 +380,10 @@ class Envelope(MOPolicy, MOAgent):
         w: np.ndarray,
         **kwargs
     ) -> int:
+        num_envs = kwargs.get('num_envs', 1)  # Default to 1 if not provided
         obs = th.as_tensor(obs).float().to(self.device)
         w = th.as_tensor(w).float().to(self.device)
-        return self.max_action(obs, w)
+        return self.max_action(obs, w, num_envs)
 
     def act(self, obs: th.Tensor, w: th.Tensor) -> int:
         """Epsilon-greedily select an action given an observation and weight.
@@ -399,7 +400,7 @@ class Envelope(MOPolicy, MOAgent):
             return self.max_action(obs, w)
 
     @th.no_grad()
-    def max_action(self, obs: th.Tensor, w: th.Tensor) -> int:
+    def max_action(self, obs: th.Tensor, w: th.Tensor, num_envs: int = 1) -> int:
         """Select the action with the highest Q-value given an observation and weight.
 
         Args:
@@ -409,8 +410,15 @@ class Envelope(MOPolicy, MOAgent):
         Returns: the action with the highest Q-value.
         """
         q_values = self.q_net(obs, w)
-        scalarized_q_values = th.einsum("r,bar->ba", w, q_values)
-        max_act = th.argmax(scalarized_q_values, dim=1)
+        if num_envs > 1:
+            # w has shape (num_envs, num_rewards)
+            scalarized_q_values = th.einsum("br,bar->ba", w, q_values)
+            max_act = th.argmax(scalarized_q_values, dim=1)
+            return max_act.detach().cpu().numpy() # action has shape (num_envs,)
+        else:
+            scalarized_q_values = th.einsum("r,bar->ba", w, q_values)
+            max_act = th.argmax(scalarized_q_values, dim=1)
+        
         return max_act.detach().item()
 
     @th.no_grad()
@@ -542,11 +550,12 @@ class Envelope(MOPolicy, MOAgent):
         for _ in range(1, total_timesteps + 1):
             if total_episodes is not None and num_episodes == total_episodes:
                 break
-
-            if self.global_step < self.learning_starts:
-                action = self.env.action_space.sample()
-            else:
-                action = self.act(th.as_tensor(np.array(obs)).float().to(self.device), tensor_w)
+            
+            with th.no_grad():
+                if self.global_step < self.learning_starts:
+                    action = self.env.action_space.sample()
+                else:
+                    action = self.act(th.as_tensor(np.array(obs)).float().to(self.device), tensor_w)
 
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
             self.global_step += 1

@@ -97,7 +97,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
         if self.is_dr:
             self.env.unwrapped.reset_random()
         
-        return self.env.reset()
+        return self.env.reset(seed=seed, options=options)
     
 
     def eval_mo(

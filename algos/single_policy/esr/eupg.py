@@ -312,10 +312,8 @@ class EUPG(MOPolicy, MOAgent):
         if start_time is None:
             start_time = time.time()
         # Init
-        (
-            obs,
-            _,
-        ) = self.env.reset()
+        
+        obs, _ = self.env.reset()
         accrued_reward_tensor = th.zeros(self.reward_dim, dtype=th.float32).float().to(self.device)
 
         # Training loop
