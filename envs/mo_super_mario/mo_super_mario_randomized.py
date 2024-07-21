@@ -4,18 +4,12 @@ from typing import Optional
 import gymnasium as gym
 import numpy as np
 from envs.mo_super_mario.utils.mario_random_stages import SuperMarioBrosRandomStagesEnv
-from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from gymnasium.utils import EzPickle, seeding
 
 # from stable_baselines3.common.atari_wrappers import MaxAndSkipEnv
-from gymnasium.wrappers import GrayScaleObservation, ResizeObservation
 from nes_py.nes_env import SCREEN_SHAPE_24_BIT
 
 import mo_gymnasium as mo_gym
-
-# from nes_py.wrappers import JoypadSpace
-from envs.mo_super_mario.utils.joypad_space import JoypadSpace
-
 
 class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
     """
@@ -40,7 +34,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
 
     def __init__(
         self,
-        rom_mode="pixel",
+        rom_mode="vanilla",
         lost_levels=False,
         target=None,
         objectives=["x_pos", "time", "death", "coin", "enemy"],
@@ -206,12 +200,16 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
 if __name__ == "__main__":
     from gymnasium.envs.registration import register
     from mo_utils.evaluation import seed_everything
+    from gymnasium.wrappers import GrayScaleObservation, ResizeObservation
+    from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+    from envs.mo_super_mario.utils.joypad_space import JoypadSpace
+    import matplotlib.pyplot as plt
 
     seed_everything(42)
 
     register(
         id="MOSuperMarioBrosDR",
-        entry_point="envs.mo_super_mario.mario_randomized:MOSuperMarioBrosDR",
+        entry_point="envs.mo_super_mario.mo_super_mario_randomized:MOSuperMarioBrosDR",
         nondeterministic=True,
     )
     env = gym.make("MOSuperMarioBrosDR", render_mode="human")
@@ -228,9 +226,9 @@ if __name__ == "__main__":
     while True:
         obs, r, terminated, truncated, info = env.step(env.action_space.sample())
         # print(r, info["vector_reward"], terminated, info["time"])
-        """ plt.figure()
+        plt.figure()
         plt.imshow(obs, cmap='gray', vmin=0, vmax=255)
-        plt.show() """
+        plt.show()
         env.render()
         if terminated:
             env.reset_random()
