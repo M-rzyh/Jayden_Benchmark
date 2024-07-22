@@ -22,11 +22,12 @@ from mo_utils.scalarization import tchebicheff, weighted_sum
 from mo_utils.utils import nearest_neighbors
 from mo_utils.weights import equally_spaced_weights, random_weights
 from algos.single_policy.esr.eupg import EUPG
-from algos.single_policy.ser.mosac_continuous_action import MOSAC
+from algos.single_policy.ser.mosac import MOSAC, MOSACDiscrete
 
 
 POLICIES = {
     "MOSAC": MOSAC,
+    "MOSACDiscrete": MOSACDiscrete,
     "EUPG": EUPG,
 }
 
@@ -84,7 +85,7 @@ class MORLD(MOAgent):
             env: environment
             scalarization_method: scalarization method to apply. "ws" or "tch".
             evaluation_mode: esr or ser (for evaluation env)
-            policy_name: name of the underlying policy to use: "MOSAC", EUPG can be easily adapted.
+            policy_name: name of the underlying policy to use: MOSAC/MOSACDiscrete (continuous/discrete), EUPG can be easily adapted.
             policy_args: arguments for the policy
             gamma: gamma
             pop_size: size of population
@@ -136,7 +137,7 @@ class MORLD(MOAgent):
             raise Exception(f"Unsupported weight init method: ${self.weight_init_method}")
 
         self.scalarization_method = scalarization_method
-        if scalarization_method == "ws" and policy_name == "MOSAC":
+        if scalarization_method == "ws" and (policy_name == "MOSAC" or policy_name == "MOSACDiscrete"):
             self.scalarization = th.matmul
         elif scalarization_method == "ws":
             self.scalarization = weighted_sum
@@ -456,7 +457,7 @@ class MORLD(MOAgent):
             obs = th.tensor(obs).float().to(self.device)
 
         policy = self.select_nearest_policy(w) # Select the policy with weights nearest to the given weight vector
-        if self.policy_name == "MOSAC":
+        if self.policy_name == "MOSAC" or self.policy_name == "MOSACDiscrete":
             action, _, _ = policy.wrapped.actor.get_action(obs) # MOSAC Policy
         elif self.policy_name == "EUPG":
             action = policy.wrapped.eval(obs, disc_vec_return)

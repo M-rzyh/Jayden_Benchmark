@@ -119,7 +119,7 @@ class MOSACActor(nn.Module):
 
 
 class MOSAC(MOPolicy):
-    """Multi-objective Soft Actor-Critic (SAC) algorithm.
+    """Multi-objective Soft Actor-Critic (SAC) algorithm for continuous action spaces.
 
     It is a multi-objective version of the SAC algorithm, with multi-objective critic and weighted sum scalarization.
     """
@@ -356,7 +356,7 @@ class MOSAC(MOPolicy):
         if save_replay_buffer:
             save_dict['buffer'] = self.buffer
 
-        if self.autotune:
+        if self.autotune: # previously used autotune
             save_dict['log_alpha'] = self.log_alpha
             save_dict['a_optimizer_state_dict'] = self.a_optimizer.state_dict()
 

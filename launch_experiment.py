@@ -41,6 +41,7 @@ def parse_args():
         "--ref-point", type=float, nargs="+", help="Reference point to use for the hypervolume calculation", required=True
     )
     parser.add_argument("--seed", type=int, help="Random seed to use", default=42)
+    parser.add_argument("--log", type=lambda x: bool(strtobool(x)), help="Whether to enable wandb logging (default: True)", default=True)
     parser.add_argument("--wandb-entity", type=str, help="Wandb entity to use", required=False)
     parser.add_argument("--wandb-group", type=str, help="Wandb group to use for logging", required=False)
     parser.add_argument(
@@ -204,7 +205,7 @@ def main():
             env_id=args.env_id,
             origin=np.array(args.ref_point),
             gamma=args.gamma,
-            log=True,
+            log=args.log,
             seed=args.seed,
             wandb_entity=args.wandb_entity,
             wandb_group=args.wandb_group,
@@ -233,7 +234,7 @@ def main():
         algo = ALGOS[args.algo](
             env=env,
             gamma=args.gamma,
-            log=True,
+            log=args.log,
             seed=args.seed,
             wandb_entity=args.wandb_entity,
             wandb_group=args.wandb_group,
