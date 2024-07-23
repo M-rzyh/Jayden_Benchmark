@@ -26,7 +26,7 @@ from mo_utils.experiments import (
     ENVS_WITH_KNOWN_PARETO_FRONT,
     StoreDict,
 )
-from envs.random_mo_env import RandomMOEnvWrapper
+from envs.generalization_evaluator import MORLGeneralizationEvaluator
 from envs.register_envs import register_envs
 from envs.mo_super_mario.utils import wrap_mario
 
@@ -155,7 +155,7 @@ def make_env(args):
         eval_env = wrap_mario(eval_env)
 
     if args.test_generalization:
-        env = RandomMOEnvWrapper(env,
+        env = MORLGeneralizationEvaluator(env,
                                  algo_name=args.algo,
                                  seed=args.seed, 
                                  test_envs=args.test_envs, 
@@ -164,7 +164,7 @@ def make_env(args):
                                  record_video_freq=args.record_video_ep_freq)
         
         # same randomizable env for evaluation
-        eval_env = RandomMOEnvWrapper(env,
+        eval_env = MORLGeneralizationEvaluator(env,
                                       algo_name=args.algo,
                                       seed=args.seed, 
                                       test_envs=args.test_envs, 
