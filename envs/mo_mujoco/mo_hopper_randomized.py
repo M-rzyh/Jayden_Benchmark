@@ -10,7 +10,7 @@ import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
 from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from envs.random_mo_env import DREnv
+from envs.generalization_evaluator import DREnv
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 2,
@@ -74,7 +74,7 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
         reset_noise_scale: float = 5e-3,
         exclude_current_positions_from_observation: bool = True,
         cost_objective=True, 
-        dr: bool = False, 
+        dr: bool = False, # leave as false for now, will call `reset_random` separately from `reset`
         noisy: bool = False,
         task: Optional[List[float]] = None,
         **kwargs,

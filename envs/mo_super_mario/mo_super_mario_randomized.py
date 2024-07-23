@@ -122,7 +122,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
         obs, reward, done, info = super().step(action)
 
         if self.single_stage and info["flag_get"]:
-            self.stage_bonus = 10000
+            self.stage_bonus = 350
             done = True
 
         """ Construct Multi-Objective Reward"""
@@ -190,6 +190,9 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
         vec_reward *= self.reward_space.shape[0] / 150
 
         info["score"] = info["score"] + self.stage_bonus
+
+        # original reward in gym_super_mario_bros technically does not include the coin and enemy reward
+        info["original_scalar_reward"] = xpos_r + time_r + death_r + (coin_r + enemy_r) * 0.1
 
         if self.render_mode == "human":
             self.render()

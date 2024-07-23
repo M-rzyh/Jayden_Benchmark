@@ -17,6 +17,7 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 from envs.mo_super_mario.utils import wrap_mario
+from experiments.evaluation import get_eval_params
 
 # TODO: implement this for all dr envs
 class DREnv(ABC):
@@ -68,17 +69,21 @@ def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs)
     env.observation_space.seed(seed)
     return env
 
-class RandomMOEnvWrapper(gym.Wrapper):
-    def __init__(self, 
-                 env: gym.Wrapper,
-                 algo_name: str,
-                 seed: int,
-                 generalization_algo: str,
-                 test_envs: List[str],
-                 record_video: bool,
-                 record_video_freq: int = 600, # num_evals * len(eval_weights) * rep % record_video_freq == 0
-                 save_metrics: List[str] = ['hv', 'eum'],
-                 **kwargs):
+class MORLGeneralizationEvaluator(gym.Wrapper):
+    def __init__(
+            self, 
+            env: gym.Wrapper,
+            algo_name: str,
+            seed: int,
+            generalization_algo: str,
+            test_envs: List[str],
+            record_video: bool,
+            record_video_freq: int = 600, # num_evals * len(eval_weights) * rep % record_video_freq == 0
+            eval_params: Optional[dict] = None,
+            normalization_type: str = "discounted",
+            save_metrics: List[str] = ['hv', 'eum'],
+            **kwargs
+        ):
         super().__init__(env)
         self.is_dr = generalization_algo == 'domain_randomization'
         self.algo_name = algo_name
@@ -88,6 +93,20 @@ class RandomMOEnvWrapper(gym.Wrapper):
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
 
+        # ============ Evaluation Parameters ============
+        self.eval_params = eval_params
+        self.normalization = False # whether to calculate normalised results
+        self.recover_single_objective = False # whether to log single-objective rewards
+        if eval_params:
+            print("Using eval params:", eval_params)
+            if "normalization" in eval_params:
+                self.normalsation_type = normalization_type
+                self.normalization = True
+            if "recover_single_objective" in eval_params:
+                # should only be True if env provides `info['original_scalar_reward']` in `step` function
+                self.recover_single_objective = eval_params["recover_single_objective"]
+
+        # ============ Weights Saving ============
         self.save_metrics = save_metrics
         self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
         self.seed = seed
@@ -97,14 +116,14 @@ class RandomMOEnvWrapper(gym.Wrapper):
         if self.is_dr:
             self.env.unwrapped.reset_random()
         
-        return self.env.reset(seed=seed, options=options)
-    
+        return self.env.reset(seed=seed, options=options)  
 
     def eval_mo(
         self,
         agent,
         w: Optional[np.ndarray] = None,
         scalarization=np.dot,
+        return_original_scalar=False # when `recover_single_objective` is set to True in the evaluation parameters and the environment's `step` function provides `info['original_scalar_reward']`.
     ) -> Tuple[float, float, np.ndarray, np.ndarray]:
         """Evaluates one episode of the agent in the vectorised test environments.
 
@@ -121,6 +140,11 @@ class RandomMOEnvWrapper(gym.Wrapper):
         done = np.array([False] * self.test_envs.num_envs)
         vec_return = np.zeros((self.test_envs.num_envs, len(w)))
         disc_vec_return = np.zeros_like(vec_return)
+        original_return = None
+        disc_original_return = None
+        if return_original_scalar:
+            original_return = np.zeros(self.test_envs.num_envs)
+            disc_original_return = np.zeros(self.test_envs.num_envs)
         gamma = np.ones(self.test_envs.num_envs)
         mask = np.ones(self.test_envs.num_envs, dtype=bool)
 
@@ -133,6 +157,9 @@ class RandomMOEnvWrapper(gym.Wrapper):
                         )
             obs, r, terminated, truncated, info = self.test_envs.step(actions)
             mask &= ~terminated  # Update the mask
+            if return_original_scalar:
+                original_return[mask] += info['original_scalar_reward'][mask]
+                disc_original_return[mask] += gamma[mask, None] * info['original_scalar_reward'][mask]
             vec_return[mask] += r[mask]
             disc_vec_return[mask] += gamma[mask, None] * r[mask]
             gamma[mask] *= agent.gamma
@@ -146,11 +173,11 @@ class RandomMOEnvWrapper(gym.Wrapper):
             scalarized_return = np.einsum('ij,ij->i', vec_return, w_tiled)
             scalarized_discounted_return = np.einsum('ij,ij->i', disc_vec_return, w_tiled)
 
-        return (scalarized_return, scalarized_discounted_return, vec_return, disc_vec_return)
+        return (scalarized_return, scalarized_discounted_return, vec_return, disc_vec_return, original_return, disc_original_return)
 
 
     def policy_evaluation_mo(
-        self, agent, w: Optional[np.ndarray], scalarization=np.dot, rep: int = 5
+        self, agent, w: Optional[np.ndarray], scalarization=np.dot, rep: int = 5, return_original_scalar=False
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Evaluates the value of a policy by running the policy for multiple episodes. Returns the average returns.
 
@@ -164,17 +191,21 @@ class RandomMOEnvWrapper(gym.Wrapper):
         Returns:
             (float, float, np.ndarray, np.ndarray): Avg scalarized return, Avg scalarized discounted return, Avg vectorized return, Avg vectorized discounted return
         """
-        evals = [self.eval_mo(agent=agent, w=w, scalarization=scalarization) for _ in range(rep)]
+        evals = [self.eval_mo(agent=agent, w=w, scalarization=scalarization, return_original_scalar=return_original_scalar) for _ in range(rep)]
         avg_scalarized_return = np.mean([eval[0] for eval in evals], axis=0)
         avg_scalarized_discounted_return = np.mean([eval[1] for eval in evals], axis=0)
         avg_vec_return = np.mean([eval[2] for eval in evals], axis=0)
         avg_disc_vec_return = np.mean([eval[3] for eval in evals], axis=0)
+        avg_original_return = np.mean([eval[4] for eval in evals], axis=0) if evals[0][4] is not None else None
+        avg_disc_original_return = np.mean([eval[5] for eval in evals], axis=0) if evals[0][5] is not None else None
 
         return (
             avg_scalarized_return,
             avg_scalarized_discounted_return,
             avg_vec_return,
             avg_disc_vec_return,
+            avg_original_return,
+            avg_disc_original_return
         )
     
     def log_all_multi_policy_metrics(
@@ -185,7 +216,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
         reward_dim: int,
         global_step: int,
         n_sample_weights: int,
-        discounted: bool,
+        idstr: str = "",
     ):
         """Logs all metrics for multi-policy training (one for each test environment).
 
@@ -201,9 +232,8 @@ class RandomMOEnvWrapper(gym.Wrapper):
             global_step: global step for logging
             n_sample_weights: number of weights to sample for EUM and MUL computation
             ref_front: reference front, if known
-            discounted: if using discounted values or not
+            idstr: for identifying MOO metrics of different types, e.g. "discounted_", "normalised_"
         """
-        disc_str = "discounted_" if discounted else ""
         for i, current_front in enumerate(current_fronts):
             filtered_front = list(filter_pareto_dominated(current_front))
             hv = hypervolume(hv_ref_point, filtered_front)
@@ -213,10 +243,10 @@ class RandomMOEnvWrapper(gym.Wrapper):
 
             wandb.log(
                 {
-                    f"eval/{disc_str}hypervolume/{self.test_env_names[i]}": hv,
-                    f"eval/{disc_str}sparsity/{self.test_env_names[i]}": sp,
-                    f"eval/{disc_str}eum/{self.test_env_names[i]}": eum,
-                    f"eval/{disc_str}cardinality/{self.test_env_names[i]}": card,
+                    f"eval/{idstr}hypervolume/{self.test_env_names[i]}": hv,
+                    f"eval/{idstr}sparsity/{self.test_env_names[i]}": sp,
+                    f"eval/{idstr}eum/{self.test_env_names[i]}": eum,
+                    f"eval/{idstr}cardinality/{self.test_env_names[i]}": card,
                     "global_step": global_step,
                 },
                 commit=False,
@@ -225,7 +255,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
                 columns=[f"objective_{j}" for j in range(1, reward_dim + 1)],
                 data=[p.tolist() for p in filtered_front],
             )
-            wandb.log({f"eval/{disc_str}front/{self.test_env_names[i]}": front})
+            wandb.log({f"eval/{idstr}front/{self.test_env_names[i]}": front})
 
             metrics = {
                 'hv': hv,
@@ -274,6 +304,18 @@ class RandomMOEnvWrapper(gym.Wrapper):
                 })
             wandb.log(metrics)
 
+    def get_normalized_vec_returns(self, all_vec_returns, minmax_range):
+        minmax_array = np.array([minmax_range[str(i)] for i in range(all_vec_returns.shape[-1])])
+        min_vals = minmax_array[:, 0].reshape(1, 1, -1) # reshape to (1, 1, n_objectives) for broadcasting
+        max_vals = minmax_array[:, 1].reshape(1, 1, -1)
+
+        clipped_vec_returns = np.clip(all_vec_returns, min_vals, max_vals) # broadcasted clipping
+        
+        # Normalize
+        normalized_vec_returns = (clipped_vec_returns - min_vals) / (max_vals - min_vals)
+        
+        return normalized_vec_returns
+
 
     def eval(self, agent, eval_weights, rep, ref_point, reward_dim, global_step):
         print('Evaluating agent on test environments at step: ', global_step)
@@ -281,13 +323,25 @@ class RandomMOEnvWrapper(gym.Wrapper):
         scalarized_discounted_returns = []
         vec_returns = []
         disc_vec_returns = []
+        original_scalar_returns = []
+        disc_original_scalar_returns = []
 
         for ew in eval_weights:
-            scalarized_return, scalarized_discounted_return, vec_return, disc_vec_return = self.policy_evaluation_mo(agent, ew, rep=rep)
+            (
+                scalarized_return, 
+                scalarized_discounted_return, 
+                vec_return, 
+                disc_vec_return,
+                original_scalar_return,
+                disc_original_scalar_return
+            ) = self.policy_evaluation_mo(agent, ew, rep=rep, return_original_scalar=self.recover_single_objective)
             scalarized_returns.append(scalarized_return)
             scalarized_discounted_returns.append(scalarized_discounted_return)
             vec_returns.append(vec_return)
             disc_vec_returns.append(disc_vec_return)
+            if self.recover_single_objective:
+                original_scalar_returns.append(original_scalar_return)
+                disc_original_scalar_returns.append(disc_original_scalar_return)
 
         scalarized_returns = np.stack(scalarized_returns, axis=1)
         scalarized_discounted_returns = np.stack(scalarized_discounted_returns, axis=1)
@@ -295,6 +349,23 @@ class RandomMOEnvWrapper(gym.Wrapper):
         mean_scalarized_discounted_returns = np.mean(scalarized_discounted_returns, axis=1)
         mean_vec_returns = np.mean(vec_returns, axis=0)
         mean_disc_vec_returns = np.mean(disc_vec_returns, axis=0)
+        
+        # Recover single-objective reward
+        # Ideally, we want to evaluate using the exact weight used by the single-objective environment. However, each MORL algorithm 
+        # interprets the scale of the weights differently (especially if there's adaptive normalisation) so it's hard to recover the exact weight.
+        # So, compromise would be to use the mean original scalar reward across all weights
+        if self.recover_single_objective:
+            original_scalar_returns = np.stack(original_scalar_returns, axis=1)
+            disc_original_scalar_returns = np.stack(disc_original_scalar_returns, axis=1)
+            mean_original_scalar_returns = np.mean(original_scalar_returns, axis=1)
+            mean_disc_original_scalar_returns = np.mean(disc_original_scalar_returns, axis=1)
+            for i in range(len(mean_original_scalar_returns)):
+                metrics = {
+                    f"eval/single_objective_return/{self.test_env_names[i]}": mean_original_scalar_returns[i],
+                    f"eval/single_objective_discounted_return/{self.test_env_names[i]}": mean_disc_original_scalar_returns[i],
+                    "global_step": global_step
+                }
+                wandb.log(metrics)
 
         self._report(
             mean_scalarized_returns,
@@ -308,15 +379,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
         disc_vec_returns = np.stack(disc_vec_returns, axis=1)
         n_sample_weights = len(eval_weights)
         
-        # Undiscounted values
-        # self.log_all_multi_policy_metrics(
-        #     current_fronts=vec_returns,
-        #     hv_ref_point=ref_point,
-        #     reward_dim=reward_dim,
-        #     global_step=global_step,
-        #     n_sample_weights=n_sample_weights,
-        #     discounted=False
-        # )
+        # Undiscounted front
         for i, current_front in enumerate(vec_returns):
             filtered_front = list(filter_pareto_dominated(current_front))
             front = wandb.Table(
@@ -325,7 +388,7 @@ class RandomMOEnvWrapper(gym.Wrapper):
             )
             wandb.log({f"eval/front/{self.test_env_names[i]}": front})
 
-        # Discounted values
+        # Discounted MOO metrics
         self.log_all_multi_policy_metrics(
             agent=agent,
             current_fronts=disc_vec_returns,
@@ -333,5 +396,24 @@ class RandomMOEnvWrapper(gym.Wrapper):
             reward_dim=reward_dim,
             global_step=global_step,
             n_sample_weights=n_sample_weights,
-            discounted=True
+            idstr="discounted_"
         )
+
+        # Normalized MOO metrics
+        if self.normalization:
+            if self.normalsation_type == "discounted":
+                normalized_returns = self.get_normalized_vec_returns(disc_vec_returns, self.eval_params["normalization"]["discounted"])
+            elif self.normalsation_type == "undiscounted":
+                normalized_returns = self.get_normalized_vec_returns(vec_returns, self.eval_params["normalization"]["undiscounted"])
+            else:
+                raise NotImplementedError
+
+            self.log_all_multi_policy_metrics(
+                agent=agent,
+                current_fronts=normalized_returns,
+                hv_ref_point=np.zeros(reward_dim), # use origin as reference point for normalised metrics
+                reward_dim=reward_dim,
+                global_step=global_step,
+                n_sample_weights=n_sample_weights,
+                idstr="normalized_"
+            )

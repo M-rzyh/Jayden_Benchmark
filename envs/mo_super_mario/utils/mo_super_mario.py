@@ -192,6 +192,9 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
 
         info["score"] = info["score"] + self.stage_bonus
 
+        # original reward in gym_super_mario_bros technically does not include the coin and enemy reward
+        info["original_scalar_reward"] = xpos_r + time_r + death_r + (coin_r + enemy_r) * 0.1
+
         if self.render_mode == "human":
             self.render()
 

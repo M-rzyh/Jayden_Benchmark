@@ -1,0 +1,45 @@
+MOHopperDR-v5:
+  normalization:
+    discounted:
+      0: [0, 300] # actual [7, 231]
+      1: [0, 300] # actual [-21, 241]
+      2: [0, 150] # actual [4, 100]
+    undiscounted:
+      0: [0, 2800] # actual [8, 2682]
+      1: [0, 3200] # actual [-233, 3095]
+      2: [-100, 1100] # actual [-10, 1000]
+  recover_single_objective: True
+
+MOHalfCheehtahDR-v5:
+  normalization:
+    discounted:
+      0: [0, 1100] # actual [-93, 914]
+      1: [-500, 0] # actual [-411, 0]
+    undiscounted:
+      0: [0, 15000] # actual [-975, 13556]
+      1: [-1000, 0] # actual [-823, 0]
+  recover_single_objective: True
+
+MOHumanoidDR-v5:
+  normalization:
+    discounted:
+      0: [0, 600] # actual [74, 563]
+      1: [0, 300] # actual [33, 229]
+    undiscounted:
+      0: [0, 6000] # actual [79, 5275]
+      1: [0, 3000] # actual [36, 2286]
+  recover_single_objective: True
+
+MOSuperMarioBrosDR-v2:
+  normalization:
+    discounted:
+      0: [0, 50] # actual [0, 28.7]
+      1: [-1, 0] # actual [-0.63, -0.49]
+      2: [0, 10] # actual [0, 6]
+      3: [0, 50] # actual [0, 41]
+    undiscounted:
+      0: [0, 100] # actual [-2, 84]
+      1: [-15, 0] # actual [-11.3, 0]
+      2: [0, 20] # actual [0, 16]
+      3: [0, 400] # actual [0, 379]
+  recover_single_objective: True

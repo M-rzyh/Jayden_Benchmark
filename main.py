@@ -3,7 +3,7 @@ import numpy as np
 from mo_utils.evaluation import policy_evaluation_mo
 from algos.multi_policy.capql.capql import CAPQL
 
-from envs.random_mo_env import RandomMOEnvWrapper
+from envs.generalization_evaluator import MORLGeneralizationEvaluator
 from envs.register_envs import register_envs
 from mo_utils.evaluation import seed_everything
 
@@ -14,7 +14,7 @@ def test_capql_dr():
     seed_everything(0)
     # env = gym.make("MOLunarLanderDR-v0", continuous=True)
     # eval_env = gym.make("MOLunarLanderDR-v0", continuous=True)
-    # env = RandomMOEnvWrapper(env, 
+    # env = MORLGeneralizationEvaluator(env, 
     #                       generalization_algo="domain_randomization", 
     #                       test_env=[
     #                             "MOLunarLanderDR-v0",
@@ -27,7 +27,7 @@ def test_capql_dr():
 
     # env = gym.make("MOBipedalWalkerDR-v0")
     # eval_env = gym.make("MOBipedalWalkerDR-v0")
-    # env = RandomMOEnvWrapper(env, 
+    # env = MORLGeneralizationEvaluator(env, 
     #                       generalization_algo="domain_randomization", 
     #                       test_env=[
     #                             "BipedalWalker-v3",
@@ -39,7 +39,7 @@ def test_capql_dr():
     #                         ])
     # env = gym.make("MOHopperDR-v5")
     # eval_env = gym.make("MOHopperDR-v5")
-    # env = RandomMOEnvWrapper(env, 
+    # env = MORLGeneralizationEvaluator(env, 
     #                       generalization_algo="domain_randomization", 
     #                       test_env=[
     #                             "MOHopperDR-v5",
@@ -51,7 +51,7 @@ def test_capql_dr():
 
     env = gym.make("MOHalfCheehtahDR-v5")
     eval_env = gym.make("MOHalfCheehtahDR-v5")
-    env = RandomMOEnvWrapper(env, 
+    env = MORLGeneralizationEvaluator(env, 
                           generalization_algo="domain_randomization", 
                           test_envs=[
                                 "MOHalfCheehtahLight-v5",

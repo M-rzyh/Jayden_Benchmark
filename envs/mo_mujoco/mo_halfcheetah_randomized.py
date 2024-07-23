@@ -13,7 +13,7 @@ import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
 from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from envs.random_mo_env import DREnv
+from envs.generalization_evaluator import DREnv
 from copy import deepcopy
 
 DEFAULT_CAMERA_CONFIG = {
@@ -50,7 +50,7 @@ class MOHalfCheehtahDR(RandomMujocoEnv, EzPickle):
         ctrl_cost_weight: float = 0.1,
         reset_noise_scale: float = 0.1,
         exclude_current_positions_from_observation: bool = True,
-        dr: bool = False, 
+        dr: bool = False, # leave as false for now, will call `reset_random` separately from `reset`
         noisy: bool = False,
         **kwargs,
     ):

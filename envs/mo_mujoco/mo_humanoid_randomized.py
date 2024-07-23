@@ -17,7 +17,7 @@ import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
 from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from envs.random_mo_env import DREnv
+from envs.generalization_evaluator import DREnv
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 1,
@@ -58,7 +58,7 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
         include_cvel_in_observation: bool = True,
         include_qfrc_actuator_in_observation: bool = True,
         include_cfrc_ext_in_observation: bool = True,
-        dr: bool = False, 
+        dr: bool = False, # leave as false for now, will call `reset_random` separately from `reset`
         noisy: bool = False,
         **kwargs,
     ):
@@ -300,6 +300,7 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
             "reward_forward": forward_reward,
             "reward_ctrl": -ctrl_cost,
             "reward_contact": -contact_cost,
+            "reward_ctrl_contact": -costs,
         }
 
         return reward, reward_info
@@ -313,31 +314,24 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
         xy_velocity = (xy_position_after - xy_position_before) / self.dt
         x_velocity, y_velocity = xy_velocity
 
-        ctrl_cost = self.control_cost(action)
-        contact_cost = self.contact_cost
-
-        forward_reward = self._forward_reward_weight * x_velocity
-        healthy_reward = self.healthy_reward
-
         observation = self._get_obs()
-        terminated = self.terminated
+        reward, reward_info = self._get_rew(x_velocity, action)
+        terminated = (not self.is_healthy) and self._terminate_when_unhealthy
 
         info = {
-            "reward_survive": healthy_reward,
-            "reward_forward": forward_reward,
-            "reward_ctrl": -ctrl_cost,
-            "reward_contact": -contact_cost,
             "x_position": xy_position_after[0],
             "y_position": xy_position_after[1],
-            "distance_from_origin": np.linalg.norm(xy_position_after, ord=2),
+            "tendon_length": self.data.ten_length,
+            "tendon_velocity": self.data.ten_velocity,
+            "distance_from_origin": np.linalg.norm(self.data.qpos[0:2], ord=2),
             "x_velocity": x_velocity,
             "y_velocity": y_velocity,
+            "original_scalar_reward": reward,
+            **reward_info
         }
 
-        costs = 10 * ctrl_cost
-
-        vec_reward = np.array([forward_reward, costs])
-        vec_reward += healthy_reward
+        vec_reward = np.array([info["x_velocity"], 10 * info["reward_ctrl_contact"]], dtype=np.float32)
+        vec_reward += self.healthy_reward
 
         if self.render_mode == "human":
             self.render()

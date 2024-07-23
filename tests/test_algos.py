@@ -27,7 +27,7 @@ from algos.single_policy.ser.mo_q_learning import MOQLearning
 
 
 from envs.registration import make as gym_make
-from envs.random_mo_env import RandomMOEnvWrapper
+from envs.generalization_evaluator import MORLGeneralizationEvaluator
 
 def test_pql():
     env_id = "deep-sea-treasure-v0"
@@ -306,7 +306,7 @@ def test_capql():
 def test_capql_dr():
     env = gym_make("MOLunarLanderDR-v0", seed=88)
     eval_env = gym_make("MOLunarLanderDR-v0", seed=88)
-    env = RandomMOEnvWrapper(env, 
+    env = MORLGeneralizationEvaluator(env, 
                           generalization_algo="domain_randomization", 
                           test_env=[
                                 "MOLunarLanderDR-v0",

@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from .utils.mo_lunar_lander import MOLunarLander
 from envs.registration import register as gym_register
-from envs.random_mo_env import DREnv
+from envs.generalization_evaluator import DREnv
 
 def rand_int_seed():
     return int.from_bytes(os.urandom(4), byteorder="little")

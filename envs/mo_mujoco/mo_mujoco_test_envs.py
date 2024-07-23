@@ -202,7 +202,7 @@ def register_mujoco():
     # Humanoid
     try:
         gym.envs.register(
-            id="MOHumanoidDR-v0",
+            id="MOHumanoidDR-v5",
             entry_point="envs.mo_mujoco.mo_humanoid_randomized:MOHumanoidDR",
             max_episode_steps=1000,
         )
