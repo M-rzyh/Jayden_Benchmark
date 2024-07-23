@@ -538,6 +538,8 @@ class MORLD(MOAgent):
             self.__eval_all_policies(
                 eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front
             )
+        else:
+            eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
 
         while self.global_step < total_timesteps:
             # selection
@@ -553,7 +555,6 @@ class MORLD(MOAgent):
             # dont allow archive and weight adaptation in domain randomization 
             # because it is not possible to compare pareto front when environment constantly changes
             if test_generalization:
-                eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
                 self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
             else:
                 # Update archive

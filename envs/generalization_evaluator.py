@@ -69,10 +69,11 @@ def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs)
     env.observation_space.seed(seed)
     return env
 
-class MORLGeneralizationEvaluator(gym.Wrapper):
+
+class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def __init__(
             self, 
-            env: gym.Wrapper,
+            env: gym.Env,
             algo_name: str,
             seed: int,
             generalization_algo: str,
@@ -84,6 +85,19 @@ class MORLGeneralizationEvaluator(gym.Wrapper):
             save_metrics: List[str] = ['hv', 'eum'],
             **kwargs
         ):
+        gym.utils.RecordConstructorArgs.__init__(
+            self, 
+            algo_name=algo_name, 
+            seed=seed, 
+            generalization_algo=generalization_algo, 
+            test_envs=test_envs, 
+            record_video=record_video, 
+            record_video_freq=record_video_freq, 
+            eval_params=eval_params, 
+            normalization_type=normalization_type, 
+            save_metrics=save_metrics, 
+            **kwargs
+        )
         super().__init__(env)
         self.is_dr = generalization_algo == 'domain_randomization'
         self.algo_name = algo_name
@@ -110,7 +124,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper):
         self.save_metrics = save_metrics
         self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
         self.seed = seed
-        
 
     def reset(self, *, seed=None, options=None):
         if self.is_dr:
