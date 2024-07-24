@@ -27,6 +27,7 @@ from mo_utils.experiments import (
     StoreDict,
 )
 from envs.generalization_evaluator import MORLGeneralizationEvaluator
+from envs.dr_wrapper import DRWrapper
 from envs.register_envs import register_envs
 from envs.mo_super_mario.utils import wrap_mario
 from experiments.evaluation import get_eval_params
@@ -156,18 +157,24 @@ def make_env(args):
         eval_env = wrap_mario(eval_env)
 
     if args.test_generalization:
+        if args.generalization_algo == "domain_randomization": # randomizes domain every `reset` call
+            env = DRWrapper(eval_env)
+            eval_env = DRWrapper(eval_env)
+        else:
+            raise NotImplementedError
+
         eval_params = get_eval_params(args.env_id)
-        env = MORLGeneralizationEvaluator(env,
-                                 algo_name=args.algo,
-                                 seed=args.seed, 
-                                 test_envs=args.test_envs, 
-                                 generalization_algo=args.generalization_algo, 
-                                 record_video=args.record_video,
-                                 record_video_freq=args.record_video_ep_freq,
-                                 eval_params=eval_params)
+        env = MORLGeneralizationEvaluator( # allow for comprehensize evaluation of generalization
+                env,
+                algo_name=args.algo,
+                seed=args.seed, 
+                test_envs=args.test_envs, 
+                generalization_algo=args.generalization_algo, 
+                record_video=args.record_video,
+                record_video_freq=args.record_video_ep_freq,
+                eval_params=eval_params,
+            )
         
-        # same randomizable env for evaluation
-        eval_env = copy.deepcopy(env)
     elif args.record_video:
         eval_env = RecordVideo(
             eval_env,

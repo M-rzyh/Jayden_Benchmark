@@ -124,11 +124,11 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
         self.seed = seed
 
-    def reset(self, *, seed=None, options=None):
-        if self.is_dr:
-            self.env.unwrapped.reset_random()
+    # def reset(self, *, seed=None, options=None):
+    #     if self.is_dr:
+    #         self.env.unwrapped.reset_random()
         
-        return self.env.reset(seed=seed, options=options)  
+    #     return self.env.reset(seed=seed, options=options)  
 
     def eval_mo(
         self,
@@ -169,9 +169,9 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                         )
             obs, r, terminated, truncated, info = self.test_envs.step(actions)
             mask &= ~terminated  # Update the mask
-            if return_original_scalar:
+            if return_original_scalar and 'original_scalar_reward' in info: # done step provides no reward info
                 original_return[mask] += info['original_scalar_reward'][mask]
-                disc_original_return[mask] += gamma[mask, None] * info['original_scalar_reward'][mask]
+                disc_original_return[mask] += gamma[mask] * info['original_scalar_reward'][mask]
             vec_return[mask] += r[mask]
             disc_vec_return[mask] += gamma[mask, None] * r[mask]
             gamma[mask] *= agent.gamma
