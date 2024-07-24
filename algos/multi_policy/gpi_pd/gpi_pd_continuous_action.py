@@ -94,7 +94,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         num_q_nets: int = 2,
         delay_policy_update: int = 2,
         learning_starts: int = 100,
-        gradient_updates: int = 20,
+        gradient_updates: int = 1,
         use_gpi: bool = True,
         policy_noise: float = 0.2,
         noise_clip: float = 0.5,

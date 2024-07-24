@@ -98,7 +98,7 @@ class GPIPD(MOPolicy, MOAgent):
         num_nets: int = 2,
         batch_size: int = 128,
         learning_starts: int = 100,
-        gradient_updates: int = 20,
+        gradient_updates: int = 1,
         gamma: float = 0.99,
         max_grad_norm: Optional[float] = None,
         use_gpi: bool = True,

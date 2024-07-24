@@ -317,7 +317,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             wandb.log(metrics)
 
     def get_normalized_vec_returns(self, all_vec_returns, minmax_range):
-        minmax_array = np.array([minmax_range[str(i)] for i in range(all_vec_returns.shape[-1])])
+        minmax_array = np.array([minmax_range[i] for i in range(all_vec_returns.shape[-1])])
         min_vals = minmax_array[:, 0].reshape(1, 1, -1) # reshape to (1, 1, n_objectives) for broadcasting
         max_vals = minmax_array[:, 1].reshape(1, 1, -1)
 
