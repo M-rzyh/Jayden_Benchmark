@@ -17,7 +17,6 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 from envs.mo_super_mario.utils import wrap_mario
-from experiments.evaluation import get_eval_params
 
 # TODO: implement this for all dr envs
 class DREnv(ABC):

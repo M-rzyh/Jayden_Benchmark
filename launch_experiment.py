@@ -29,6 +29,7 @@ from mo_utils.experiments import (
 from envs.generalization_evaluator import MORLGeneralizationEvaluator
 from envs.register_envs import register_envs
 from envs.mo_super_mario.utils import wrap_mario
+from experiments.evaluation import get_eval_params
 
 
 def parse_args():
@@ -155,13 +156,15 @@ def make_env(args):
         eval_env = wrap_mario(eval_env)
 
     if args.test_generalization:
+        eval_params = get_eval_params(args.env_id)
         env = MORLGeneralizationEvaluator(env,
                                  algo_name=args.algo,
                                  seed=args.seed, 
                                  test_envs=args.test_envs, 
                                  generalization_algo=args.generalization_algo, 
                                  record_video=args.record_video,
-                                 record_video_freq=args.record_video_ep_freq)
+                                 record_video_freq=args.record_video_ep_freq,
+                                 eval_params=eval_params)
         
         # same randomizable env for evaluation
         eval_env = copy.deepcopy(env)
