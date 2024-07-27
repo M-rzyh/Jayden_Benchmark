@@ -511,6 +511,7 @@ class MORLD(MOAgent):
             num_eval_episodes_for_front: number of episodes for each policy evaluation
             num_eval_weights_for_front (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
             reset_num_timesteps: whether to reset the number of timesteps or not
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         if test_generalization: # weight adaptation and archive is not supported in domain randomization
             assert self.weight_adaptation_method is None, "Weight adaptation is not supported in domain randomization."
@@ -538,8 +539,6 @@ class MORLD(MOAgent):
             self.__eval_all_policies(
                 eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front
             )
-        else:
-            eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
 
         while self.global_step < total_timesteps:
             # selection
@@ -555,7 +554,7 @@ class MORLD(MOAgent):
             # dont allow archive and weight adaptation in domain randomization 
             # because it is not possible to compare pareto front when environment constantly changes
             if test_generalization:
-                self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
             else:
                 # Update archive
                 evals = self.__eval_all_policies(

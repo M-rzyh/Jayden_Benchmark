@@ -13,11 +13,11 @@ MOHopperDR-v5:
 MOHalfCheehtahDR-v5:
   normalization:
     discounted:
-      0: [0, 1100] # actual [-93, 914]
-      1: [-500, 0] # actual [-411, 0]
+      0: [0, 1100] # actual [-19, 820] [-93, 914]
+      1: [-500, 0] # actual [-47.5, 0] [-411, 0]
     undiscounted:
       0: [0, 15000] # actual [-975, 13556]
-      1: [-1000, 0] # actual [-823, 0]
+      1: [-1000, 0] # actual [-493, 0] [-823, 0]
   recover_single_objective: True
 
 MOHumanoidDR-v5:

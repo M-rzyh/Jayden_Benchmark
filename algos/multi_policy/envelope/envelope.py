@@ -515,6 +515,7 @@ class Envelope(MOPolicy, MOAgent):
             num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
             reset_learning_starts: whether to reset the learning starts. Useful when training multiple times.
             verbose: whether to print the episode info.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         if eval_env is not None:
             assert ref_point is not None, "Reference point must be provided for the hypervolume computation."
@@ -566,7 +567,7 @@ class Envelope(MOPolicy, MOAgent):
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
                 if test_generalization:
-                    self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                    self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
                     current_front = [
                         self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]

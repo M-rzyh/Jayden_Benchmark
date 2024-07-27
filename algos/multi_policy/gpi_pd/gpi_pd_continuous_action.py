@@ -645,6 +645,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             eval_freq (int): Number of timesteps between evaluations during an iteration.
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         if self.log:
             self.register_additional_config(
@@ -713,7 +714,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             if self.log and self.global_step % eval_mo_freq == 0:
                 # Evaluation
                 if test_generalization:
-                    self.env.eval(self, eval_weights, rep=num_eval_episodes_for_front, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                    self.env.eval(self, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
                 else:
                     gpi_returns_test_tasks = [
                         policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights

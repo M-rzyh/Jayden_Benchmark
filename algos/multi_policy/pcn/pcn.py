@@ -400,6 +400,8 @@ class PCN(MOAgent, MOPolicy):
         max_return: np.ndarray = None,
         max_buffer_size: int = 100,
         num_points_pf: int = 100,
+        eval_mo_freq: int = 10000,
+        test_generalization: bool = False,
     ):
         """Train PCN.
 
@@ -415,6 +417,8 @@ class PCN(MOAgent, MOPolicy):
             max_return: maximum return for clipping desired return. When None, this will be set to 100 for all objectives.
             max_buffer_size: maximum buffer size
             num_points_pf: number of points to sample from pareto front for metrics calculation
+            eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         max_return = max_return if max_return is not None else np.full(self.reward_dim, 100.0, dtype=np.float32)
         if self.log:
@@ -434,7 +438,6 @@ class PCN(MOAgent, MOPolicy):
             )
         self.global_step = 0
         total_episodes = num_er_episodes
-        n_checkpoints = 0
 
         # fill buffer with random episodes
         self.experience_replay = []
@@ -522,17 +525,19 @@ class PCN(MOAgent, MOPolicy):
                 f"step {self.global_step} \t return {np.mean(returns, axis=0)}, ({np.std(returns, axis=0)}) \t loss {np.mean(loss):.3E} \t horizons {np.mean(horizons)}"
             )
 
-            if self.global_step >= (n_checkpoints + 1) * total_timesteps / 1000:
-                self.save()
-                n_checkpoints += 1
-                e_returns, _, _ = self.evaluate(eval_env, max_return, n=num_points_pf)
+            if self.log and self.global_step % eval_mo_freq == 0:
+                if test_generalization:
+                    self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
+                else:
+                    self.save()
+                    e_returns, _, _ = self.evaluate(eval_env, max_return, n=num_points_pf)
 
-                if self.log:
-                    log_all_multi_policy_metrics(
-                        current_front=e_returns,
-                        hv_ref_point=ref_point,
-                        reward_dim=self.reward_dim,
-                        global_step=self.global_step,
-                        n_sample_weights=num_eval_weights_for_eval,
-                        ref_front=known_pareto_front,
-                    )
+                    if self.log:
+                        log_all_multi_policy_metrics(
+                            current_front=e_returns,
+                            hv_ref_point=ref_point,
+                            reward_dim=self.reward_dim,
+                            global_step=self.global_step,
+                            n_sample_weights=num_eval_weights_for_eval,
+                            ref_front=known_pareto_front,
+                        )

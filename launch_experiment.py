@@ -82,11 +82,12 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--eval-hyperparams",
+        "--generalization-hyperparams",
         type=str,
         nargs="+",
         action=StoreDict,
-        help="Override hyperparameters to use for the evaluation. Example: --train-hyperparams num_eval_weights_for_front:10 timesteps_per_iter:10000",
+        help="Override hyperparameters to use for the generalizability evaluation. \
+            Example: --generalization-hyperparams num_eval_weights:100 num_eval_episodes:5 record_video_freq:1000",
         default={},
     )
 
@@ -171,8 +172,8 @@ def make_env(args):
                 test_envs=args.test_envs, 
                 generalization_algo=args.generalization_algo, 
                 record_video=args.record_video,
-                record_video_freq=args.record_video_ep_freq,
                 eval_params=eval_params,
+                **args.generalization_hyperparams
             )
         
     elif args.record_video:

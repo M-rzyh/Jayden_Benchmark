@@ -77,13 +77,31 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             seed: int,
             generalization_algo: str,
             test_envs: List[str],
-            record_video: bool,
-            record_video_freq: int = 600, # num_evals * len(eval_weights) * rep % record_video_freq == 0
+            record_video: bool = False,
+            record_video_freq: int = 1000,
+            num_eval_weights: int = 100,
+            num_eval_episodes: int = 5,
             eval_params: Optional[dict] = None,
             normalization_type: str = "discounted",
             save_metrics: List[str] = ['hv', 'eum'],
             **kwargs
         ):
+        """Wrapper records generalization evaluation metrics for multi-objective reinforcement learning algorithms.
+
+        Args:
+            env: The environment that will be wrapped
+            algo_name: Name of the algorithm
+            seed: Seed for reproducibility
+            generalization_algo: Generalization algorithm used for choosing training environment configurations (currently only 'domain_randomization' is implemented)
+            test_envs: List of test environments to evaluate the agent on
+            record_video: Whether to record videos of the evaluation
+            record_video_freq: Episodic frequency of recording videos (preferably high number, if agent keeps dying, vectorised test environments will reset, resulting in more frequent video recordings)
+            num_eval_weights: Number of weights to evaluate the agent on (for LS methods to condition on and for EUM calculation)
+            num_eval_episodes: Number of episodes to average over for policy evaluation for each weight (total episodes = num_eval_weights * num_eval_episodes)
+            eval_params: Evaluation parameters (for normalisation, recovering single-objective rewards, etc.)
+            normalization_type: Type of cumulative reward normalisation to use (either 'discounted' or 'undiscounted')
+            save_metrics: List of metrics to save the best weights for
+        """
         gym.utils.RecordConstructorArgs.__init__(
             self, 
             algo_name=algo_name, 
@@ -100,13 +118,18 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         super().__init__(env)
         self.is_dr = generalization_algo == 'domain_randomization'
         self.algo_name = algo_name
+
+        # ============ Evaluation Parameters ============
         self.test_env_names = test_envs
         make_fn = [
             lambda env_name=env_name: make_env(env_name, algo_name, seed, record_video, record_video_freq, **kwargs) for env_name in test_envs
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
 
-        # ============ Evaluation Parameters ============
+        self.num_eval_weights = num_eval_weights
+        self.num_eval_episodes = num_eval_episodes
+        self.reward_dim = env.reward_space.shape[0]
+
         self.eval_params = eval_params
         self.normalization = False # whether to calculate normalised results
         self.recover_single_objective = False # whether to log single-objective rewards
@@ -122,13 +145,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         # ============ Weights Saving ============
         self.save_metrics = save_metrics
         self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
-        self.seed = seed
-
-    # def reset(self, *, seed=None, options=None):
-    #     if self.is_dr:
-    #         self.env.unwrapped.reset_random()
-        
-    #     return self.env.reset(seed=seed, options=options)  
+        self.seed = seed 
 
     def eval_mo(
         self,
@@ -329,7 +346,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         return normalized_vec_returns
 
 
-    def eval(self, agent, eval_weights, rep, ref_point, reward_dim, global_step):
+    def eval(self, agent, ref_point, global_step):
         print('Evaluating agent on test environments at step: ', global_step)
         scalarized_returns = []
         scalarized_discounted_returns = []
@@ -337,6 +354,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         disc_vec_returns = []
         original_scalar_returns = []
         disc_original_scalar_returns = []
+
+        eval_weights = equally_spaced_weights(self.reward_dim, self.num_eval_weights)
 
         for ew in eval_weights:
             (
@@ -346,7 +365,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 disc_vec_return,
                 original_scalar_return,
                 disc_original_scalar_return
-            ) = self.policy_evaluation_mo(agent, ew, rep=rep, return_original_scalar=self.recover_single_objective)
+            ) = self.policy_evaluation_mo(agent, ew, rep=self.num_eval_episodes, return_original_scalar=self.recover_single_objective)
             scalarized_returns.append(scalarized_return)
             scalarized_discounted_returns.append(scalarized_discounted_return)
             vec_returns.append(vec_return)
@@ -395,7 +414,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         for i, current_front in enumerate(vec_returns):
             filtered_front = list(filter_pareto_dominated(current_front))
             front = wandb.Table(
-                columns=[f"objective_{j}" for j in range(1, reward_dim + 1)],
+                columns=[f"objective_{j}" for j in range(1, self.reward_dim + 1)],
                 data=[p.tolist() for p in filtered_front],
             )
             wandb.log({f"eval/front/{self.test_env_names[i]}": front})
@@ -405,7 +424,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             agent=agent,
             current_fronts=disc_vec_returns,
             hv_ref_point=ref_point,
-            reward_dim=reward_dim,
+            reward_dim=self.reward_dim,
             global_step=global_step,
             n_sample_weights=n_sample_weights,
             idstr="discounted_"
@@ -423,8 +442,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             self.log_all_multi_policy_metrics(
                 agent=agent,
                 current_fronts=normalized_returns,
-                hv_ref_point=np.zeros(reward_dim), # use origin as reference point for normalised metrics
-                reward_dim=reward_dim,
+                hv_ref_point=np.zeros(self.reward_dim), # use origin as reference point for normalised metrics
+                reward_dim=self.reward_dim,
                 global_step=global_step,
                 n_sample_weights=n_sample_weights,
                 idstr="normalized_"
