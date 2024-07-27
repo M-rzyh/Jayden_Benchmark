@@ -119,7 +119,7 @@ class PCN(MOAgent, MOPolicy):
     def __init__(
         self,
         env: Optional[gym.Env],
-        scaling_factor: np.ndarray,
+        scaling_factor: Union[np.ndarray, List],
         learning_rate: float = 1e-3,
         gamma: float = 1.0,
         batch_size: int = 256,
@@ -127,6 +127,7 @@ class PCN(MOAgent, MOPolicy):
         noise: float = 0.1,
         project_name: str = "MORL-Baselines",
         experiment_name: str = "PCN",
+        max_return: Optional[Union[np.ndarray, List]] = None,
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         log: bool = True,
@@ -138,7 +139,7 @@ class PCN(MOAgent, MOPolicy):
 
         Args:
             env (Optional[gym.Env]): Gym environment.
-            scaling_factor (np.ndarray): Scaling factor for the desired return and horizon used in the model.
+            scaling_factor (np.ndarray): Scaling factor for the desired return and horizon used in the model. Must be of shape (reward_dim + 1,).
             learning_rate (float, optional): Learning rate. Defaults to 1e-2.
             gamma (float, optional): Discount factor. Defaults to 1.0.
             batch_size (int, optional): Batch size. Defaults to 32.
@@ -146,6 +147,7 @@ class PCN(MOAgent, MOPolicy):
             noise (float, optional): Standard deviation of the noise to add to the action in the continuous action case. Defaults to 0.1.
             project_name (str, optional): Name of the project for wandb. Defaults to "MORL-Baselines".
             experiment_name (str, optional): Name of the experiment for wandb. Defaults to "PCN".
+            max_return: maximum return for clipping desired return. When None, this will be set to 100 for all objectives.
             wandb_entity (Optional[str], optional): Entity for wandb. Defaults to None.
             wandb_group: The wandb group to use for logging.
             log (bool, optional): Whether to log to wandb. Defaults to True.
@@ -161,7 +163,8 @@ class PCN(MOAgent, MOPolicy):
         self.gamma = gamma
         self.learning_rate = learning_rate
         self.hidden_dim = hidden_dim
-        self.scaling_factor = scaling_factor
+        self.scaling_factor = np.array(scaling_factor)
+        self.max_return = np.array(max_return) if max_return is not None else np.full(self.reward_dim, 100.0, dtype=np.float32)
         self.desired_return = None
         self.desired_horizon = None
         self.continuous_action = True if type(self.env.action_space) is gym.spaces.Box else False
@@ -195,6 +198,7 @@ class PCN(MOAgent, MOPolicy):
             "learning_rate": self.learning_rate,
             "hidden_dim": self.hidden_dim,
             "scaling_factor": self.scaling_factor,
+            "max_return": self.max_return,
             "continuous_action": self.continuous_action,
             "noise": self.noise,
             "seed": self.seed,
@@ -300,29 +304,36 @@ class PCN(MOAgent, MOPolicy):
         desired_return = np.float32(desired_return)
         return desired_return, desired_horizon
 
-    def _act(self, obs: np.ndarray, desired_return, desired_horizon, eval_mode=False) -> int:
+    def _act(self, obs: np.ndarray, desired_return, desired_horizon, eval_mode=False, num_envs=1) -> int:
+        if num_envs == 1:
+            obs = np.expand_dims(obs, 0)
+            desired_return = np.tile(desired_return, (num_envs, 1)) # (num_envs, reward_dim)
+            desired_horizon = np.tile(np.array([desired_horizon]), (num_envs, 1)) # (num_envs, 1)
+        
         prediction = self.model(
-            th.tensor([obs]).float().to(self.device),
-            th.tensor([desired_return]).float().to(self.device),
-            th.tensor([desired_horizon]).unsqueeze(1).float().to(self.device),
+            th.tensor(obs).float().to(self.device),
+            th.tensor(desired_return).float().to(self.device),
+            th.tensor(desired_horizon).float().to(self.device),
         )
 
         if self.continuous_action:
-            action = prediction.detach().cpu().numpy()[0]
+            actions = prediction.detach().cpu().numpy() # (num_envs, action_dim)
             if not eval_mode:
                 # Add Gaussian noise: https://arxiv.org/pdf/2204.05027.pdf
-                action = action + np.random.normal(0.0, self.noise)
-            return action
+                actions = actions + np.random.normal(0.0, self.noise, actions.shape)
         else:
-            log_probs = prediction.detach().cpu().numpy()[0]
+            log_probs = prediction.detach().cpu().numpy() # (num_envs, action_dim)
 
             if eval_mode:
-                action = np.argmax(log_probs)
+                actions = np.argmax(log_probs, axis=1)
             else:
-                action = self.np_random.choice(np.arange(len(log_probs)), p=np.exp(log_probs))
-            return action
+                actions = np.array([self.np_random.choice(np.arange(len(log_prob)), p=np.exp(log_prob)) for log_prob in log_probs])
+        
+        if num_envs == 1:
+            return actions[0] # return action for single env
+        return actions
 
-    def _run_episode(self, env, desired_return, desired_horizon, max_return, eval_mode=False):
+    def _run_episode(self, env, desired_return, desired_horizon, eval_mode=False):
         transitions = []
         obs, _ = env.reset()
         done = False
@@ -344,26 +355,42 @@ class PCN(MOAgent, MOPolicy):
             obs = n_obs
             # clip desired return, to return-upper-bound,
             # to avoid negative returns giving impossible desired returns
-            desired_return = np.clip(desired_return - reward, None, max_return, dtype=np.float32)
+            desired_return = np.clip(desired_return - reward, None, self.max_return, dtype=np.float32)
             # clip desired horizon to avoid negative horizons
             desired_horizon = np.float32(max(desired_horizon - 1, 1.0))
         return transitions
 
-    def set_desired_return_and_horizon(self, desired_return: np.ndarray, desired_horizon: int):
-        """Set desired return and horizon for evaluation."""
+    def set_desired_return_and_horizon(self, desired_return: np.ndarray, desired_horizon: np.ndarray):
+        """
+        Set desired return and horizon for evaluation.
+        Mainly used for testing generalization of the model.
+        """
         self.desired_return = desired_return
         self.desired_horizon = desired_horizon
+
+    def readjust_desired_return_and_horizon(self, current_return: np.ndarray):
+        """
+        Readjust desired return and horizon.
+        Mainly used for testing generalization of the model.
+        """
+        self.desired_return = np.clip(self.desired_return - current_return, None, self.max_return, dtype=np.float32)
+        
+        if isinstance(self.desired_horizon, np.ndarray):
+            self.desired_horizon = np.clip(self.desired_horizon - 1, 1.0, None).astype(np.float32)
+        else:
+            self.desired_horizon = np.float32(max(self.desired_horizon - 1, 1.0))
 
     def eval(
         self, 
         obs: np.ndarray, 
         w: Optional[np.ndarray] = None,
+        num_envs: int = 1,
         **kwargs,
     ):
         """Evaluate policy action for a given observation."""
-        return self._act(obs, self.desired_return, self.desired_horizon, eval_mode=True)
+        return self._act(obs, self.desired_return, self.desired_horizon, eval_mode=True, num_envs=num_envs)
 
-    def evaluate(self, env, max_return, n=10):
+    def evaluate(self, env, n=10, num_envs=1):
         """Evaluate policy in the given environment."""
         n = min(n, len(self.experience_replay))
         episodes = self._nlargest(n)
@@ -372,7 +399,7 @@ class PCN(MOAgent, MOPolicy):
         horizons = np.float32(horizons)
         e_returns = []
         for i in range(n):
-            transitions = self._run_episode(env, returns[i], np.float32(horizons[i]), max_return, eval_mode=True)
+            transitions = self._run_episode(env, returns[i], np.float32(horizons[i]), eval_mode=True, num_envs=num_envs)
             # compute return
             for i in reversed(range(len(transitions) - 1)):
                 transitions[i].reward += self.gamma * transitions[i + 1].reward
@@ -381,7 +408,7 @@ class PCN(MOAgent, MOPolicy):
         distances = np.linalg.norm(np.array(returns) - np.array(e_returns), axis=-1)
         return e_returns, np.array(returns), distances
 
-    def save(self, filename: str = "PCN_model", save_dir: str = "weights"):
+    def save(self, filename: str = "PCN_model", save_dir: str = "weights", **kwargs):
         """Save PCN."""
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
@@ -397,7 +424,6 @@ class PCN(MOAgent, MOPolicy):
         num_er_episodes: int = 20,
         num_step_episodes: int = 10,
         num_model_updates: int = 50,
-        max_return: np.ndarray = None,
         max_buffer_size: int = 100,
         num_points_pf: int = 100,
         eval_mo_freq: int = 10000,
@@ -414,13 +440,11 @@ class PCN(MOAgent, MOPolicy):
             num_er_episodes: number of episodes to fill experience replay buffer
             num_step_episodes: number of steps per episode
             num_model_updates: number of model updates per episode
-            max_return: maximum return for clipping desired return. When None, this will be set to 100 for all objectives.
             max_buffer_size: maximum buffer size
             num_points_pf: number of points to sample from pareto front for metrics calculation
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             test_generalization (bool): Whether to test generalizability of the model.
         """
-        max_return = max_return if max_return is not None else np.full(self.reward_dim, 100.0, dtype=np.float32)
         if self.log:
             self.register_additional_config(
                 {
@@ -431,7 +455,6 @@ class PCN(MOAgent, MOPolicy):
                     "num_er_episodes": num_er_episodes,
                     "num_step_episodes": num_step_episodes,
                     "num_model_updates": num_model_updates,
-                    "max_return": max_return.tolist(),
                     "max_buffer_size": max_buffer_size,
                     "num_points_pf": num_points_pf,
                 }
@@ -493,7 +516,7 @@ class PCN(MOAgent, MOPolicy):
             returns = []
             horizons = []
             for _ in range(num_step_episodes):
-                transitions = self._run_episode(self.env, desired_return, desired_horizon, max_return)
+                transitions = self._run_episode(self.env, desired_return, desired_horizon)
                 self.global_step += len(transitions)
                 self._add_episode(transitions, max_size=max_buffer_size, step=self.global_step)
                 returns.append(transitions[0].reward)
@@ -530,7 +553,7 @@ class PCN(MOAgent, MOPolicy):
                     self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
                     self.save()
-                    e_returns, _, _ = self.evaluate(eval_env, max_return, n=num_points_pf)
+                    e_returns, _, _ = self.evaluate(eval_env, n=num_points_pf)
 
                     if self.log:
                         log_all_multi_policy_metrics(

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from distutils.util import strtobool
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Union
 import numpy as np
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
@@ -129,6 +129,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.num_eval_weights = num_eval_weights
         self.num_eval_episodes = num_eval_episodes
         self.reward_dim = env.reward_space.shape[0]
+        self.eval_weights = equally_spaced_weights(self.reward_dim, self.num_eval_weights)
 
         self.eval_params = eval_params
         self.normalization = False # whether to calculate normalised results
@@ -147,13 +148,15 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
         self.seed = seed 
 
+        # ============ Algorithm Specific ============
+        self.is_pcn = algo_name == 'pcn' # for PCN, we need to readjust the desired return and horizon after each step
+
     def eval_mo(
         self,
         agent,
         w: Optional[np.ndarray] = None,
-        scalarization=np.dot,
         return_original_scalar=False # when `recover_single_objective` is set to True in the evaluation parameters and the environment's `step` function provides `info['original_scalar_reward']`.
-    ) -> Tuple[float, float, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, Union[np.ndarray, None], Union[np.ndarray, None]]:
         """Evaluates one episode of the agent in the vectorised test environments.
 
         Args:
@@ -177,6 +180,9 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         gamma = np.ones(self.test_envs.num_envs)
         mask = np.ones(self.test_envs.num_envs, dtype=bool)
 
+        if self.is_pcn:
+            orig_desired_return, orig_desired_horizon = agent.desired_return.copy(), agent.desired_horizon.copy()
+
         while not all(done):
             actions = agent.eval(
                             obs, 
@@ -194,25 +200,22 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             gamma[mask] *= agent.gamma
             done |= np.logical_or(terminated, truncated)
 
-        if w is None:
-            scalarized_return = scalarization(vec_return)
-            scalarized_discounted_return = scalarization(disc_vec_return)
-        else:
-            w_tiled = np.tile(w, (self.test_envs.num_envs, 1))
-            scalarized_return = np.einsum('ij,ij->i', vec_return, w_tiled)
-            scalarized_discounted_return = np.einsum('ij,ij->i', disc_vec_return, w_tiled)
+            if self.is_pcn:
+                agent.readjust_desired_return_and_horizon(r)
 
-        return (scalarized_return, scalarized_discounted_return, vec_return, disc_vec_return, original_return, disc_original_return)
+        if self.is_pcn: # reset the desired return and horizon to the original values for next repetition
+            agent.set_desired_return_and_horizon(orig_desired_return, orig_desired_horizon)
+
+        return (vec_return, disc_vec_return, original_return, disc_original_return)
 
 
     def policy_evaluation_mo(
-        self, agent, w: Optional[np.ndarray], scalarization=np.dot, rep: int = 5, return_original_scalar=False
+        self, agent, w: Optional[np.ndarray], rep: int = 5, return_original_scalar=False
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Evaluates the value of a policy by running the policy for multiple episodes. Returns the average returns.
 
         Args:
             agent: Agent
-            env: MO-Gymnasium environment
             w (np.ndarray): Weight vector
             scalarization: scalarization function, taking reward and weight as parameters
             rep (int, optional): Number of episodes for averaging. Defaults to 5.
@@ -220,17 +223,13 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         Returns:
             (float, float, np.ndarray, np.ndarray): Avg scalarized return, Avg scalarized discounted return, Avg vectorized return, Avg vectorized discounted return
         """
-        evals = [self.eval_mo(agent=agent, w=w, scalarization=scalarization, return_original_scalar=return_original_scalar) for _ in range(rep)]
-        avg_scalarized_return = np.mean([eval[0] for eval in evals], axis=0)
-        avg_scalarized_discounted_return = np.mean([eval[1] for eval in evals], axis=0)
-        avg_vec_return = np.mean([eval[2] for eval in evals], axis=0)
-        avg_disc_vec_return = np.mean([eval[3] for eval in evals], axis=0)
-        avg_original_return = np.mean([eval[4] for eval in evals], axis=0) if evals[0][4] is not None else None
-        avg_disc_original_return = np.mean([eval[5] for eval in evals], axis=0) if evals[0][5] is not None else None
+        evals = [self.eval_mo(agent=agent, w=w, return_original_scalar=return_original_scalar) for _ in range(rep)]
+        avg_vec_return = np.mean([eval[0] for eval in evals], axis=0)
+        avg_disc_vec_return = np.mean([eval[1] for eval in evals], axis=0)
+        avg_original_return = np.mean([eval[2] for eval in evals], axis=0) if evals[0][2] is not None else None
+        avg_disc_original_return = np.mean([eval[3] for eval in evals], axis=0) if evals[0][3] is not None else None
 
         return (
-            avg_scalarized_return,
-            avg_scalarized_discounted_return,
             avg_vec_return,
             avg_disc_vec_return,
             avg_original_return,
@@ -244,7 +243,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         hv_ref_point: np.ndarray,
         reward_dim: int,
         global_step: int,
-        n_sample_weights: int,
         idstr: str = "",
     ):
         """Logs all metrics for multi-policy training (one for each test environment).
@@ -259,7 +257,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             hv_ref_point: reference point for hypervolume computation
             reward_dim: number of objectives
             global_step: global step for logging
-            n_sample_weights: number of weights to sample for EUM and MUL computation
             ref_front: reference front, if known
             idstr: for identifying MOO metrics of different types, e.g. "discounted_", "normalised_"
         """
@@ -267,7 +264,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             filtered_front = list(filter_pareto_dominated(current_front))
             hv = hypervolume(hv_ref_point, filtered_front)
             sp = sparsity(filtered_front)
-            eum = expected_utility(filtered_front, weights_set=equally_spaced_weights(reward_dim, n_sample_weights))
+            eum = expected_utility(filtered_front, weights_set=self.eval_weights)
             card = cardinality(filtered_front)
 
             wandb.log(
@@ -306,8 +303,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
     def _report(
         self,
-        scalarized_return: np.ndarray,
-        scalarized_discounted_return: np.ndarray,
         vec_return: np.ndarray,
         disc_vec_return: np.ndarray,
         global_step: int
@@ -322,8 +317,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         """
         for i, returns in enumerate(vec_return):
             metrics = {
-                f"eval/scalarized_return/{self.test_env_names[i]}": scalarized_return[i],
-                f"eval/scalarized_discounted_return/{self.test_env_names[i]}": scalarized_discounted_return[i],
                 "global_step": global_step
             }
             for j in range(returns.shape[0]):
@@ -345,39 +338,46 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         
         return normalized_vec_returns
 
-
-    def eval(self, agent, ref_point, global_step):
+    def eval(self, agent, ref_point, global_step, **kwargs):
         print('Evaluating agent on test environments at step: ', global_step)
-        scalarized_returns = []
-        scalarized_discounted_returns = []
         vec_returns = []
         disc_vec_returns = []
         original_scalar_returns = []
         disc_original_scalar_returns = []
 
-        eval_weights = equally_spaced_weights(self.reward_dim, self.num_eval_weights)
+        if self.is_pcn:
+            n = min(len(self.eval_weights), len(agent.experience_replay))
+            episodes = agent._nlargest(n)
+            desired_returns, desired_horizons = list(zip(*[(e[2][0].reward, len(e[2])) for e in episodes]))
+            desired_returns = np.float32(desired_returns)
+            desired_horizons = np.float32(desired_horizons)
 
-        for ew in eval_weights:
+            # for fair comparison, repeat the returns and horizons to match the number of eval_weights
+            if n < len(self.eval_weights):
+                repeat_factor = int(np.ceil(len(self.eval_weights) / n))
+                desired_returns = np.repeat(desired_returns, repeat_factor, axis=0)[:len(self.eval_weights)]
+                desired_horizons = np.repeat(desired_horizons, repeat_factor, axis=0)[:len(self.eval_weights)]
+            
+            desired_horizons = np.expand_dims(desired_horizons, axis=-1)
+            desired_horizons = np.tile(desired_horizons, (self.test_envs.num_envs, 1, 1))
+            desired_returns = np.tile(desired_returns, (self.test_envs.num_envs, 1, 1))
+
+        for i, ew in enumerate(self.eval_weights):
+            if self.is_pcn:
+                agent.set_desired_return_and_horizon(desired_returns[:, i], desired_horizons[:, i])
+            
             (
-                scalarized_return, 
-                scalarized_discounted_return, 
                 vec_return, 
                 disc_vec_return,
                 original_scalar_return,
                 disc_original_scalar_return
             ) = self.policy_evaluation_mo(agent, ew, rep=self.num_eval_episodes, return_original_scalar=self.recover_single_objective)
-            scalarized_returns.append(scalarized_return)
-            scalarized_discounted_returns.append(scalarized_discounted_return)
             vec_returns.append(vec_return)
             disc_vec_returns.append(disc_vec_return)
             if self.recover_single_objective:
                 original_scalar_returns.append(original_scalar_return)
                 disc_original_scalar_returns.append(disc_original_scalar_return)
 
-        scalarized_returns = np.stack(scalarized_returns, axis=1)
-        scalarized_discounted_returns = np.stack(scalarized_discounted_returns, axis=1)
-        mean_scalarized_returns = np.mean(scalarized_returns, axis=1)
-        mean_scalarized_discounted_returns = np.mean(scalarized_discounted_returns, axis=1)
         mean_vec_returns = np.mean(vec_returns, axis=0)
         mean_disc_vec_returns = np.mean(disc_vec_returns, axis=0)
         
@@ -399,8 +399,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 wandb.log(metrics)
 
         self._report(
-            mean_scalarized_returns,
-            mean_scalarized_discounted_returns,
             mean_vec_returns,
             mean_disc_vec_returns,
             global_step=global_step
@@ -408,7 +406,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
         vec_returns = np.stack(vec_returns, axis=1)
         disc_vec_returns = np.stack(disc_vec_returns, axis=1)
-        n_sample_weights = len(eval_weights)
         
         # Undiscounted front
         for i, current_front in enumerate(vec_returns):
@@ -426,7 +423,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             hv_ref_point=ref_point,
             reward_dim=self.reward_dim,
             global_step=global_step,
-            n_sample_weights=n_sample_weights,
             idstr="discounted_"
         )
 
@@ -445,6 +441,5 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 hv_ref_point=np.zeros(self.reward_dim), # use origin as reference point for normalised metrics
                 reward_dim=self.reward_dim,
                 global_step=global_step,
-                n_sample_weights=n_sample_weights,
                 idstr="normalized_"
             )
