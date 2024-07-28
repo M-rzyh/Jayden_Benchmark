@@ -120,8 +120,8 @@ class PCN(MOAgent, MOPolicy):
         self,
         env: Optional[gym.Env],
         scaling_factor: Union[np.ndarray, List],
-        learning_rate: float = 1e-3,
-        gamma: float = 1.0,
+        learning_rate: float = 3e-4,
+        gamma: float = 0.99,
         batch_size: int = 256,
         hidden_dim: int = 64,
         noise: float = 0.1,
@@ -140,8 +140,8 @@ class PCN(MOAgent, MOPolicy):
         Args:
             env (Optional[gym.Env]): Gym environment.
             scaling_factor (np.ndarray): Scaling factor for the desired return and horizon used in the model. Must be of shape (reward_dim + 1,).
-            learning_rate (float, optional): Learning rate. Defaults to 1e-2.
-            gamma (float, optional): Discount factor. Defaults to 1.0.
+            learning_rate (float, optional): Learning rate. Defaults to 3e-4.
+            gamma (float, optional): Discount factor. Defaults to 0.99.
             batch_size (int, optional): Batch size. Defaults to 32.
             hidden_dim (int, optional): Hidden dimension. Defaults to 64.
             noise (float, optional): Standard deviation of the noise to add to the action in the continuous action case. Defaults to 0.1.
@@ -399,7 +399,7 @@ class PCN(MOAgent, MOPolicy):
         horizons = np.float32(horizons)
         e_returns = []
         for i in range(n):
-            transitions = self._run_episode(env, returns[i], np.float32(horizons[i]), eval_mode=True, num_envs=num_envs)
+            transitions = self._run_episode(env, returns[i], np.float32(horizons[i]), eval_mode=True)
             # compute return
             for i in reversed(range(len(transitions) - 1)):
                 transitions[i].reward += self.gamma * transitions[i + 1].reward

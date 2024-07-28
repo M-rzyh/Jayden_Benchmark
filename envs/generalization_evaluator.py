@@ -83,6 +83,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             num_eval_episodes: int = 5,
             eval_params: Optional[dict] = None,
             normalization_type: str = "discounted",
+            save_weights: bool = False,
             save_metrics: List[str] = ['hv', 'eum'],
             **kwargs
         ):
@@ -100,6 +101,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             num_eval_episodes: Number of episodes to average over for policy evaluation for each weight (total episodes = num_eval_weights * num_eval_episodes)
             eval_params: Evaluation parameters (for normalisation, recovering single-objective rewards, etc.)
             normalization_type: Type of cumulative reward normalisation to use (either 'discounted' or 'undiscounted')
+            save_weights: Whether to save the best weights for each test environment
             save_metrics: List of metrics to save the best weights for
         """
         gym.utils.RecordConstructorArgs.__init__(
@@ -144,6 +146,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 self.recover_single_objective = eval_params["recover_single_objective"]
 
         # ============ Weights Saving ============
+        self.save_weights = save_weights
         self.save_metrics = save_metrics
         self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
         self.seed = seed 
@@ -283,22 +286,23 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             )
             wandb.log({f"eval/{idstr}front/{self.test_env_names[i]}": front})
 
-            metrics = {
-                'hv': hv,
-                'sp': sp,
-                'eum': eum,
-                'card': card
-            }
+            if self.save_weights:
+                metrics = {
+                    'hv': hv,
+                    'sp': sp,
+                    'eum': eum,
+                    'card': card
+                }
 
-            for j, save_metric in enumerate(self.save_metrics):
-                if save_metric in metrics.keys():
-                    if metrics[save_metric] > self.best_metrics[j][i]:
-                        self.best_metrics[j][i] = hv
-                        agent.save(
-                            save_dir=f"weights/{self.algo_name}/best_{save_metric}/seed{self.seed}/{self.test_env_names[i]}",
-                            filename=f"{self.test_env_names[i]}", 
-                            save_replay_buffer=False
-                        )
+                for j, save_metric in enumerate(self.save_metrics):
+                    if save_metric in metrics.keys():
+                        if metrics[save_metric] > self.best_metrics[j][i]:
+                            self.best_metrics[j][i] = hv
+                            agent.save(
+                                save_dir=f"weights/{self.algo_name}/best_{save_metric}/seed{self.seed}/{self.test_env_names[i]}",
+                                filename=f"{self.test_env_names[i]}", 
+                                save_replay_buffer=False
+                            )
 
 
     def _report(

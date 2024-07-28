@@ -129,7 +129,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             learning_rate (float, optional): The learning rate. Defaults to 3e-4.
             gamma (float, optional): The discount factor. Defaults to 0.99.
             tau (float, optional): The soft update coefficient. Defaults to 0.005.
-            buffer_size (int, optional): The size of the replay buffer. Defaults to int(1e6).
+            buffer_size (int, optional): The size of the replay buffer. Defaults to int(4e5).
             net_arch (List, optional): The network architecture for the policy and Q-networks.
             dynamics_net_arch (List, optional): The network architecture for the dynamics model.
             batch_size (int, optional): The batch size for training. Defaults to 256.
