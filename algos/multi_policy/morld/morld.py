@@ -298,6 +298,7 @@ class MORLD(MOAgent):
         num_eval_weights_for_eval: int,
         ref_point: np.ndarray,
         known_front: Optional[List[np.ndarray]] = None,
+        test_generalization: bool = False,
     ):
         """Evaluates all policies and store their current performances on the buffer and pareto archive."""
         evals = []
@@ -309,9 +310,9 @@ class MORLD(MOAgent):
 
         print("Current pareto archive:")
         print(self.archive.evaluations[:50])
-        print(self.archive.evaluations[50:])
+        print(self.archive.evaluations[-50:])
 
-        if self.log:
+        if self.log and not test_generalization:
             log_all_multi_policy_metrics(
                 self.archive.evaluations,
                 ref_point,
@@ -535,10 +536,9 @@ class MORLD(MOAgent):
         obs, _ = self.env.reset()
         print("Starting training...")
 
-        if not test_generalization:
-            self.__eval_all_policies(
-                eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front
-            )
+        self.__eval_all_policies(
+            eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front, test_generalization
+        )
 
         while self.global_step < total_timesteps:
             # selection
@@ -555,10 +555,11 @@ class MORLD(MOAgent):
             # because it is not possible to compare pareto front when environment constantly changes
             if test_generalization:
                 self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
-            else:
+
+            if self.weight_adaptation_method is not None:
                 # Update archive
                 evals = self.__eval_all_policies(
-                    eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front
+                    eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front, test_generalization
                 )
 
                 # Adaptation
