@@ -82,6 +82,15 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--test-generalization",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="Whether to test the generalizability of the algorithm (default: True)",
+    )
+
+    parser.add_argument(
         "--generalization-hyperparams",
         type=str,
         nargs="+",
@@ -129,8 +138,7 @@ def autotag() -> str:
 
     return wandb_tag
 
-def parse_train_args(args):
-    args.test_generalization = False if "test_generalization" not in args.train_hyperparams else args.train_hyperparams["test_generalization"]
+def parse_generalization_args(args):
     if args.test_generalization:
         assert "test_envs" != '', "test_envs must be provided if test_generalization is True"
         # assert args.record_video == False, "cannot record video when testing generalization because environments are vectorized"
@@ -188,7 +196,7 @@ def make_env(args):
 def main():
     register_envs()
     args = parse_args()
-    args = parse_train_args(args)
+    args = parse_generalization_args(args)
     print(args)
 
     seed_everything(args.seed)
@@ -224,6 +232,7 @@ def main():
             eval_env=eval_env,
             ref_point=np.array(args.ref_point),
             known_pareto_front=None,
+            test_generalization=args.test_generalization,
             **args.train_hyperparams,
         )
 
