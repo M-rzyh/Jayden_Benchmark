@@ -137,9 +137,9 @@ class MORLD(MOAgent):
             raise Exception(f"Unsupported weight init method: ${self.weight_init_method}")
 
         self.scalarization_method = scalarization_method
-        if scalarization_method == "ws" and (policy_name == "MOSAC" or policy_name == "MOSACDiscrete"):
-            self.scalarization = th.matmul
-        elif scalarization_method == "ws":
+        # if scalarization_method == "ws" and (policy_name == "MOSAC" or policy_name == "MOSACDiscrete"):
+        #     self.scalarization = th.matmul
+        if scalarization_method == "ws":
             self.scalarization = weighted_sum
         elif scalarization_method == "tch":
             self.scalarization = tchebicheff(tau=0.5, reward_dim=self.reward_dim)
@@ -193,7 +193,7 @@ class MORLD(MOAgent):
                     id=i,
                     env=self.env,
                     weights=w,
-                    scalarization=self.scalarization,
+                    scalarization=th.matmul if scalarization_method == "ws" else self.scalarization, # policy operates on tensors
                     gamma=gamma,
                     log=self.log,
                     seed=self.seed,
@@ -514,8 +514,8 @@ class MORLD(MOAgent):
             reset_num_timesteps: whether to reset the number of timesteps or not
             test_generalization (bool): Whether to test generalizability of the model.
         """
-        if test_generalization: # weight adaptation and archive is not supported in domain randomization
-            assert self.weight_adaptation_method is None, "Weight adaptation is not supported in domain randomization."
+        # if test_generalization: # weight adaptation and archive is not supported in domain randomization
+        #     assert self.weight_adaptation_method is None, "Weight adaptation is not supported in domain randomization."
 
         if self.log:
             self.register_additional_config(

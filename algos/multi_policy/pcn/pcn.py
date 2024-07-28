@@ -461,6 +461,7 @@ class PCN(MOAgent, MOPolicy):
             )
         self.global_step = 0
         total_episodes = num_er_episodes
+        next_eval_step = eval_mo_freq
 
         # fill buffer with random episodes
         self.experience_replay = []
@@ -547,8 +548,9 @@ class PCN(MOAgent, MOPolicy):
             print(
                 f"step {self.global_step} \t return {np.mean(returns, axis=0)}, ({np.std(returns, axis=0)}) \t loss {np.mean(loss):.3E} \t horizons {np.mean(horizons)}"
             )
-
-            if self.log and self.global_step % eval_mo_freq == 0:
+            
+            # unable to log at nice steps that are multiples of eval_mo_freq because each episode can have irregular length if terminated early
+            if self.log and self.global_step >= next_eval_step:
                 if test_generalization:
                     self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
@@ -564,3 +566,5 @@ class PCN(MOAgent, MOPolicy):
                             n_sample_weights=num_eval_weights_for_eval,
                             ref_front=known_pareto_front,
                         )
+                
+                next_eval_step += eval_mo_freq
