@@ -422,7 +422,7 @@ class MOSACDiscrete(MOPolicy):
         with th.no_grad():
             action, _, _ = self.actor.get_action(obs)
 
-        return action
+        return action[0].detach().cpu().numpy()
 
     @override
     def update(self):
@@ -524,12 +524,12 @@ class MOSACDiscrete(MOPolicy):
         for _ in range(total_timesteps):
             # ALGO LOGIC: put action logic here
             if self.global_step < self.learning_starts:
-                actions = np.array([self.env.action_space.sample()])
+                actions = self.env.action_space.sample()
             else:
                 th_obs = th.as_tensor(obs).float().to(self.device)
                 th_obs = th_obs.unsqueeze(0)
                 actions, _, _ = self.actor.get_action(th_obs)
-                actions = actions.detach().cpu().numpy()
+                actions = actions[0].detach().cpu().numpy()
 
             # execute the game and log data
             next_obs, rewards, terminated, truncated, infos = self.env.step(actions)
