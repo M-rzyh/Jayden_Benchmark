@@ -460,13 +460,12 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
     def eval(
         self, 
         obs: Union[np.ndarray, th.Tensor], 
-        w: Union[np.ndarray, th.Tensor], 
+        w: Union[np.ndarray, th.Tensor],
+        num_envs: int = 1,
         torch_action: Optional[bool] = False,
         **kwargs
     ) -> Union[np.ndarray, th.Tensor]:
         """Evaluate the policy action for the given observation and weight vector."""
-        num_envs = kwargs.get('num_envs', 1)  # Default to 1 if not provided
-
         if isinstance(obs, np.ndarray):
             obs = th.tensor(obs).float().to(self.device)
             w = th.tensor(w).float().to(self.device)
@@ -530,7 +529,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         eval_env=None,
         eval_freq: int = 1000,
         reset_num_timesteps: bool = False,
-        test_generalization: bool = False,
     ):
         """Train the agent.
 

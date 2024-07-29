@@ -566,23 +566,37 @@ class GPIPD(MOPolicy, MOAgent):
             )
 
     @th.no_grad()
-    def gpi_action(self, obs: th.Tensor, w: th.Tensor, return_policy_index=False, include_w=False):
+    def gpi_action(
+        self, 
+        obs: th.Tensor, 
+        w: th.Tensor, 
+        return_policy_index: bool = False, 
+        num_envs: int = 1,
+    ) -> Union[int, np.ndarray]:
         """Select an action using GPI."""
-        if include_w:
-            M = th.stack(self.weight_support + [w])
+
+        if num_envs > 1:
+            M = th.stack(self.weight_support).repeat(num_envs, 1, 1)
+            obs_m = obs.unsqueeze(1).repeat(1, len(self.weight_support), 1)
+            q_values = self.q_nets[0](obs_m, M) # (num_envs, num_weights, action_dim, reward_dim)
+            scalar_q_values = th.einsum("br,bar->ba", w, q_values)
+            max_q, a = th.max(scalar_q_values, dim=1)
+            policy_index = th.argmax(max_q, dim=1)  
+            action = a[th.arange(num_envs), policy_index].detach().cpu().numpy()
+            if return_policy_index:
+                return action, policy_index.detach().cpu().numpy()
         else:
             M = th.stack(self.weight_support)
 
-        obs_m = obs.repeat(M.size(0), *(1 for _ in range(obs.dim())))
-        q_values = self.q_nets[0](obs_m, M)
+            obs_m = obs.repeat(M.size(0), *(1 for _ in range(obs.dim())))
+            q_values = self.q_nets[0](obs_m, M)
+            scalar_q_values = th.einsum("r,bar->ba", w, q_values)  # q(s,a,w_i) = q(s,a,w_i) . w
+            max_q, a = th.max(scalar_q_values, dim=1)
+            policy_index = th.argmax(max_q)  # max_i max_a q(s,a,w_i)
+            action = a[policy_index].detach().item()
 
-        scalar_q_values = th.einsum("r,bar->ba", w, q_values)  # q(s,a,w_i) = q(s,a,w_i) . w
-        max_q, a = th.max(scalar_q_values, dim=1)
-        policy_index = th.argmax(max_q)  # max_i max_a q(s,a,w_i)
-        action = a[policy_index].detach().item()
-
-        if return_policy_index:
-            return action, policy_index.item()
+            if return_policy_index:
+                return action, policy_index.item()
         return action
 
     @th.no_grad()
@@ -590,19 +604,20 @@ class GPIPD(MOPolicy, MOAgent):
         self, 
         obs: np.ndarray, 
         w: np.ndarray,
+        num_envs: int = 1,
         **kwargs,
     ) -> int:
         """Select an action for the given obs and weight vector."""
         obs = th.as_tensor(obs).float().to(self.device)
         w = th.as_tensor(w).float().to(self.device)
         for q_net in self.q_nets:
-            q_net.eval()
+            q_net.eval() # set to evaluation mode
         if self.use_gpi:
-            action = self.gpi_action(obs, w, include_w=False)
+            action = self.gpi_action(obs, w, num_envs=num_envs)
         else:
-            action = self.max_action(obs, w)
+            action = self.max_action(obs, w, num_envs=num_envs)
         for q_net in self.q_nets:
-            q_net.train()
+            q_net.train() # set back to training mode
         return action
 
     def _act(self, obs: th.Tensor, w: th.Tensor) -> int:
@@ -611,19 +626,29 @@ class GPIPD(MOPolicy, MOAgent):
         else:
             if self.use_gpi:
                 action, policy_index = self.gpi_action(obs, w, return_policy_index=True)
-                self.police_indices.append(policy_index)
+                self.policy_indices.append(policy_index)
                 return action
             else:
                 return self.max_action(obs, w)
 
     @th.no_grad()
-    def max_action(self, obs: th.Tensor, w: th.Tensor) -> int:
+    def max_action(
+        self, 
+        obs: th.Tensor, 
+        w: th.Tensor,
+        num_envs: int = 1,
+    ) -> Union[int, np.ndarray]:
         """Select the greedy action."""
-        psi = th.min(th.stack([psi_net(obs, w) for psi_net in self.q_nets]), dim=0)[0]
+        psi = th.min(th.stack([psi_net(obs, w) for psi_net in self.q_nets]), dim=0)[0] # (num_envs, action_dim, reward_dim)
         # psi = self.psi_nets[0](obs, w)
-        q = th.einsum("r,bar->ba", w, psi)
+        if num_envs > 1:
+            q = th.einsum("br,bar->ba", w, psi) # (num_envs, action_dim)
+        else:
+            q = th.einsum("r,bar->ba", w, psi) # (1, action_dim)
         max_act = th.argmax(q, dim=1)
-        return max_act.detach().item()
+        action = max_act.detach().item()
+
+        return action
 
     @th.no_grad()
     def _reset_priorities(self, w: th.Tensor):
@@ -730,7 +755,7 @@ class GPIPD(MOPolicy, MOAgent):
         self.set_weight_support(weight_support)
         tensor_w = th.tensor(weight).float().to(self.device)
 
-        self.police_indices = []
+        self.policy_indices = []
         self.global_step = 0 if reset_num_timesteps else self.global_step
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
         if reset_learning_starts:  # Resets epsilon-greedy exploration
@@ -786,9 +811,9 @@ class GPIPD(MOPolicy, MOAgent):
                 if self.log and "episode" in info.keys():
                     log_episode_info(info["episode"], np.dot, weight, self.global_step)
                     wandb.log(
-                        {"metrics/policy_index": np.array(self.police_indices), "global_step": self.global_step},
+                        {"metrics/policy_index": np.array(self.policy_indices), "global_step": self.global_step},
                     )
-                    self.police_indices = []
+                    self.policy_indices = []
 
                 if change_w_every_episode:
                     weight = random.choice(weight_support)
@@ -810,6 +835,7 @@ class GPIPD(MOPolicy, MOAgent):
         eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
         checkpoints: bool = False,
+        test_generalization: bool = False,
     ):
         """Train agent.
 
@@ -826,6 +852,7 @@ class GPIPD(MOPolicy, MOAgent):
             eval_freq (int): Number of timesteps between evaluations.
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         if self.log:
             self.register_additional_config(
@@ -885,6 +912,7 @@ class GPIPD(MOPolicy, MOAgent):
                 eval_freq=eval_freq,
                 reset_num_timesteps=False,
                 reset_learning_starts=False,
+                test_generalization=test_generalization,
             )
 
             if weight_selection_algo == "ols":
@@ -897,22 +925,25 @@ class GPIPD(MOPolicy, MOAgent):
 
             if self.log and self.global_step % eval_mo_freq == 0:
                 # Evaluation
-                gpi_returns_test_tasks = [
-                    policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
-                ]
-                log_all_multi_policy_metrics(
-                    current_front=gpi_returns_test_tasks,
-                    hv_ref_point=ref_point,
-                    reward_dim=self.reward_dim,
-                    global_step=self.global_step,
-                    n_sample_weights=num_eval_weights_for_eval,
-                    ref_front=known_pareto_front,
-                )
-                # This is the EU computed in the paper
-                mean_gpi_returns_test_tasks = np.mean(
-                    [np.dot(ew, q) for ew, q in zip(eval_weights, gpi_returns_test_tasks)], axis=0
-                )
-                wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
+                if test_generalization:
+                    self.env.eval(self, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                else:
+                    gpi_returns_test_tasks = [
+                        policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
+                    ]
+                    log_all_multi_policy_metrics(
+                        current_front=gpi_returns_test_tasks,
+                        hv_ref_point=ref_point,
+                        reward_dim=self.reward_dim,
+                        global_step=self.global_step,
+                        n_sample_weights=num_eval_weights_for_eval,
+                        ref_front=known_pareto_front,
+                    )
+                    # This is the EU computed in the paper
+                    mean_gpi_returns_test_tasks = np.mean(
+                        [np.dot(ew, q) for ew, q in zip(eval_weights, gpi_returns_test_tasks)], axis=0
+                    )
+                    wandb.log({"eval/Mean Utility - GPI": mean_gpi_returns_test_tasks, "iteration": iter})
 
             if checkpoints:
                 self.save(filename=f"GPI-PD {weight_selection_algo} iter={iter}", save_replay_buffer=False)
