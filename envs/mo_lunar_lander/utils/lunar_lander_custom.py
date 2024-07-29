@@ -230,9 +230,10 @@ class LunarLander(gym.Env, EzPickle):
             turbulence_power,
         )
 
-        assert (
-            -12.0 < gravity and gravity < 0.0
-        ), f"gravity (current value: {gravity}) must be between -12 and 0"
+        # disable gravity assertion
+        # assert (
+        #     -12.0 < gravity and gravity < 0.0
+        # ), f"gravity (current value: {gravity}) must be between -12 and 0"
         self.gravity = gravity
 
         if 0.0 > wind_power or wind_power > 20.0:

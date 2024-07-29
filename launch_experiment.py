@@ -267,6 +267,7 @@ def main():
             eval_env=eval_env,
             ref_point=np.array(args.ref_point),
             known_pareto_front=known_pareto_front,
+            test_generalization=args.test_generalization,
             **args.train_hyperparams,
         )
 

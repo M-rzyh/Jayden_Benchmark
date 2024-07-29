@@ -215,4 +215,4 @@ class MOLunarLander(LunarLander):  # no need for EzPickle, it's already in Lunar
         if self.render_mode == "human":
             self.render()
 
-        return np.array(state, dtype=np.float32), vector_reward, terminated, False, {"original_reward": reward}
+        return np.array(state, dtype=np.float32), vector_reward, terminated, False, {"original_scalar_reward": reward}

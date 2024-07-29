@@ -27,14 +27,6 @@ class DREnv(ABC):
     def reset_random(self):
         pass
 
-    @abstractmethod
-    def reset_agent(self):
-        pass
-
-    @property
-    def encoding(self):
-        pass
-
 
 def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs):
     if "mario" in gym_id.lower():
