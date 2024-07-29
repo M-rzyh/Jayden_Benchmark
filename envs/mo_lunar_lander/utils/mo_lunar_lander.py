@@ -42,7 +42,7 @@ class MOLunarLander(LunarLander):  # no need for EzPickle, it's already in Lunar
             shape=(3,),
             dtype=np.float32,
         )
-        self.reward_dim = 4
+        self.reward_dim = 3
 
     def step(self, action):
         assert self.lander is not None

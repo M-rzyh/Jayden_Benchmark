@@ -576,13 +576,14 @@ class GPIPD(MOPolicy, MOAgent):
         """Select an action using GPI."""
 
         if num_envs > 1:
-            M = th.stack(self.weight_support).repeat(num_envs, 1, 1)
-            obs_m = obs.unsqueeze(1).repeat(1, len(self.weight_support), 1)
-            q_values = self.q_nets[0](obs_m, M) # (num_envs, num_weights, action_dim, reward_dim)
-            scalar_q_values = th.einsum("br,bar->ba", w, q_values)
-            max_q, a = th.max(scalar_q_values, dim=1)
-            policy_index = th.argmax(max_q, dim=1)  
-            action = a[th.arange(num_envs), policy_index].detach().cpu().numpy()
+            M = th.stack(self.weight_support).repeat(num_envs, 1, 1) # (num_envs, num_weights, reward_dim)
+            obs_m = obs.unsqueeze(1).repeat(1, len(self.weight_support), 1) # (num_envs, num_weights, obs_dim)
+            q_values = self.q_nets[0](obs_m, M) # (num_envs * num_weights, action_dim, reward_dim)
+            q_values = q_values.view(num_envs, len(self.weight_support), self.action_dim, -1) # (num_envs, num_weights, action_dim, reward_dim)
+            scalar_q_values = th.einsum("br,bpar->bpa", w, q_values) # (num_envs, num_weights, action_dim)
+            max_q, a = th.max(scalar_q_values, dim=2) # get best action for each weight, (num_envs, num_weights)
+            policy_index = th.argmax(max_q, dim=1) # get best weight with highest scalarized value, (num_envs)
+            action = a[th.arange(num_envs), policy_index].detach().cpu().numpy() # choose best action for best weight
             if return_policy_index:
                 return action, policy_index.detach().cpu().numpy()
         else:
@@ -632,7 +633,7 @@ class GPIPD(MOPolicy, MOAgent):
                 return self.max_action(obs, w)
 
     @th.no_grad()
-    def max_action(
+    def max_action( # untested for num_envs > 1 currently
         self, 
         obs: th.Tensor, 
         w: th.Tensor,
@@ -646,7 +647,11 @@ class GPIPD(MOPolicy, MOAgent):
         else:
             q = th.einsum("r,bar->ba", w, psi) # (1, action_dim)
         max_act = th.argmax(q, dim=1)
-        action = max_act.detach().item()
+        
+        if num_envs > 1:
+            action = max_act.detach().cpu().numpy()
+        else:
+            action = max_act.detach().item()
 
         return action
 

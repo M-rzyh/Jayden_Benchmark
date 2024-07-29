@@ -472,21 +472,21 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
 
         if self.use_gpi:
             if num_envs > 1: # evaluating using vectorised envs
-                obs = obs.unsqueeze(1).repeat(1, len(self.weight_support), 1)
-                stacked_weight_support = self.stacked_weight_support.repeat(num_envs, 1, 1)
-                actions_original = self.policy(obs, stacked_weight_support)
+                obs = obs.unsqueeze(1).repeat(1, len(self.weight_support), 1) # (num_envs, len(self.weight_support), obs_dim)
+                stacked_weight_support = self.stacked_weight_support.repeat(num_envs, 1, 1) # (num_envs, len(self.weight_support), reward_dim)
+                actions_original = self.policy(obs, stacked_weight_support) # get the action for each weight in support (num_envs, len(self.weight_support), action_dim)
 
-                obs = obs.repeat(len(self.weight_support), 1, 1)
-                actions = actions_original.repeat(len(self.weight_support), 1, 1)
+                # given len(self.weight_support) actions, evaluate the q value for each policy action for each weight in the support
+                obs = obs.unsqueeze(1).repeat(1, len(self.weight_support), 1, 1)
+                actions = actions_original.unsqueeze(1).repeat(1, len(self.weight_support), 1, 1) 
                 stackedM = self.stacked_weight_support.repeat_interleave(len(self.weight_support)*num_envs, dim=0).view(
-                    len(self.weight_support)*num_envs, len(self.weight_support), self.reward_dim
+                    num_envs, len(self.weight_support), len(self.weight_support), self.reward_dim
                 )
-                values = self.q_nets[0](obs, actions, stackedM)
-                values = values.view(num_envs, len(self.weight_support), len(self.weight_support), -1)
-                scalar_values = th.einsum("bpar,br->bpa", values, w)
-                max_q, a = th.max(scalar_values, dim=1)
-                policy_index = th.argmax(max_q, dim=1)  
-                action = a[th.arange(num_envs), policy_index].detach().cpu().numpy()
+                values = self.q_nets[0](obs, actions, stackedM) # (num_envs, len(self.weight_support), len(self.weight_support), reward_dim)
+                scalar_values = th.einsum("bpar,br->bpa", values, w) # (num_envs, len(self.weight_support), len(self.weight_support))
+                max_q, a = th.max(scalar_values, dim=2) # get the best weight support index that maximizes the q value for each policy
+                policy_index = th.argmax(max_q, dim=1) # get the policy index that has the max q value across the weight support
+                action = a[th.arange(num_envs), policy_index].detach().cpu().numpy() # get the action for the best policy index
                 action = actions_original[th.arange(num_envs), action, :]
             else:
                 obs = obs.repeat(len(self.weight_support), 1)
