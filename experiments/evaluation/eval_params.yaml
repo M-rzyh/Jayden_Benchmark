@@ -1,33 +1,33 @@
 MOHopperDR-v5:
   normalization:
     discounted:
-      0: [0, 300] # actual [7, 231]
-      1: [0, 300] # actual [-21, 241]
-      2: [0, 150] # actual [4, 100]
+      0: [0, 250] # actual [7, 231]
+      1: [0, 250] # actual [-21, 241]
+      2: [0, 100] # actual [4, 100]
     undiscounted:
-      0: [0, 2800] # actual [8, 2682]
-      1: [0, 3200] # actual [-233, 3095]
-      2: [-100, 1100] # actual [-10, 1000]
+      0: [0, 2700] # actual [8, 2682]
+      1: [0, 3100] # actual [-233, 3095]
+      2: [0, 1000] # actual [-10, 1000]
   recover_single_objective: True
 
 MOHalfCheehtahDR-v5:
   normalization:
     discounted:
-      0: [0, 1100] # actual [-19, 820] [-93, 914]
-      1: [-500, 0] # actual [-47.5, 0] [-411, 0]
+      0: [0, 850] # actual [-19, 820]
+      1: [-420, 0] # actual [-411, 0]
     undiscounted:
-      0: [0, 15000] # actual [-975, 13556]
-      1: [-1000, 0] # actual [-493, 0] [-823, 0]
+      0: [0, 14000] # actual [-975, 13556]
+      1: [-850, 0] # actual [-823, 0]
   recover_single_objective: True
 
 MOHumanoidDR-v5:
   normalization:
     discounted:
       0: [0, 600] # actual [74, 563]
-      1: [0, 300] # actual [33, 229]
+      1: [0, 250] # actual [33, 229]
     undiscounted:
-      0: [0, 6000] # actual [79, 5275]
-      1: [0, 3000] # actual [36, 2286]
+      0: [0, 5300] # actual [79, 5275]
+      1: [0, 2300] # actual [36, 2286]
   recover_single_objective: True
 
 MOSuperMarioBrosDR-v2:
@@ -47,13 +47,11 @@ MOSuperMarioBrosDR-v2:
 MOLunarLanderDR-v0:
   normalization:
     discounted:
-      0: [-70, 30] # actual [-59.5, 15.6]
-      1: [-300, 120] # actual [-647.7, 93.0]
-      2: [-100, 0] # actual [-96.0, 0]
-      3: [-70, 0] # actual [-60.3, 0]
+      0: [-520, 120] # actual [-647.7, 93.0]
+      1: [-150, 20] # actual [-96.0, 0]
+      2: [-130, 20] # actual [-60.3, 0]
     undiscounted:
-      0: [-100, 100] 
-      1: [-700, 250] # actual [-689, 226]
-      2: [-600, 0] # actual [-589.4, 0]
-      3: [-700, 0] # actual [-669.8, 0]
+      0: [-800, 350] # actual [-689, 226]
+      1: [-700, 100] # actual [-589.4, 0]
+      2: [-800, 100] # actual [-669.8, 0]
   recover_single_objective: True

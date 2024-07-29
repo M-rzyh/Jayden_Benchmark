@@ -37,9 +37,9 @@ class MOLunarLander(LunarLander):  # no need for EzPickle, it's already in Lunar
 
         # Result reward, shaping reward, main engine cost, side engine cost
         self.reward_space = spaces.Box(
-            low=np.array([-100, -np.inf, -1, -1]),
-            high=np.array([100, np.inf, 0, 0]),
-            shape=(4,),
+            low=np.array([-np.inf, -101, -101]),
+            high=np.array([np.inf, 100, 100]),
+            shape=(3,),
             dtype=np.float32,
         )
         self.reward_dim = 4
@@ -206,11 +206,11 @@ class MOLunarLander(LunarLander):  # no need for EzPickle, it's already in Lunar
         if self.game_over or abs(state[0]) >= 1.0:
             terminated = True
             reward = -100
-            vector_reward[0] = -100
+            vector_reward -= 100
         if not self.lander.awake:
             terminated = True
             reward = +100
-            vector_reward[0] = +100
+            vector_reward += 100
 
         if self.render_mode == "human":
             self.render()
