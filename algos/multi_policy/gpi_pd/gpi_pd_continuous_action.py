@@ -698,7 +698,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 change_weight_every_episode=weight_selection_algo == "gpi-ls",
                 eval_env=eval_env,
                 eval_freq=eval_freq,
-                test_generalization=test_generalization,
             )
 
             if weight_selection_algo == "ols":

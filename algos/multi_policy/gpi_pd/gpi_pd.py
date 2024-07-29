@@ -912,7 +912,6 @@ class GPIPD(MOPolicy, MOAgent):
                 eval_freq=eval_freq,
                 reset_num_timesteps=False,
                 reset_learning_starts=False,
-                test_generalization=test_generalization,
             )
 
             if weight_selection_algo == "ols":
