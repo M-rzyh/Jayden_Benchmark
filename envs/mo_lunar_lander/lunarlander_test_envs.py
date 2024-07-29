@@ -2,24 +2,23 @@ from envs.mo_lunar_lander.mo_lunar_lander_randomized import MOLunarLanderDR
 import gymnasium as gym
 
 class MOLunarLanderHighGravity(MOLunarLanderDR):
-    def __init__(self, continuous=False):
+    def __init__(self, continuous=False, **kwargs):
         gravity = -15.0
-        super().__init__(gravity=gravity, continuous=continuous)
-
+        super().__init__(gravity=gravity, continuous=continuous, **kwargs)
 class MOLunarLanderWindy(MOLunarLanderDR):
-    def __init__(self, continuous=False):
+    def __init__(self, continuous=False, **kwargs):
         wind_power = 20.0
-        super().__init__(wind_power=wind_power, continuous=continuous)
+        super().__init__(wind_power=wind_power, continuous=continuous, **kwargs)
 class MOLunarLanderTurbulent(MOLunarLanderDR):
-    def __init__(self, continuous=False):
+    def __init__(self, continuous=False, **kwargs):
         turbulence_power = 2.0
-        super().__init__(turbulence_power=turbulence_power, continuous=continuous)
+        super().__init__(turbulence_power=turbulence_power, continuous=continuous, **kwargs)
 class MOLunarLanderHard(MOLunarLanderDR):
-    def __init__(self, continuous=False):
+    def __init__(self, continuous=False, **kwargs):
         gravity = -15.0
         wind_power = 20.0
         turbulence_power = 2.0
-        super().__init__(gravity=gravity, wind_power=wind_power, turbulence_power=turbulence_power, continuous=continuous)
+        super().__init__(gravity=gravity, wind_power=wind_power, turbulence_power=turbulence_power, continuous=continuous, **kwargs)
 
         
 def register_lunar_lander():

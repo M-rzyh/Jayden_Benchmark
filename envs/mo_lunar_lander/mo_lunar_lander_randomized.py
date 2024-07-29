@@ -3,16 +3,22 @@ import gymnasium as gym
 import numpy as np
 from .utils.mo_lunar_lander import MOLunarLander
 from envs.generalization_evaluator import DREnv
+from gymnasium.utils import EzPickle
 
-class MOLunarLanderDR(MOLunarLander, DREnv):
+class MOLunarLanderDR(MOLunarLander, DREnv, EzPickle):
     param_info = {'names': ['gravity', 'wind_power', 'turbulence_power'],
                   'param_max': [0.0, 20.0, 2.0],
-                  'param_min': [-12.0, 0.0, 0.0]
+                  'param_min': [-15.0, 0.0, 0.0]
                 }
     DEFAULT_PARAMS = [-10.0, 15.0, 1.5]
 
     def __init__(self, continuous=False, enable_wind=True, **kwargs):
         DREnv.__init__(self)
+        EzPickle.__init__(self,
+            continuous,
+            enable_wind,
+            **kwargs,
+        )
         MOLunarLander.__init__(self, enable_wind=enable_wind, continuous=continuous, **kwargs)
 
     def reset_random(self):

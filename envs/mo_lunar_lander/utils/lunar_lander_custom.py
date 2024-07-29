@@ -329,7 +329,7 @@ class LunarLander(gym.Env, EzPickle):
     ):
         super().reset(seed=seed)
         self._destroy()
-        print("Resetting LunarLander, using wind: ", self.wind_power, " gravity: ", self.gravity)
+        print("Resetting LunarLander, using wind: ", self.wind_power, " gravity: ", self.gravity, " turbulence: ", self.turbulence_power)
 
         # Bug's workaround for: https://github.com/Farama-Foundation/Gymnasium/issues/728
         # Not sure why the self._destroy() is not enough to clean(reset) the total world environment elements, need more investigation on the root cause,
