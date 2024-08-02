@@ -85,11 +85,11 @@ class ModelEnv:
         """
         self.model = model
         self.rew_dim = rew_dim
-        if env_id == "Hopper-v2" or env_id == "Hopper-v4" or env_id == "mo-hopper-v4" or env_id == "mo-hopper-2d-v4":
+        if env_id == "Hopper-v2" or env_id == "Hopper-v4" or env_id == "mo-hopper-v4" or env_id == "MOHopperDR-v5" or env_id == "mo-hopper-2d-v4":
             self.termination_func = termination_fn_hopper
-        elif env_id == "HalfCheetah-v2" or env_id == "mo-halfcheetah-v4":
+        elif env_id == "HalfCheetah-v2" or env_id == "mo-halfcheetah-v4" or env_id == "MOHalfCheehtahDR-v5" :
             self.termination_func = termination_fn_false
-        elif env_id == "LunarLanderContinuous-v2" or env_id.startswith("mo-lunar-lander"):
+        elif env_id == "LunarLanderContinuous-v2" or env_id.startswith("mo-lunar-lander") or env_id.startswith("MOLunarLander"):
             self.termination_func = termination_fn_false
         elif env_id == "ReacherMultiTask-v0" or env_id.startswith("mo-reacher-v"):
             self.termination_func = termination_fn_false
