@@ -186,13 +186,15 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                             disc_vec_return = disc_vec_return, # used for ESR only
                         )
             obs, r, terminated, truncated, info = self.test_envs.step(actions)
-            mask &= ~terminated  # Update the mask
+
             if return_original_scalar and 'original_scalar_reward' in info: # done step provides no reward info
                 original_return[mask] += info['original_scalar_reward'][mask]
                 disc_original_return[mask] += gamma[mask] * info['original_scalar_reward'][mask]
             vec_return[mask] += r[mask]
             disc_vec_return[mask] += gamma[mask, None] * r[mask]
             gamma[mask] *= agent.gamma
+
+            mask &= ~terminated  # Update the mask
             done |= np.logical_or(terminated, truncated)
 
             if self.is_pcn:
