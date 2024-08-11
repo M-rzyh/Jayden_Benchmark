@@ -111,7 +111,7 @@ class GPIPD(MOPolicy, MOAgent):
         layer_norm: bool = True,
         dynamics_normalize_inputs: bool = False,
         dynamics_uncertainty_threshold: float = 1.5,
-        dynamics_train_freq: Callable = lambda timestep: 250,
+        dynamics_train_freq: int = 250,
         dynamics_rollout_len: int = 1,
         dynamics_rollout_starts: int = 5000,
         dynamics_rollout_freq: int = 250,
@@ -784,7 +784,7 @@ class GPIPD(MOPolicy, MOAgent):
 
             if self.global_step >= self.learning_starts:
                 if self.dyna:
-                    if self.global_step % self.dynamics_train_freq(self.global_step) == 0:
+                    if self.global_step % self.dynamics_train_freq == 0:
                         m_obs, m_actions, m_rewards, m_next_obs, m_dones = self.replay_buffer.get_all_data()
                         one_hot = np.zeros((len(m_obs), self.action_dim))
                         one_hot[np.arange(len(m_obs)), m_actions.astype(int).reshape(len(m_obs))] = 1
