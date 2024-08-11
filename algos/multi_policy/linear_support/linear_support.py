@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import List, Optional
 
 import cdd
+import wandb
 import cvxpy as cp
 import numpy as np
 from cvxpy import SolverError
@@ -73,6 +74,9 @@ class LinearSupport:
             W_corner = self.compute_corner_weights()
             if self.verbose:
                 print("W_corner:", W_corner, "W_corner size:", len(W_corner))
+            
+            if gpi_agent is not None:
+                wandb.log({"linear_support/num_corner_weights": len(W_corner),  "global_step": gpi_agent.global_step})
 
             self.queue = []
             for wc in W_corner:
@@ -99,6 +103,9 @@ class LinearSupport:
 
         if self.verbose:
             print("CCS:", self.ccs, "CCS size:", len(self.ccs))
+        
+        if gpi_agent is not None:
+            wandb.log({"linear_support/ccs_size": len(self.ccs),  "global_step": gpi_agent.global_step})
 
         if len(self.queue) == 0:
             if self.verbose:
