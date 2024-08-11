@@ -343,6 +343,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         # Dyna Planning
         num_times = int(np.ceil(self.dynamics_rollout_batch_size / 10000))
         batch_size = min(self.dynamics_rollout_batch_size, 10000)
+        num_added_imagined_transitions = 0
         for _ in range(num_times):
             obs = self.replay_buffer.sample_obs(batch_size, to_tensor=False)
             model_env = ModelEnv(self.dynamics, self.env.unwrapped.spec.id, rew_dim=self.reward_dim)
@@ -358,6 +359,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 for i in range(len(obs)):
                     if uncertainties[i] < self.dynamics_min_uncertainty:
                         self.dynamics_buffer.add(obs[i], actions[i], r_pred[i], next_obs_pred[i], dones[i])
+                        num_added_imagined_transitions += 1
 
                 nonterm_mask = ~dones.squeeze(-1)
                 if nonterm_mask.sum() == 0:
@@ -371,6 +373,8 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                     "dynamics/uncertainty_mean": uncertainties.mean(),
                     "dynamics/uncertainty_max": uncertainties.max(),
                     "dynamics/uncertainty_min": uncertainties.min(),
+                    "dynamics/model_buffer_size": len(self.dynamics_buffer),
+                    "dynamics/imagined_transitions": num_added_imagined_transitions,
                     "global_step": self.global_step,
                 },
             )
