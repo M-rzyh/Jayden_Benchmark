@@ -206,6 +206,7 @@ if __name__ == "__main__":
     from gymnasium.wrappers import GrayScaleObservation, ResizeObservation
     from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
     from envs.mo_super_mario.utils.joypad_space import JoypadSpace
+    from envs.mo_super_mario.utils.mario_video_wrapper import RecordMarioVideo
     import matplotlib.pyplot as plt
 
     seed_everything(42)
@@ -215,8 +216,18 @@ if __name__ == "__main__":
         entry_point="envs.mo_super_mario.mo_super_mario_randomized:MOSuperMarioBrosDR",
         nondeterministic=True,
     )
-    env = gym.make("MOSuperMarioBrosDR", render_mode="human")
+    env = gym.make(
+        "MOSuperMarioBrosDR", 
+        render_mode="rgb_array", 
+        death_as_penalty=True,
+    )
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
+    env = RecordMarioVideo(
+        env,
+        f"videos/test_mario/", 
+        episode_trigger=lambda t: t % 10 == 0,
+        disable_logger=True
+    )
     # env = MaxAndSkipEnv(env, 4)
     env = ResizeObservation(env, (84, 84))
     env = GrayScaleObservation(env)
@@ -224,15 +235,14 @@ if __name__ == "__main__":
     env = mo_gym.LinearReward(env)
 
     terminated = False
-    env.reset_random()
+    env.unwrapped.reset_random()
     env.reset()
     while True:
         obs, r, terminated, truncated, info = env.step(env.action_space.sample())
-        # print(r, info["vector_reward"], terminated, info["time"])
-        plt.figure()
-        plt.imshow(obs, cmap='gray', vmin=0, vmax=255)
-        plt.show()
-        env.render()
+        print(r, info["vector_reward"], terminated, info["time"])
+        # plt.figure()
+        # plt.imshow(env.render(), cmap='gray', vmin=0, vmax=255)
+        # plt.show()
         if terminated:
-            env.reset_random()
+            env.unwrapped.reset_random()
             env.reset()

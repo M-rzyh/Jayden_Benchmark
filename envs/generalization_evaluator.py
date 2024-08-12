@@ -29,14 +29,15 @@ class DREnv(ABC):
 
 
 def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs):
-    if "mario" in gym_id.lower():
+    is_mario = "mario" in gym_id.lower()
+    if is_mario:
         env = gym.make(
                 gym_id, 
                 render_mode="rgb_array" if record_video else None, 
                 death_as_penalty=True,
                 **kwargs
             )
-        env = wrap_mario(env)
+        env = wrap_mario(env, record_video, gym_id, algo_name, seed, record_video_freq)
     else:
         env = gym.make(
                 gym_id, 
@@ -48,7 +49,7 @@ def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs)
         env = FlattenObservation(env)
 
 
-    if record_video:
+    if record_video and not is_mario:
         env = RecordVideo(
             env, 
             f"videos/{algo_name}/seed{seed}/{gym_id}/", 
