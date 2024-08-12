@@ -577,8 +577,17 @@ class GPIPD(MOPolicy, MOAgent):
 
         if num_envs > 1:
             M = th.stack(self.weight_support).repeat(num_envs, 1, 1) # (num_envs, num_weights, reward_dim)
-            obs_m = obs.unsqueeze(1).repeat(1, len(self.weight_support), *(1 for _ in range(obs.dim())))  # (num_envs, num_weights, obs_dim1, obs_dim2, ...) Obs can be multi-dimensional images
-            q_values = self.q_nets[0](obs_m, M) # (num_envs * num_weights, action_dim, reward_dim)
+
+            # (num_envs, num_weights, obs_dim1, obs_dim2, ...) Obs can be multi-dimensional images
+            obs_m = obs.unsqueeze(1).repeat(1, len(self.weight_support), *(1 for _ in range(obs.dim() - 1)))  
+            
+            if obs_m.dim() > 4: # image obs would be (num_envs, num_weights, channel, width, height)
+                obs_m = obs_m.view(-1, *obs.shape[1:]) # (num_envs * num_weights, channel, width, height)
+                M = M.view(-1, M.shape[-1])  # (num_envs * num_weights, reward_dim)
+                q_values = self.q_nets[0](obs_m, M) # (num_envs * num_weights, action_dim, reward_dim)
+            else:
+                q_values = self.q_nets[0](obs_m, M) # (num_envs * num_weights, action_dim, reward_dim)
+
             q_values = q_values.view(num_envs, len(self.weight_support), self.action_dim, -1) # (num_envs, num_weights, action_dim, reward_dim)
             scalar_q_values = th.einsum("br,bpar->bpa", w, q_values) # (num_envs, num_weights, action_dim)
             max_q, a = th.max(scalar_q_values, dim=2) # get best action for each weight, (num_envs, num_weights)
