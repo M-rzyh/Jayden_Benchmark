@@ -33,7 +33,7 @@ MOHumanoidDR-v5:
 MOSuperMarioBrosDR-v2:
   normalization:
     discounted:
-      0: [0, 50] # actual [0, 28.7]
+      0: [0, 40] # actual [0, 28.7]
       1: [-1, 0] # actual [-0.63, -0.49]
       2: [0, 10] # actual [0, 6]
       3: [0, 50] # actual [0, 41]
