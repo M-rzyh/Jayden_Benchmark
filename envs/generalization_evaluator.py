@@ -189,9 +189,18 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                         )
             obs, r, terminated, truncated, info = self.test_envs.step(actions)
 
-            if return_original_scalar and 'original_scalar_reward' in info: # done step provides no reward info
-                original_return[mask] += info['original_scalar_reward'][mask]
-                disc_original_return[mask] += gamma[mask] * info['original_scalar_reward'][mask]
+            if return_original_scalar:
+                if 'original_scalar_reward' in info:
+                    original_return[mask] += info['original_scalar_reward'][mask]
+                    disc_original_return[mask] += gamma[mask] * info['original_scalar_reward'][mask]
+                
+                if 'final_info' in info: # done step in vectorized env moves info to final_info
+                    final_info = info['final_info']
+                    for i, finfo in enumerate(final_info):
+                        if mask[i] and finfo and 'original_scalar_reward' in finfo:
+                            original_return[i] += finfo['original_scalar_reward']
+                            disc_original_return[i] += gamma[i] * finfo['original_scalar_reward']
+                    
             vec_return[mask] += r[mask]
             disc_vec_return[mask] += gamma[mask, None] * r[mask]
             gamma[mask] *= agent.gamma
