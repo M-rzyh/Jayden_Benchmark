@@ -49,10 +49,10 @@ class QNet(nn.Module):
             self.feature_extractor = None
             input_dim = obs_shape[0] + rew_dim
         elif len(obs_shape) > 1:  # Image observation
-            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=512)
+            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
             input_dim = self.feature_extractor.features_dim + rew_dim
         # |S| + |R| -> ... -> |A| * |R|
-        self.net = mlp(input_dim, action_dim * rew_dim, net_arch)
+        self.net = mlp(input_dim, action_dim * rew_dim, net_arch[1:])
         self.apply(layer_init)
 
     def forward(self, obs, w):

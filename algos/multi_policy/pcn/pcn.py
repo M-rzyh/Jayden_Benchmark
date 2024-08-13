@@ -16,6 +16,7 @@ from mo_utils.evaluation import log_all_multi_policy_metrics
 from mo_utils.morl_algorithm import MOAgent, MOPolicy
 from mo_utils.pareto import get_non_dominated_inds
 from mo_utils.performance_indicators import hypervolume
+from mo_utils.networks import NatureCNN
 
 
 def crowding_distance(points):
@@ -50,13 +51,14 @@ class Transition:
 class BasePCNModel(nn.Module, ABC):
     """Base Model for the PCN."""
 
-    def __init__(self, state_dim: int, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
         """Initialize the PCN model."""
         super().__init__()
-        self.state_dim = state_dim
+        self.obs_shape = obs_shape
         self.action_dim = action_dim
         self.reward_dim = reward_dim
         self.scaling_factor = nn.Parameter(th.tensor(scaling_factor).float(), requires_grad=False)
+        self.feature_extractor = None
         self.hidden_dim = hidden_dim
 
     def forward(self, state, desired_return, desired_horizon):
@@ -64,7 +66,12 @@ class BasePCNModel(nn.Module, ABC):
         c = th.cat((desired_return, desired_horizon), dim=-1)
         # commands are scaled by a fixed factor
         c = c * self.scaling_factor
-        s = self.s_emb(state.float())
+
+        if self.feature_extractor:
+            s = self.feature_extractor(state.float())
+        else:
+            s = state.float()
+        s = self.s_emb(s)
         c = self.c_emb(c)
         # element-wise multiplication of state-embedding and command
         prediction = self.fc(s * c)
@@ -74,10 +81,16 @@ class BasePCNModel(nn.Module, ABC):
 class DiscreteActionsDefaultModel(BasePCNModel):
     """Model for the PCN with discrete actions."""
 
-    def __init__(self, state_dim: int, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
         """Initialize the PCN model for discrete actions."""
-        super().__init__(state_dim, action_dim, reward_dim, scaling_factor, hidden_dim)
-        self.s_emb = nn.Sequential(nn.Linear(self.state_dim, self.hidden_dim), nn.Sigmoid())
+        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, hidden_dim)
+        if len(obs_shape) > 1:  # Image observation
+            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=self.hidden_dim)
+            input_dim = self.hidden_dim
+            print("Using CNN feature extractor")
+        else:
+            input_dim = obs_shape[0]
+        self.s_emb = nn.Sequential(nn.Linear(input_dim, self.hidden_dim), nn.Sigmoid())
         self.c_emb = nn.Sequential(nn.Linear(self.reward_dim + 1, self.hidden_dim), nn.Sigmoid())
         self.fc = nn.Sequential(
             nn.Linear(self.hidden_dim, self.hidden_dim),
@@ -90,10 +103,10 @@ class DiscreteActionsDefaultModel(BasePCNModel):
 class ContinuousActionsDefaultModel(BasePCNModel):
     """Model for the PCN with continuous actions."""
 
-    def __init__(self, state_dim: int, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
         """Initialize the PCN model for continuous actions."""
-        super().__init__(state_dim, action_dim, reward_dim, scaling_factor, hidden_dim)
-        self.s_emb = nn.Sequential(nn.Linear(self.state_dim, self.hidden_dim), nn.Sigmoid())
+        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, hidden_dim)
+        self.s_emb = nn.Sequential(nn.Linear(obs_shape[0], self.hidden_dim), nn.Sigmoid())
         self.c_emb = nn.Sequential(nn.Linear(self.reward_dim + 1, self.hidden_dim), nn.Sigmoid())
         self.fc = nn.Sequential(
             nn.Linear(self.hidden_dim, self.hidden_dim),
@@ -180,7 +193,7 @@ class PCN(MOAgent, MOPolicy):
                 model_class = DiscreteActionsDefaultModel
 
         self.model = model_class(
-            self.observation_dim, self.action_dim, self.reward_dim, self.scaling_factor, hidden_dim=self.hidden_dim
+            self.observation_shape, self.action_dim, self.reward_dim, self.scaling_factor, hidden_dim=self.hidden_dim
         ).to(self.device)
         self.opt = th.optim.Adam(self.model.parameters(), lr=self.learning_rate)
 

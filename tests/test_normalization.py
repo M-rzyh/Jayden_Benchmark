@@ -76,6 +76,28 @@ class TestNormalization(unittest.TestCase):
         normalized_vec_returns = get_normalized_vec_returns(all_vec_returns, minmax_range)
         np.testing.assert_almost_equal(normalized_vec_returns, expected_output, decimal=7,
                                        err_msg="Large input not handled correctly.")
+        
+    def test_negative_range(self):
+        # Test with a negative range
+        all_vec_returns = np.array([[[ -5, 0, 5], [10, -10, 25]]])
+        minmax_range = {'0': (-10, 10), '1': (-20, 20), '2': (-5, 25)}
+        
+        expected_output = np.array([[[0.25, 0.5, 0.33333333], [1., 0.25, 1.]]])
+        
+        normalized_vec_returns = get_normalized_vec_returns(all_vec_returns, minmax_range)
+        np.testing.assert_almost_equal(normalized_vec_returns, expected_output, decimal=7,
+                                       err_msg="Negative range not handled correctly.")
+
+    def test_mixed_positive_negative(self):
+        # Test with mixed positive and negative values
+        all_vec_returns = np.array([[[5, -10, 15], [-5, 10, 0]]])
+        minmax_range = {'0': (0, 10), '1': (-20, 20), '2': (0, 30)}
+        
+        expected_output = np.array([[[0.5, 0.25, 0.5], [0., 0.75, 0.]]])
+        
+        normalized_vec_returns = get_normalized_vec_returns(all_vec_returns, minmax_range)
+        np.testing.assert_almost_equal(normalized_vec_returns, expected_output, decimal=7,
+                                       err_msg="Mixed positive and negative range not handled correctly.")
 
 if __name__ == '__main__':
     unittest.main()
