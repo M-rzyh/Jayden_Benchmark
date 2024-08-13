@@ -17,6 +17,7 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 from envs.mo_super_mario.utils import wrap_mario
+import time
 
 # TODO: implement this for all dr envs
 class DREnv(ABC):
@@ -340,6 +341,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
     def eval(self, agent, ref_point, global_step, **kwargs):
         print('Evaluating agent on test environments at step: ', global_step)
+        start_time = time.time()
+
         vec_returns = []
         disc_vec_returns = []
         original_scalar_returns = []
@@ -444,3 +447,5 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 idstr="normalized_",
                 log_metrics=["hypervolume", "eum"]
             )
+
+        print(f"Time taken to complete evaluation: {(time.time() - start_time):.2f} seconds")
