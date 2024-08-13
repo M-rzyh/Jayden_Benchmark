@@ -47,11 +47,11 @@ MOSuperMarioBrosDR-v2:
 MOLunarLanderDR-v0:
   normalization:
     discounted:
-      0: [-520, 160] # actual [-647.7, 93.0]
-      1: [-150, 30] # actual [-96.0, 0]
-      2: [-130, 30] # actual [-60.3, 0]
+      0: [-250, 160] # actual [-647.7, 93.0]
+      1: [-100, 5] # actual [-96.0, 0]
+      2: [-100, 30] # actual [-60.3, 0]
     undiscounted:
-      0: [-800, 400] # actual [-689, 226]
-      1: [-700, 100] # actual [-589.4, 0]
-      2: [-800, 100] # actual [-669.8, 0]
+      0: [-500, 300] # actual [-689, 226]
+      1: [-600, 100] # actual [-589.4, 0]
+      2: [-700, 100] # actual [-669.8, 0]
   recover_single_objective: True
