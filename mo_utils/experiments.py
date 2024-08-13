@@ -3,15 +3,15 @@ import argparse
 
 from algos.multi_policy.capql.capql import CAPQL
 from algos.multi_policy.envelope.envelope import Envelope
-# from algos.multi_policy.gpi_pd.gpi_pd import GPILS, GPIPD
-# from algos.multi_policy.gpi_pd.gpi_pd_continuous_action import (
-#     GPILSContinuousAction,
-#     GPIPDContinuousAction,
-# )
+from algos.multi_policy.gpi_pd.gpi_pd import GPILS, GPIPD
+from algos.multi_policy.gpi_pd.gpi_pd_continuous_action import (
+    GPILSContinuousAction,
+    GPIPDContinuousAction,
+)
 from algos.multi_policy.morld.morld import MORLD
-# from algos.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import (
-#     MPMOQLearning,
-# )
+from algos.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import (
+    MPMOQLearning,
+)
 from algos.multi_policy.pareto_q_learning.pql import PQL
 from algos.multi_policy.pcn.pcn import PCN
 from algos.multi_policy.pgmorl.pgmorl import PGMORL
@@ -20,16 +20,16 @@ from algos.multi_policy.pgmorl.pgmorl import PGMORL
 ALGOS = {
     "pgmorl": PGMORL,
     "envelope": Envelope,
-    # "gpi_pd_continuous": GPIPDContinuousAction,
-    # "gpi_pd_discrete": GPIPD,
-    # "gpi_ls_continuous": GPILSContinuousAction,
-    # "gpi_ls_discrete": GPILS,
+    "gpi_pd_continuous": GPIPDContinuousAction,
+    "gpi_pd_discrete": GPIPD,
+    "gpi_ls_continuous": GPILSContinuousAction,
+    "gpi_ls_discrete": GPILS,
     "capql": CAPQL,
-    # "mpmoql": MPMOQLearning,
+    "mpmoql": MPMOQLearning,
     "pcn": PCN,
     "pql": PQL,
-    # "ols": MPMOQLearning,
-    # "gpi-ls": MPMOQLearning,
+    "ols": MPMOQLearning,
+    "gpi-ls": MPMOQLearning,
     "morld": MORLD,
 }
 
