@@ -77,7 +77,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             eval_params: Optional[dict] = None,
             normalization_type: str = "discounted",
             save_weights: bool = False,
-            save_metrics: List[str] = ['hv', 'eum'],
+            save_metrics: List[str] = ['hypervolume', 'eum'],
             **kwargs
         ):
         """Wrapper records generalization evaluation metrics for multi-objective reinforcement learning algorithms.
@@ -242,6 +242,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         reward_dim: int,
         global_step: int,
         idstr: str = "",
+        log_metrics: List[str] = ['hypervolume', 'sparsity', 'eum', 'cardinality']
     ):
         """Logs all metrics for multi-policy training (one for each test environment).
 
@@ -249,6 +250,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         - hypervolume
         - sparsity
         - expected utility metric (EUM)
+        - cardinality
 
         Args:
             current_fronts: List of current Pareto front approximations, has shape of (num_test_envs, num_eval_weights, num_objectives)
@@ -265,16 +267,22 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             eum = expected_utility(filtered_front, weights_set=self.eval_weights)
             card = cardinality(filtered_front)
 
-            wandb.log(
-                {
-                    f"eval/{idstr}hypervolume/{self.test_env_names[i]}": hv,
-                    f"eval/{idstr}sparsity/{self.test_env_names[i]}": sp,
-                    f"eval/{idstr}eum/{self.test_env_names[i]}": eum,
-                    f"eval/{idstr}cardinality/{self.test_env_names[i]}": card,
-                    "global_step": global_step,
-                },
-                commit=False,
-            )
+            metrics = {
+                'hypervolume': hv,
+                'sparsity': sp,
+                'eum': eum,
+                'cardinality': card
+            }
+
+            metrics_to_log = {}
+
+            for metric in log_metrics:
+                if metric in metrics.keys():
+                    metrics_to_log[f"eval/{idstr}{metric}/{self.test_env_names[i]}"] = metrics[metric]
+            
+            metrics_to_log["global_step"] = global_step
+            wandb.log(metrics_to_log, commit=False)
+
             front = wandb.Table(
                 columns=[f"objective_{j}" for j in range(1, reward_dim + 1)],
                 data=[p.tolist() for p in filtered_front],
@@ -282,13 +290,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             wandb.log({f"eval/{idstr}front/{self.test_env_names[i]}": front})
 
             if self.save_weights:
-                metrics = {
-                    'hv': hv,
-                    'sp': sp,
-                    'eum': eum,
-                    'card': card
-                }
-
                 for j, save_metric in enumerate(self.save_metrics):
                     if save_metric in metrics.keys():
                         if metrics[save_metric] > self.best_metrics[j][i]:
@@ -440,5 +441,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 hv_ref_point=np.zeros(self.reward_dim), # use origin as reference point for normalised metrics
                 reward_dim=self.reward_dim,
                 global_step=global_step,
-                idstr="normalized_"
+                idstr="normalized_",
+                log_metrics=["hypervolume", "eum"]
             )
