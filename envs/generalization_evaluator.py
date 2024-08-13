@@ -387,16 +387,16 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         # Recover single-objective reward
         # Ideally, we want to evaluate using the exact weight used by the single-objective environment. However, each MORL algorithm 
         # interprets the scale of the weights differently (especially if there's adaptive normalisation) so it's hard to recover the exact weight.
-        # So, compromise would be to use the mean original scalar reward across all weights
+        # So, best compromise would be to use the max original scalar reward across multiple evaluation/weights.
         if self.recover_single_objective:
             original_scalar_returns = np.stack(original_scalar_returns, axis=1)
             disc_original_scalar_returns = np.stack(disc_original_scalar_returns, axis=1)
-            mean_original_scalar_returns = np.mean(original_scalar_returns, axis=1)
-            mean_disc_original_scalar_returns = np.mean(disc_original_scalar_returns, axis=1)
-            for i in range(len(mean_original_scalar_returns)):
+            max_original_scalar_returns = np.max(original_scalar_returns, axis=1)
+            max_disc_original_scalar_returns = np.max(disc_original_scalar_returns, axis=1)
+            for i in range(len(max_original_scalar_returns)):
                 metrics = {
-                    f"eval/single_objective_return/{self.test_env_names[i]}": mean_original_scalar_returns[i],
-                    f"eval/single_objective_discounted_return/{self.test_env_names[i]}": mean_disc_original_scalar_returns[i],
+                    f"eval/single_objective_return/{self.test_env_names[i]}": max_original_scalar_returns[i],
+                    f"eval/single_objective_discounted_return/{self.test_env_names[i]}": max_disc_original_scalar_returns[i],
                     "global_step": global_step
                 }
                 wandb.log(metrics)
