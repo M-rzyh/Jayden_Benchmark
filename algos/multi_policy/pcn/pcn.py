@@ -582,4 +582,5 @@ class PCN(MOAgent, MOPolicy):
                 
                 next_eval_step += eval_mo_freq
 
-        self.close_wandb()
+        if self.log:
+            self.close_wandb()

@@ -958,7 +958,8 @@ class GPIPD(MOPolicy, MOAgent):
             if checkpoints:
                 self.save(filename=f"GPI-PD {weight_selection_algo} iter={iter}", save_replay_buffer=False)
 
-        self.close_wandb()
+        if self.log:
+            self.close_wandb()
 
 
 class GPILS(GPIPD):

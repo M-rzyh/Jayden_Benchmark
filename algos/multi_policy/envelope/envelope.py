@@ -596,3 +596,6 @@ class Envelope(MOPolicy, MOAgent):
 
             else:
                 obs = next_obs
+
+        if self.log:
+            self.close_wandb()

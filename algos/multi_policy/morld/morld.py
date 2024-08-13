@@ -572,4 +572,5 @@ class MORLD(MOAgent):
         print("done!")
         self.env.close()
         eval_env.close()
-        self.close_wandb()
+        if self.log:
+            self.close_wandb()

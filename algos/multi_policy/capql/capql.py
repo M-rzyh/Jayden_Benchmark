@@ -491,4 +491,5 @@ class CAPQL(MOAgent, MOPolicy):
             if checkpoints:
                 self.save(filename="CAPQL", save_replay_buffer=False)
 
-        self.close_wandb()
+        if self.log:
+            self.close_wandb()
