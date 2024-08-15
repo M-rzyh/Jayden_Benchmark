@@ -1,5 +1,6 @@
 from envs.mo_mujoco.mo_hopper_randomized import MOHopperDR
 from envs.mo_mujoco.mo_halfcheetah_randomized import MOHalfCheehtahDR
+from envs.mo_mujoco.mo_humanoid_randomized import MOHumanoidDR
 import gymnasium as gym
 import numpy as np
 
@@ -71,6 +72,35 @@ class MOHalfCheehtahHard(MOHalfCheehtahDR):
         masses = np.array([10.0, 0.1, 10.0, 10.0, 0.1, 0.1, 10.0])
         friction = np.array([0.02])
         task = np.concatenate([masses, friction])
+        super().__init__(task=task, **kwargs)
+
+# ============================ Humanoid ============================
+class MOHumanoidLight(MOHumanoidDR):
+    def __init__(self, **kwargs):
+        masses = np.array([1.7, 0.5, 1.3, 0.7, 0.6, 0.5, 0.7, 0.5, 0.3, 0.3, 0.1, 0.3, 0.1])
+        damping = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 5.0, 5.0, 5.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+        task = np.concatenate([masses, damping])
+        super().__init__(task=task, **kwargs)
+
+class MOHumanoidHeavy(MOHumanoidDR):
+    def __init__(self, **kwargs):
+        masses = np.array([10.0, 7.0, 9.0, 8.0, 7.0, 6.0, 8.0, 7.0, 6.0, 6.0, 5.5, 6.0, 5.5])
+        damping = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 5.0, 5.0, 5.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+        task = np.concatenate([masses, damping])
+        super().__init__(task=task, **kwargs)
+
+class MOHumanoidLowDamping(MOHumanoidDR):
+    def __init__(self, **kwargs):
+        masses = np.array([8.90746237, 2.26194671, 6.61619413, 4.75175093, 2.75569617, 1.76714587, 4.75175093, 2.75569617, 1.76714587, 1.66108048, 1.22954019, 1.66108048, 1.22954019])
+        damping = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 1.0, 1.0, 1.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
+        task = np.concatenate([masses, damping])
+        super().__init__(task=task, **kwargs)
+
+class MOHumanoidHard(MOHumanoidDR):
+    def __init__(self, **kwargs):
+        masses = np.array([0.1, 10.0, 0.1, 10.0, 0.1, 10.0, 0.1, 0.1, 10.0, 10.0, 0.1, 0.1])
+        damping = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 1.0, 1.0, 1.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
+        task = np.concatenate([masses, damping])
         super().__init__(task=task, **kwargs)
 
 def register_mujoco():
@@ -204,6 +234,51 @@ def register_mujoco():
         gym.envs.register(
             id="MOHumanoidDR-v5",
             entry_point="envs.mo_mujoco.mo_humanoid_randomized:MOHumanoidDR",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHumanoidDefault-v5", # copy of the dr environment but renamed for clarity
+            entry_point="envs.mo_mujoco.mo_humanoid_randomized:MOHumanoidDR",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOHumanoidLight-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHumanoidLight",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+    
+    try:
+        gym.envs.register(
+            id="MOHumanoidHeavy-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHumanoidHeavy",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+    
+    try:
+        gym.envs.register(
+            id="MOHumanoidLowDamping-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHumanoidLowDamping",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+    
+    try:
+        gym.envs.register(
+            id="MOHumanoidHard-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHumanoidHard",
             max_episode_steps=1000,
         )
     except Exception as e:
