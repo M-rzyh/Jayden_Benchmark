@@ -98,7 +98,7 @@ class MOHumanoidLowDamping(MOHumanoidDR):
 
 class MOHumanoidHard(MOHumanoidDR):
     def __init__(self, **kwargs):
-        masses = np.array([0.1, 10.0, 0.1, 10.0, 0.1, 10.0, 0.1, 0.1, 10.0, 10.0, 0.1, 0.1])
+        masses = np.array([0.1, 10.0, 0.1, 10.0, 0.1, 10.0, 0.1, 0.1, 10.0, 10.0, 0.1, 0.1, 10.0])
         damping = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 1.0, 1.0, 1.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
         task = np.concatenate([masses, damping])
         super().__init__(task=task, **kwargs)
