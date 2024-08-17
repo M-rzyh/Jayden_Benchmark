@@ -123,7 +123,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
         obs, reward, done, info = super().step(action)
 
         if self.single_stage and info["flag_get"]:
-            self.stage_bonus = 350
+            self.stage_bonus = 5000
             done = True
 
         """ Construct Multi-Objective Reward"""
@@ -141,7 +141,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
             vec_reward[obj_idx] = xpos_r
             obj_idx += 1
 
-        # 2. time penaltiy
+        # 2. time penalty
         if "time" in self.objectives:
             time_r = info["time"] - self.time
             self.time = info["time"]
@@ -153,7 +153,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
 
         # 3. death
         if self.lives > info["life"]:
-            death_r = -25.0
+            death_r = -500.0
         else:
             death_r = 0.0
         if "death" in self.objectives:

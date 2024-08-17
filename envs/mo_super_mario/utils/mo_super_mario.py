@@ -124,7 +124,7 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
         obs, reward, done, info = super().step(action)
 
         if self.single_stage and info["flag_get"]:
-            self.stage_bonus = 10000
+            self.stage_bonus = 5000
             done = True
 
         """ Construct Multi-Objective Reward"""
@@ -154,7 +154,7 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
 
         # 3. death
         if self.lives > info["life"]:
-            death_r = -25.0
+            death_r = -500.0
         else:
             death_r = 0.0
         if "death" in self.objectives:
