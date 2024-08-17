@@ -65,6 +65,19 @@ def register_mario():
     _register_mario_env('MOSuperMarioBrosDR-v2', is_random=True, rom_mode='pixel')
     _register_mario_env('MOSuperMarioBrosDR-v3', is_random=True, rom_mode='rectangle')
 
+    # Super Mario Bros. Random Levels (8 stages)
+    stages = ["1-2", "2-2", "3-3", "4-3", "5-4", "6-2", "7-2", "8-4"]
+    _register_mario_env('MOSuperMarioBros8StagesDR-v0', is_random=True, rom_mode='vanilla', stages=stages)
+    _register_mario_env('MOSuperMarioBros8StagesDR-v1', is_random=True, rom_mode='downsample', stages=stages)
+    _register_mario_env('MOSuperMarioBros8StagesDR-v2', is_random=True, rom_mode='pixel', stages=stages)
+    _register_mario_env('MOSuperMarioBros8StagesDR-v3', is_random=True, rom_mode='rectangle', stages=stages)
+
+    # Super Mario Bros. Day Levels
+    stages = ["1-1", "2-1", "4-1", "5-1", "7-1", "8-2"] # 8-1, 8-3
+    _register_mario_env('MOSuperMarioBrosDay-v0', is_random=True, rom_mode='vanilla', stages=stages)
+    _register_mario_env('MOSuperMarioBrosDay-v1', is_random=True, rom_mode='downsample', stages=stages)
+    _register_mario_env('MOSuperMarioBrosDay-v2', is_random=True, rom_mode='pixel', stages=stages)
+    _register_mario_env('MOSuperMarioBrosDay-v3', is_random=True, rom_mode='rectangle', stages=stages)
 
     # Super Mario Bros. 2 (Lost Levels)
     _register_mario_env('SuperMarioBros2-v0', lost_levels=True, rom_mode='vanilla')

@@ -41,6 +41,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
         death_as_penalty=False,
         render_mode: Optional[str] = None,
         stages=None,
+        **kwargs,
     ):
         EzPickle.__init__(self, rom_mode, lost_levels, target, objectives, death_as_penalty, render_mode)
         self.render_mode = render_mode
