@@ -79,7 +79,7 @@ def termination_fn_humanoid(obs, act, next_obs, rew):
     min_z, max_z = 1.0, 2.0 # if u change healthy_z_range in the humanoid env, change this too
     # index needs to be +2 if you unset the exclude_current_positions_from_observation 
     # parameter in the humanoid env
-    not_done = min_z < next_obs[:, 0] < max_z 
+    not_done = (min_z < next_obs[:, 0]) & (next_obs[:, 0] < max_z)
     done = ~not_done
     done = done[:, np.newaxis]
     return done
