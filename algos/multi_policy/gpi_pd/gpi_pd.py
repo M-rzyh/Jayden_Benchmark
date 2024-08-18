@@ -294,7 +294,7 @@ class GPIPD(MOPolicy, MOAgent):
             "min_priority": self.min_priority,
             "tau": self.tau,
             "num_nets": self.num_nets,
-            "clip_grand_norm": self.max_grad_norm,
+            "clip_grad_norm": self.max_grad_norm,
             "target_net_update_freq": self.target_net_update_freq,
             "gamma": self.gamma,
             "net_arch": self.net_arch,
