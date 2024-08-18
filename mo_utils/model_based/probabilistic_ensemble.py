@@ -36,6 +36,10 @@ class ProbabilisticEnsemble(nn.Module):
         learning_rate=0.001,
         num_elites=2,
         normalize_inputs=True,
+        max_logvar_scale=0.5,
+        min_logvar_scale=10.0,
+        layer_norm=False,
+        max_grad_norm=None,
         device="auto",
     ):
         """Initialize the ensemble.
@@ -49,6 +53,8 @@ class ProbabilisticEnsemble(nn.Module):
             learning_rate (float): learning rate
             num_elites (int): number of elite networks
             normalize_inputs (bool): whether to normalize inputs
+            layer_norm (bool): whether to use layer normalization
+            max_grad_norm (float): maximum gradient norm
             device (str): device to use for training
         """
         super().__init__()
@@ -62,6 +68,8 @@ class ProbabilisticEnsemble(nn.Module):
         self.elites = [i for i in range(self.ensemble_size)]
         self.normalize_inputs = normalize_inputs
         self.learning_rate = learning_rate
+        self.layer_norm = layer_norm
+        self.max_grad_norm = max_grad_norm
 
         self.layers = nn.ModuleList()
         in_size = input_dim
@@ -74,8 +82,8 @@ class ProbabilisticEnsemble(nn.Module):
             self.inputs_mu = nn.Parameter(th.zeros((1, input_dim)), requires_grad=False)
             self.inputs_sigma = nn.Parameter(th.zeros((1, input_dim)), requires_grad=False)
 
-        self.max_logvar = nn.Parameter(th.ones(1, output_dim, dtype=th.float32) / 2.0)
-        self.min_logvar = nn.Parameter(-th.ones(1, output_dim, dtype=th.float32) * 10.0)
+        self.max_logvar = nn.Parameter(th.ones(1, output_dim, dtype=th.float32) * max_logvar_scale)
+        self.min_logvar = nn.Parameter(-th.ones(1, output_dim, dtype=th.float32) * min_logvar_scale)
 
         if device == "auto":
             self.device = th.device("cuda") if th.cuda.is_available() else th.device("cpu")
@@ -102,6 +110,8 @@ class ProbabilisticEnsemble(nn.Module):
         for layer in self.layers[:-1]:
             h = layer(h)
             h = self.activation(h)
+            if self.layer_norm:
+                h = nn.LayerNorm(h.size()[1:])(h)
         output = self.layers[-1](h)
 
         # if original dim was 1D, squeeze the extra created layer
@@ -262,6 +272,9 @@ class ProbabilisticEnsemble(nn.Module):
                 loss = self._compute_loss(batch_x, batch_y)
                 self.optim.zero_grad()
                 loss.backward()
+
+                if self.max_grad_norm is not None:
+                    th.nn.utils.clip_grad_norm_(self.parameters(), self.max_grad_norm)
                 self.optim.step()
 
             idxs = shuffle_rows(idxs)

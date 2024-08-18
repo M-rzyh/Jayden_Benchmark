@@ -118,6 +118,9 @@ class GPIPD(MOPolicy, MOAgent):
         dynamics_rollout_batch_size: int = 25000,
         dynamics_buffer_size: int = 100000,
         dynamics_net_arch: List = [256, 256, 256],
+        dynamics_lr: float = 0.001,
+        dynamics_layer_norm: bool = False,
+        dynamics_max_grad_norm: Optional[float] = None,
         dynamics_ensemble_size: int = 5,
         dynamics_num_elites: int = 2,
         real_ratio: float = 0.5,
@@ -164,6 +167,9 @@ class GPIPD(MOPolicy, MOAgent):
             dynamics_rollout_batch_size: The rollout batch size.
             dynamics_buffer_size: The size of the dynamics model buffer.
             dynamics_net_arch: The network architecture for the dynamics model.
+            dynamics_lr: The learning rate for the dynamics model.
+            dynamics_layer_norm: Whether to use layer normalization for the dynamics model.
+            dynamics_max_grad_norm: The maximum gradient norm for the dynamics model.
             dynamics_ensemble_size: The ensemble size for the dynamics model.
             dynamics_num_elites: The number of elites for the dynamics model.
             real_ratio: The ratio of real transitions to sample.
@@ -249,6 +255,9 @@ class GPIPD(MOPolicy, MOAgent):
                 input_dim=self.observation_dim + self.action_dim,
                 output_dim=self.observation_dim + self.reward_dim,
                 arch=self.dynamics_net_arch,
+                learning_rate=dynamics_lr,
+                layer_norm=dynamics_layer_norm,
+                max_grad_norm=dynamics_max_grad_norm,
                 normalize_inputs=dynamics_normalize_inputs,
                 ensemble_size=dynamics_ensemble_size,
                 num_elites=dynamics_num_elites,

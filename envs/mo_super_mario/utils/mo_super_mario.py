@@ -142,7 +142,7 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
             vec_reward[obj_idx] = xpos_r
             obj_idx += 1
 
-        # 2. time penaltiy
+        # 2. time penalty
         if "time" in self.objectives:
             time_r = info["time"] - self.time
             self.time = info["time"]

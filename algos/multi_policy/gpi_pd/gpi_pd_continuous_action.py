@@ -103,6 +103,11 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         alpha: float = 0.6,
         dyna: bool = True,
         dynamics_net_arch: List = [200, 200, 200, 200],
+        dynamics_lr: float = 0.001,
+        dynamics_max_logvar_scale: float = 0.5,
+        dynamics_min_logvar_scale: float = 10.0,
+        dynamics_layer_norm: bool = False,
+        dynamics_max_grad_norm: float = None,
         dynamics_train_freq: int = 250,
         dynamics_rollout_len: int = 5,
         dynamics_rollout_starts: int = 1000,
@@ -144,6 +149,11 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             min_priority (float, optional): The minimum priority to use for prioritized experience replay. Defaults to 0.1.
             alpha (float, optional): The alpha value for prioritized experience replay. Defaults to 0.6.
             dyna (bool, optional): Whether to use Dyna. Defaults to False.
+            dynamics_lr (float, optional): The learning rate for the dynamics model. Defaults to 0.001.
+            dynamics_max_logvar_scale (float, optional): The maximum logvar scale for the dynamics model. Defaults to 0.5.
+            dynamics_min_logvar_scale (float, optional): The minimum logvar scale for the dynamics model. Defaults to 10.0.
+            dynamics_layer_norm (bool, optional): Whether to use layer norm for the dynamics model. Defaults to False.
+            dynamics_max_grad_norm (float, optional): The maximum gradient norm for the dynamics model. Defaults to None.
             dynamics_train_freq (int, optional): The frequency with which to train the dynamics model. Defaults to 1000.
             dynamics_rollout_len (int, optional): The rollout length for the dynamics model. Defaults to 1.
             dynamics_rollout_starts (int, optional): The number of steps to take before starting to train the dynamics model. Defaults to 5000.
@@ -222,6 +232,11 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 input_dim=self.observation_dim + self.action_dim,
                 output_dim=self.observation_dim + self.reward_dim,
                 arch=self.dynamics_net_arch,
+                learning_rate=dynamics_lr,
+                max_logvar_scale=dynamics_max_logvar_scale,
+                min_logvar_scale=dynamics_min_logvar_scale,
+                layer_norm=dynamics_layer_norm,
+                max_grad_norm=dynamics_max_grad_norm,
                 device=self.device,
             )
             self.dynamics_buffer = ReplayBuffer(
