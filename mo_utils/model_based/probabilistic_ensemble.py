@@ -67,7 +67,6 @@ class ProbabilisticEnsemble(nn.Module):
         self.elites = [i for i in range(self.ensemble_size)]
         self.normalize_inputs = normalize_inputs
         self.learning_rate = learning_rate
-        self.layer_norm = layer_norm
         self.max_grad_norm = max_grad_norm
 
         self.layers = nn.ModuleList()
