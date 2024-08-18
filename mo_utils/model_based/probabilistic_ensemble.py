@@ -38,7 +38,6 @@ class ProbabilisticEnsemble(nn.Module):
         normalize_inputs=True,
         max_logvar_scale=0.5,
         min_logvar_scale=10.0,
-        layer_norm=False,
         max_grad_norm=None,
         device="auto",
     ):
@@ -110,8 +109,6 @@ class ProbabilisticEnsemble(nn.Module):
         for layer in self.layers[:-1]:
             h = layer(h)
             h = self.activation(h)
-            if self.layer_norm:
-                h = nn.LayerNorm(h.size()[1:])(h)
         output = self.layers[-1](h)
 
         # if original dim was 1D, squeeze the extra created layer

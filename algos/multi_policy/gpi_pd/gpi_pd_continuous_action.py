@@ -106,7 +106,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         dynamics_lr: float = 0.001,
         dynamics_max_logvar_scale: float = 0.5,
         dynamics_min_logvar_scale: float = 10.0,
-        dynamics_layer_norm: bool = False,
         dynamics_max_grad_norm: float = None,
         dynamics_train_freq: int = 250,
         dynamics_rollout_len: int = 5,
@@ -152,7 +151,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             dynamics_lr (float, optional): The learning rate for the dynamics model. Defaults to 0.001.
             dynamics_max_logvar_scale (float, optional): The maximum logvar scale for the dynamics model. Defaults to 0.5.
             dynamics_min_logvar_scale (float, optional): The minimum logvar scale for the dynamics model. Defaults to 10.0.
-            dynamics_layer_norm (bool, optional): Whether to use layer norm for the dynamics model. Defaults to False.
             dynamics_max_grad_norm (float, optional): The maximum gradient norm for the dynamics model. Defaults to None.
             dynamics_train_freq (int, optional): The frequency with which to train the dynamics model. Defaults to 1000.
             dynamics_rollout_len (int, optional): The rollout length for the dynamics model. Defaults to 1.
@@ -235,7 +233,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 learning_rate=dynamics_lr,
                 max_logvar_scale=dynamics_max_logvar_scale,
                 min_logvar_scale=dynamics_min_logvar_scale,
-                layer_norm=dynamics_layer_norm,
                 max_grad_norm=dynamics_max_grad_norm,
                 device=self.device,
             )
