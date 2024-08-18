@@ -23,7 +23,7 @@ from mo_utils.model_based.probabilistic_ensemble import (
 )
 from mo_utils.model_based.utils import ModelEnv, visualize_eval
 from mo_utils.morl_algorithm import MOAgent, MOPolicy
-from mo_utils.networks import layer_init, mlp, polyak_update
+from mo_utils.networks import layer_init, mlp, polyak_update, get_grad_norm
 from mo_utils.prioritized_buffer import PrioritizedReplayBuffer
 from mo_utils.utils import unique_tol
 from mo_utils.weights import equally_spaced_weights
@@ -95,6 +95,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         delay_policy_update: int = 2,
         learning_starts: int = 100,
         gradient_updates: int = 1,
+        max_grad_norm: Optional[float] = None,
         use_gpi: bool = True,
         policy_noise: float = 0.2,
         noise_clip: float = 0.5,
@@ -141,6 +142,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             delay_policy_update (int, optional): The number of gradient steps to take before updating the policy. Defaults to 2.
             learning_starts (int, optional): The number of steps to take before starting to train. Defaults to 100.
             gradient_updates (int, optional): The number of gradient steps to take per update. Defaults to 1.
+            max_grad_norm (float, optional): The maximum gradient norm. Defaults to None.
             use_gpi (bool, optional): Whether to use GPI for selecting actions. Defaults to True.
             policy_noise (float, optional): The noise to add to the policy. Defaults to 0.2.
             noise_clip (float, optional): The noise clipping value. Defaults to 0.5.
@@ -184,6 +186,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         self.learning_starts = learning_starts
         self.batch_size = batch_size
         self.gradient_updates = gradient_updates
+        self.max_grad_norm = max_grad_norm
         self.per = per
         self.min_priority = min_priority
         self.alpha = alpha
@@ -428,6 +431,17 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
 
             self.q_optim.zero_grad()
             critic_loss.backward()
+            
+            if self.log and self.global_step % 100 == 0:
+                wandb.log(
+                    {
+                        "losses/grad_norm": get_grad_norm(self.q_nets[0].parameters()).item(),
+                        "global_step": self.global_step,
+                    },
+                )
+            if self.max_grad_norm is not None:
+                for psi_net in self.q_nets:
+                    th.nn.utils.clip_grad_norm_(psi_net.parameters(), self.max_grad_norm)
             self.q_optim.step()
 
             if self.per:
