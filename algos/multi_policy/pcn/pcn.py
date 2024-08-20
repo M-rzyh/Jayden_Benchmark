@@ -17,6 +17,7 @@ from mo_utils.morl_algorithm import MOAgent, MOPolicy
 from mo_utils.pareto import get_non_dominated_inds
 from mo_utils.performance_indicators import hypervolume
 from mo_utils.networks import NatureCNN
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 
 def crowding_distance(points):
@@ -430,7 +431,7 @@ class PCN(MOAgent, MOPolicy):
     def train(
         self,
         total_timesteps: int,
-        eval_env: gym.Env,
+        eval_env: Union[gym.Env, MORLGeneralizationEvaluator],
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_weights_for_eval: int = 50,
@@ -565,7 +566,7 @@ class PCN(MOAgent, MOPolicy):
             # unable to log at nice steps that are multiples of eval_mo_freq because each episode can have irregular length if terminated early
             if self.log and self.global_step >= next_eval_step:
                 if test_generalization:
-                    self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
+                    eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
                     self.save()
                     e_returns, _, _ = self.evaluate(eval_env, n=num_points_pf)

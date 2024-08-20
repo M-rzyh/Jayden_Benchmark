@@ -27,6 +27,7 @@ from mo_utils.networks import (
 from mo_utils.prioritized_buffer import PrioritizedReplayBuffer
 from mo_utils.utils import linearly_decaying_value
 from mo_utils.weights import equally_spaced_weights, random_weights
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 
 class QNet(nn.Module):
@@ -485,7 +486,7 @@ class Envelope(MOPolicy, MOAgent):
     def train(
         self,
         total_timesteps: int,
-        eval_env: Optional[gym.Env] = None,
+        eval_env: Union[gym.Env, MORLGeneralizationEvaluator],
         ref_point: Optional[np.ndarray] = None,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         weight: Optional[np.ndarray] = None,
@@ -567,7 +568,7 @@ class Envelope(MOPolicy, MOAgent):
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
                 if test_generalization:
-                    self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
+                    eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
                     current_front = [
                         self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]

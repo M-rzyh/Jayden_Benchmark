@@ -21,6 +21,7 @@ from mo_utils.pareto import ParetoArchive
 from mo_utils.scalarization import tchebicheff, weighted_sum
 from mo_utils.utils import nearest_neighbors
 from mo_utils.weights import equally_spaced_weights, random_weights
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 from algos.single_policy.esr.eupg import EUPG
 from algos.single_policy.ser.mosac import MOSAC, MOSACDiscrete
 
@@ -494,7 +495,7 @@ class MORLD(MOAgent):
     def train(
         self,
         total_timesteps: int,
-        eval_env: gym.Env,
+        eval_env: Union[gym.Env, MORLGeneralizationEvaluator],
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_episodes_for_front: int = 5,
@@ -554,7 +555,7 @@ class MORLD(MOAgent):
             # dont allow archive and weight adaptation in domain randomization 
             # because it is not possible to compare pareto front when environment constantly changes
             if self.log and test_generalization:
-                self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
+                eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
 
             if self.weight_adaptation_method is not None:
                 # Update archive

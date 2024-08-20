@@ -21,6 +21,7 @@ from mo_utils.evaluation import (
 from mo_utils.morl_algorithm import MOAgent, MOPolicy
 from mo_utils.networks import layer_init, mlp, polyak_update
 from mo_utils.weights import equally_spaced_weights
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 import gymnasium as gym
 
@@ -386,7 +387,7 @@ class CAPQL(MOAgent, MOPolicy):
     def train(
         self,
         total_timesteps: int,
-        eval_env: gymnasium.Env,
+        eval_env: Union[gymnasium.Env, MORLGeneralizationEvaluator],
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_weights_for_front: int = 100,
@@ -472,7 +473,7 @@ class CAPQL(MOAgent, MOPolicy):
             if self.log and self.global_step % eval_freq == 0:
                 # Evaluation
                 if test_generalization:
-                    self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
+                    eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
                     returns_test_tasks = [
                         policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights

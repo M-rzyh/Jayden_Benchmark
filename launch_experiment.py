@@ -169,8 +169,7 @@ def make_envs(args):
         eval_env = env_selection_algo_wrapper(eval_env)
         
         # allow for comprehensize evaluation of generalization
-        env = make_generalization_evaluator(env, args)
-        
+        eval_env = make_generalization_evaluator(eval_env, args)
     elif args.record_video:
         eval_env = RecordVideo(
             eval_env,
@@ -218,7 +217,6 @@ def main():
             env_selection_algo_wrapper = get_env_selection_algo_wrapper(args.generalization_algo)
             eval_env = env_selection_algo_wrapper(eval_env)
 
-            # only for PGMORL, the eval_env is the generalization evaluator (its usually env for other algos)
             eval_env = make_generalization_evaluator(eval_env, args)
 
         print("Training starts... Let's roll!")

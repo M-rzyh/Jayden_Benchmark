@@ -27,6 +27,7 @@ from mo_utils.networks import layer_init, mlp, polyak_update, get_grad_norm
 from mo_utils.prioritized_buffer import PrioritizedReplayBuffer
 from mo_utils.utils import unique_tol
 from mo_utils.weights import equally_spaced_weights
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 from algos.multi_policy.linear_support.linear_support import LinearSupport
 
 
@@ -646,7 +647,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
     def train(
         self,
         total_timesteps: int,
-        eval_env: gymnasium.Env,
+        eval_env: Union[gymnasium.Env, MORLGeneralizationEvaluator],
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_weights_for_front: int = 100,
@@ -739,7 +740,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             if self.log and self.global_step % eval_mo_freq == 0:
                 # Evaluation
                 if test_generalization:
-                    self.env.eval(self, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                    eval_env.eval(self, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
                 else:
                     gpi_returns_test_tasks = [
                         policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
