@@ -177,6 +177,10 @@ def make_envs(args):
             episode_trigger=lambda ep: ep % args.record_video_ep_freq == 0,
         )
 
+    env.unwrapped.action_space.seed(args.seed)
+    env.unwrapped.observation_space.seed(args.seed)
+    eval_env.unwrapped.action_space.seed(args.seed)
+    eval_env.unwrapped.observation_space.seed(args.seed)
     return env, eval_env
 
 def main():
