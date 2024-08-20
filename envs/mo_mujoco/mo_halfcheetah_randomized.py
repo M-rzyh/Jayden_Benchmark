@@ -20,7 +20,7 @@ DEFAULT_CAMERA_CONFIG = {
     "distance": 4.0,
 }
 
-class MOHalfCheehtahDR(RandomMujocoEnv, EzPickle):
+class MOHalfCheetahDR(RandomMujocoEnv, EzPickle):
     """
     ## Description
     Multi-objective version of the HalfCheetahEnv environment with randomizable environment parameters.

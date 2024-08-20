@@ -8,6 +8,7 @@ import time
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 from typing_extensions import override
+from itertools import product
 
 import gymnasium as gym
 import mo_gymnasium as mo_gym
@@ -20,6 +21,7 @@ from mo_utils.evaluation import log_all_multi_policy_metrics
 from mo_utils.morl_algorithm import MOAgent
 from mo_utils.pareto import ParetoArchive
 from mo_utils.performance_indicators import hypervolume, sparsity
+from mo_utils.weights import equally_spaced_weights
 from algos.single_policy.ser.mo_ppo import MOPPO, MOPPONet, make_env
 
 
@@ -201,18 +203,29 @@ class PerformancePredictor:
         return delta_predictions, delta_predictions + policy_eval
 
 
-def generate_weights(delta_weight: float) -> np.ndarray:
-    """Generates weights uniformly distributed over the objective dimensions. These weight vectors are separated by delta_weight distance.
+def generate_weights(delta_weight: float, dimensions: int = 2) -> np.ndarray:
+    """Generates weight vectors uniformly distributed over the objective dimensions.
+       These weight vectors are separated by delta_weight distance.
 
     Args:
         delta_weight: distance between weight vectors
+        dimensions: number of objectives or dimensions
     Returns:
-        all the candidate weights
+        An array of all candidate weight vectors.
     """
-    return np.linspace((0.0, 1.0), (1.0, 0.0), int(1 / delta_weight) + 1, dtype=np.float32)
+    # Generate a list of possible weight values based on delta_weight
+    possible_weights = np.arange(0.0, 1.0 + delta_weight, delta_weight, dtype=np.float32)
+    
+    # Generate all possible combinations of these weights for the given number of dimensions
+    weight_combinations = np.array(list(product(possible_weights, repeat=dimensions)), dtype=np.float32)
+
+    # Filter out combinations that do not sum to 1
+    valid_weight_vectors = weight_combinations[np.isclose(weight_combinations.sum(axis=1), 1.0)]
+
+    return valid_weight_vectors
 
 
-class PerformanceBuffer:
+class PerformanceBuffer2d:
     """Stores the population. Divides the objective space in to n bins of size max_size.
 
     (!) restricted to 2D objective space (!)
@@ -257,8 +270,8 @@ class PerformanceBuffer:
             return np.clip(eval + self.origin, 0.0, float("inf"))
 
         centered_eval = center_eval(evaluation)
-        norm_eval = np.linalg.norm(centered_eval)
-        theta = np.arccos(np.clip(centered_eval[1] / (norm_eval + 1e-3), -1.0, 1.0))
+        dist = np.linalg.norm(centered_eval)
+        theta = np.arccos(np.clip(centered_eval[1] / (dist + 1e-3), -1.0, 1.0))
         buffer_id = int(theta // self.dtheta)
 
         if buffer_id < 0 or buffer_id >= self.num_bins:
@@ -270,7 +283,72 @@ class PerformanceBuffer:
         else:
             for i in range(len(self.bins[buffer_id])):
                 stored_eval_centered = center_eval(self.bins_evals[buffer_id][i])
-                if np.linalg.norm(stored_eval_centered) < np.linalg.norm(centered_eval):
+                if np.linalg.norm(stored_eval_centered) < dist:
+                    self.bins[buffer_id][i] = deepcopy(candidate)
+                    self.bins_evals[buffer_id][i] = evaluation
+                    break
+
+class PerformanceBuffer3d:
+    """Stores the population. Divides the objective space in to n bins of size max_size.
+
+    (!) restricted to 2D objective space (!)
+    """
+
+    def __init__(self, delta_weight: float, max_size: int, origin: np.ndarray):
+        """Initializes the buffer.
+
+        Args:
+            num_bins: number of bins
+            max_size: maximum size of each bin
+            origin: origin of the objective space (to have only positive values)
+        """
+        self.max_size = max_size
+        self.origin = -origin
+        self.pbuffer_vec = generate_weights(delta_weight, 3)
+        for i in range(len(self.pbuffer_vec)):
+            self.pbuffer_vec[i] = self.pbuffer_vec[i] / np.linalg.norm(self.pbuffer_vec[i])
+        self.num_bins = len(self.pbuffer_vec)
+        self.bins = [[] for _ in range(self.num_bins)]
+        self.bins_evals = [[] for _ in range(self.num_bins)]
+
+    @property
+    def evaluations(self) -> List[np.ndarray]:
+        """Returns the evaluations of the individuals in the buffer."""
+        # flatten
+        return [e for l in self.bins_evals for e in l]
+
+    @property
+    def individuals(self) -> list:
+        """Returns the individuals in the buffer."""
+        return [i for l in self.bins for i in l]
+
+    def add(self, candidate, evaluation: np.ndarray):
+        """Adds a candidate to the buffer.
+
+        Args:
+            candidate: candidate to add
+            evaluation: evaluation of the candidate
+        """
+
+        def center_eval(eval):
+            # Objectives must be positive
+            return np.clip(eval + self.origin, 0.0, float("inf"))
+
+        centered_eval = center_eval(evaluation)
+        dist = np.linalg.norm(centered_eval)
+        max_dot, buffer_id = -np.inf, -1
+        for i in range(self.num_bins):
+            dot = np.dot(self.pbuffer_vec[i], centered_eval)
+            if dot > max_dot:
+                max_dot, buffer_id = dot, i
+
+        if len(self.bins[buffer_id]) < self.max_size:
+            self.bins[buffer_id].append(deepcopy(candidate))
+            self.bins_evals[buffer_id].append(evaluation)
+        else:
+            for i in range(len(self.bins[buffer_id])):
+                stored_eval_centered = center_eval(self.bins_evals[buffer_id][i])
+                if np.linalg.norm(stored_eval_centered) < dist:
                     self.bins[buffer_id][i] = deepcopy(candidate)
                     self.bins_evals[buffer_id][i] = evaluation
                     break
@@ -389,11 +467,22 @@ class PGMORL(MOAgent):
         self.num_performance_buffer = num_performance_buffer
         self.performance_buffer_size = performance_buffer_size
         self.archive = ParetoArchive()
-        self.population = PerformanceBuffer(
-            num_bins=self.num_performance_buffer,
-            max_size=self.performance_buffer_size,
-            origin=origin,
-        )
+
+        if self.reward_dim == 2:
+            self.population = PerformanceBuffer2d(
+                num_bins=self.num_performance_buffer,
+                max_size=self.performance_buffer_size,
+                origin=origin,
+            )
+        elif self.reward_dim == 3:
+            self.population = PerformanceBuffer3d(
+                delta_weight=self.delta_weight,
+                max_size=self.performance_buffer_size,
+                origin=origin,
+            )
+        else:
+            raise ValueError("Only 2D and 3D objectives are supported.")
+        
         self.predictor = PerformancePredictor()
 
         # PPO Parameters
@@ -439,7 +528,7 @@ class PGMORL(MOAgent):
             for _ in range(self.pop_size)
         ]
 
-        weights = generate_weights(self.delta_weight)
+        weights = generate_weights(self.delta_weight, self.reward_dim)
         print(f"Warmup phase - sampled weights: {weights}")
 
         self.agents = [
@@ -544,7 +633,7 @@ class PGMORL(MOAgent):
 
     def __task_weight_selection(self, ref_point: np.ndarray):
         """Chooses agents and weights to train at the next iteration based on the current population and prediction model."""
-        candidate_weights = generate_weights(self.delta_weight / 2.0)  # Generates more weights than agents
+        candidate_weights = generate_weights(self.delta_weight / 2.0, self.reward_dim)  # Generates more weights than agents
         self.np_random.shuffle(candidate_weights)  # Randomize
 
         current_front = deepcopy(self.archive.evaluations)
@@ -619,6 +708,7 @@ class PGMORL(MOAgent):
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_weights_for_eval: int = 50,
+        test_generalization: bool = False,
     ):
         """Trains the agents."""
         if self.log:

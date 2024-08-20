@@ -74,10 +74,10 @@ def register_mario():
 
     # Super Mario Bros. Day Levels
     stages = ["1-1", "2-1", "4-1", "5-1", "7-1", "8-2"] # 8-1, 8-3
-    _register_mario_env('MOSuperMarioBrosDay-v0', is_random=True, rom_mode='vanilla', stages=stages)
-    _register_mario_env('MOSuperMarioBrosDay-v1', is_random=True, rom_mode='downsample', stages=stages)
-    _register_mario_env('MOSuperMarioBrosDay-v2', is_random=True, rom_mode='pixel', stages=stages)
-    _register_mario_env('MOSuperMarioBrosDay-v3', is_random=True, rom_mode='rectangle', stages=stages)
+    _register_mario_env('MOSuperMarioBrosDayDR-v0', is_random=True, rom_mode='vanilla', stages=stages)
+    _register_mario_env('MOSuperMarioBrosDayDR-v1', is_random=True, rom_mode='downsample', stages=stages)
+    _register_mario_env('MOSuperMarioBrosDayDR-v2', is_random=True, rom_mode='pixel', stages=stages)
+    _register_mario_env('MOSuperMarioBrosDayDR-v3', is_random=True, rom_mode='rectangle', stages=stages)
 
     # Super Mario Bros. 2 (Lost Levels)
     _register_mario_env('SuperMarioBros2-v0', lost_levels=True, rom_mode='vanilla')

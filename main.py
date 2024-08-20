@@ -49,16 +49,16 @@ def test_capql_dr():
     #                             "MOHopperHighDamping-v5",
     #                       ])
 
-    env = gym.make("MOHalfCheehtahDR-v5")
-    eval_env = gym.make("MOHalfCheehtahDR-v5")
+    env = gym.make("MOHalfCheetahDR-v5")
+    eval_env = gym.make("MOHalfCheetahDR-v5")
     env = MORLGeneralizationEvaluator(env, 
                           generalization_algo="domain_randomization", 
                           test_envs=[
-                                "MOHalfCheehtahLight-v5",
-                                "MOHalfCheehtahHeavy-v5",
-                                "MOHalfCheehtahSlippery-v5",
-                                "MOHalfCheehtahHard-v5",
-                                "MOHalfCheehtahDR-v5"
+                                "MOHalfCheetahLight-v5",
+                                "MOHalfCheetahHeavy-v5",
+                                "MOHalfCheetahSlippery-v5",
+                                "MOHalfCheetahHard-v5",
+                                "MOHalfCheetahDR-v5"
                           ])
     
     agent = CAPQL(

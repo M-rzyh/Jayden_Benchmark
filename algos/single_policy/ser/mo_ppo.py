@@ -1,4 +1,5 @@
 """Multi-Objective PPO Algorithm."""
+import os
 import time
 from copy import deepcopy
 from typing import List, Optional, Union
@@ -373,6 +374,26 @@ class MOPPO(MOPolicy):
         copied.optimizer = optim.Adam(copied_net.parameters(), lr=self.learning_rate, eps=1e-5)
         copied.batch = deepcopy(self.batch)
         return copied
+    
+    def get_save_dict(self, save_replay_buffer: bool = False) -> dict:
+        """Returns a dictionary of all components needed for saving the MOSAC instance."""
+        save_dict = {
+            'networks': self.networks.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'weights': self.weights,
+        }
+
+        if save_replay_buffer:
+            save_dict['buffer'] = self.batch
+
+        return save_dict
+
+    def save(self, save_dir="weights/", filename=None, save_replay_buffer=True):
+        """Save the agent's weights and replay buffer."""
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, filename)
+        save_dict = self.get_save_dict(save_replay_buffer)
+        th.save(save_dict, save_path)
 
     def change_weights(self, new_weights: np.ndarray):
         """Change the weights of the scalarization function.

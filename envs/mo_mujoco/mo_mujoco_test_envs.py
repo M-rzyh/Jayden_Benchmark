@@ -1,5 +1,5 @@
 from envs.mo_mujoco.mo_hopper_randomized import MOHopperDR
-from envs.mo_mujoco.mo_halfcheetah_randomized import MOHalfCheehtahDR
+from envs.mo_mujoco.mo_halfcheetah_randomized import MOHalfCheetahDR
 from envs.mo_mujoco.mo_humanoid_randomized import MOHumanoidDR
 import gymnasium as gym
 import numpy as np
@@ -46,28 +46,28 @@ class MOHopperHard(MOHopperDR):
         super().__init__(task=task, **kwargs)
 
 # ============================ Cheetah ============================
-class MOHalfCheehtahLight(MOHalfCheehtahDR):
+class MOHalfCheetahLight(MOHalfCheetahDR):
     def __init__(self, **kwargs):
         masses = np.array([0.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         friction = np.array([0.4])
         task = np.concatenate([masses, friction])
         super().__init__(task=task, **kwargs)
 
-class MOHalfCheehtahHeavy(MOHalfCheehtahDR):
+class MOHalfCheetahHeavy(MOHalfCheetahDR):
     def __init__(self, **kwargs):
         masses = np.array([10.0, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5])
         friction = np.array([0.4])
         task = np.concatenate([masses, friction])
         super().__init__(task=task, **kwargs)
 
-class MOHalfCheehtahSlippery(MOHalfCheehtahDR):
+class MOHalfCheetahSlippery(MOHalfCheetahDR):
     def __init__(self, **kwargs):
         masses = np.array([6.25020921, 1.54351464, 1.5874477, 1.09539749, 1.43807531, 1.20083682, 0.88451883])
         friction = np.array([0.02])
         task = np.concatenate([masses, friction])
         super().__init__(task=task, **kwargs)
 
-class MOHalfCheehtahHard(MOHalfCheehtahDR):
+class MOHalfCheetahHard(MOHalfCheetahDR):
     def __init__(self, **kwargs):
         masses = np.array([10.0, 0.1, 10.0, 10.0, 0.1, 0.1, 10.0])
         friction = np.array([0.02])
@@ -107,8 +107,8 @@ def register_mujoco():
     # HalfCheetah
     try:
         gym.envs.register(
-            id="MOHalfCheehtahDR-v5",
-            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahDR",
+            id="MOHalfCheetahDR-v5",
+            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheetahDR",
             max_episode_steps=1000,
         )
     except Exception as e:
@@ -117,8 +117,8 @@ def register_mujoco():
 
     try:
         gym.envs.register(
-            id="MOHalfCheehtahDefault-v5", # copy of the dr environment but renamed for clarity
-            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheehtahDR",
+            id="MOHalfCheetahDefault-v5", # copy of the dr environment but renamed for clarity
+            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheetahDR",
             max_episode_steps=1000,
         )
     except Exception as e:
@@ -126,8 +126,8 @@ def register_mujoco():
 
     try:
         gym.envs.register(
-            id="MOHalfCheehtahLight-v5",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahLight",
+            id="MOHalfCheetahLight-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetahLight",
             max_episode_steps=1000,
         )
     except Exception as e:
@@ -135,8 +135,8 @@ def register_mujoco():
 
     try:
         gym.envs.register(
-            id="MOHalfCheehtahHeavy-v5",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahHeavy",
+            id="MOHalfCheetahHeavy-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetahHeavy",
             max_episode_steps=1000,
         )
     except Exception as e:
@@ -145,8 +145,8 @@ def register_mujoco():
     
     try:
         gym.envs.register(
-            id="MOHalfCheehtahSlippery-v5",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahSlippery",
+            id="MOHalfCheetahSlippery-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetahSlippery",
             max_episode_steps=1000,
         )
     except Exception as e:
@@ -155,8 +155,8 @@ def register_mujoco():
 
     try:
         gym.envs.register(
-            id="MOHalfCheehtahHard-v5",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheehtahHard",
+            id="MOHalfCheetahHard-v5",
+            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetahHard",
             max_episode_steps=1000,
         )
     except Exception as e:

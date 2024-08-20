@@ -115,7 +115,7 @@ class ModelEnv:
         self.rew_dim = rew_dim
         if env_id == "Hopper-v2" or env_id == "Hopper-v4" or env_id == "mo-hopper-v4" or env_id == "MOHopperDR-v5" or env_id == "mo-hopper-2d-v4":
             self.termination_func = termination_fn_hopper
-        elif env_id == "HalfCheetah-v2" or env_id == "mo-halfcheetah-v4" or env_id == "MOHalfCheehtahDR-v5":
+        elif env_id == "HalfCheetah-v2" or env_id == "mo-halfcheetah-v4" or env_id == "MOHalfCheetahDR-v5":
             self.termination_func = termination_fn_false
         elif env_id == "Humanoid-v2" or env_id == "mo-humanoid-v4" or env_id == "MOHumanoidDR-v5":
             self.termination_func = termination_fn_humanoid
