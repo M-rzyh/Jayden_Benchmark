@@ -26,12 +26,11 @@ from mo_utils.experiments import (
     ENVS_WITH_KNOWN_PARETO_FRONT,
     StoreDict,
 )
-from envs.generalization_evaluator import MORLGeneralizationEvaluator
-from envs.dr_wrapper import DRWrapper
+from morl_generalization.utils import get_env_selection_algo_wrapper
+from morl_generalization.generalization_evaluator import make_generalization_evaluator
 from envs.register_envs import register_envs
 from envs.mo_super_mario.utils import wrap_mario
-from experiments.evaluation import get_eval_params
-
+from algos.single_policy.ser.mo_ppo import make_env
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -147,8 +146,7 @@ def parse_generalization_args(args):
     
     return args
 
-
-def make_env(args):
+def make_envs(args):
     if "mario" in args.env_id.lower():
         env = mo_gym.make(args.env_id, death_as_penalty=True)
         eval_env = mo_gym.make(args.env_id, death_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
@@ -166,23 +164,12 @@ def make_env(args):
         eval_env = wrap_mario(eval_env)
 
     if args.test_generalization:
-        if args.generalization_algo == "domain_randomization": # randomizes domain every `reset` call
-            env = DRWrapper(eval_env)
-            eval_env = DRWrapper(eval_env)
-        else:
-            raise NotImplementedError
-
-        eval_params = get_eval_params(args.env_id)
-        env = MORLGeneralizationEvaluator( # allow for comprehensize evaluation of generalization
-                env,
-                algo_name=args.algo,
-                seed=args.seed, 
-                test_envs=args.test_envs, 
-                generalization_algo=args.generalization_algo, 
-                record_video=args.record_video,
-                eval_params=eval_params,
-                **args.generalization_hyperparams
-            )
+        env_selection_algo_wrapper = get_env_selection_algo_wrapper(args.generalization_algo)
+        env = env_selection_algo_wrapper(env)
+        eval_env = env_selection_algo_wrapper(eval_env)
+        
+        # allow for comprehensize evaluation of generalization
+        env = make_generalization_evaluator(env, args)
         
     elif args.record_video:
         eval_env = RecordVideo(
@@ -213,7 +200,6 @@ def main():
     if args.algo == "pgmorl":
         # PGMORL creates its own environments because it requires wrappers
         print(f"Instantiating {args.algo} on {args.env_id}")
-        eval_env = mo_gym.make(args.env_id)
         algo = ALGOS[args.algo](
             env_id=args.env_id,
             origin=np.array(args.ref_point),
@@ -226,6 +212,15 @@ def main():
         )
         print(algo.get_config())
 
+        eval_env_creator = make_env(args.env_id, seed=args.seed, idx=-1, run_name="PGMORL", gamma=args.gamma)
+        eval_env = eval_env_creator()
+        if args.test_generalization:
+            env_selection_algo_wrapper = get_env_selection_algo_wrapper(args.generalization_algo)
+            eval_env = env_selection_algo_wrapper(eval_env)
+
+            # only for PGMORL, the eval_env is the generalization evaluator (its usually env for other algos)
+            eval_env = make_generalization_evaluator(eval_env, args)
+
         print("Training starts... Let's roll!")
         algo.train(
             total_timesteps=args.num_timesteps,
@@ -237,7 +232,7 @@ def main():
         )
 
     else:
-        env, eval_env = make_env(args)
+        env, eval_env = make_envs(args)
         
         print(f"Instantiating {args.algo} on {args.env_id}")
         if args.algo == "ols":

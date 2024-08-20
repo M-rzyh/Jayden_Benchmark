@@ -1,12 +1,9 @@
-from abc import ABC, abstractmethod
-from distutils.util import strtobool
 from typing import Dict, Optional, Tuple, List, Union
 import numpy as np
 import gymnasium as gym
-from gymnasium.wrappers import FlattenObservation
-from gymnasium.wrappers.record_video import RecordVideo
 import mo_gymnasium as mo_gym
 import wandb
+import time
 
 from mo_utils.pareto import filter_pareto_dominated
 from mo_utils.performance_indicators import (
@@ -16,51 +13,8 @@ from mo_utils.performance_indicators import (
     sparsity,
 )
 from mo_utils.weights import equally_spaced_weights
-from envs.mo_super_mario.utils import wrap_mario
-import time
-
-# TODO: implement this for all dr envs
-class DREnv(ABC):
-    def __init__(self):
-        pass
-    
-    @abstractmethod
-    def reset_random(self):
-        pass
-
-
-def make_env(gym_id, algo_name, seed, record_video, record_video_freq, **kwargs):
-    is_mario = "mario" in gym_id.lower()
-    if is_mario:
-        env = gym.make(
-                gym_id, 
-                render_mode="rgb_array" if record_video else None, 
-                death_as_penalty=True,
-                **kwargs
-            )
-        env = wrap_mario(env, record_video, gym_id, algo_name, seed, record_video_freq)
-    else:
-        env = gym.make(
-                gym_id, 
-                render_mode="rgb_array" if record_video else None, 
-                **kwargs
-            )
-    
-    if "highway" in gym_id.lower():
-        env = FlattenObservation(env)
-
-
-    if record_video and not is_mario:
-        env = RecordVideo(
-            env, 
-            f"videos/{algo_name}/seed{seed}/{gym_id}/", 
-            episode_trigger=lambda t: t % record_video_freq == 0,
-            disable_logger=True
-        )
-    env.reset(seed=seed)
-    env.action_space.seed(seed)
-    env.observation_space.seed(seed)
-    return env
+from morl_generalization.utils import make_test_envs
+from experiments.evaluation import get_eval_params
 
 
 class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
@@ -118,7 +72,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         # ============ Evaluation Parameters ============
         self.test_env_names = test_envs
         make_fn = [
-            lambda env_name=env_name: make_env(env_name, algo_name, seed, record_video, record_video_freq, **kwargs) for env_name in test_envs
+            lambda env_name=env_name: make_test_envs(env_name, algo_name, seed, record_video, record_video_freq, **kwargs) for env_name in test_envs
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
 
@@ -458,3 +412,17 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             )
 
         print(f"Time taken to complete evaluation: {(time.time() - start_time):.2f} seconds")
+
+def make_generalization_evaluator(env, args) -> MORLGeneralizationEvaluator:
+    eval_params = get_eval_params(args.env_id)
+    env = MORLGeneralizationEvaluator(
+        env,
+        algo_name=args.algo,
+        seed=args.seed, 
+        test_envs=args.test_envs, 
+        generalization_algo=args.generalization_algo, 
+        record_video=args.record_video,
+        eval_params=eval_params,
+        **args.generalization_hyperparams
+    )
+    return env

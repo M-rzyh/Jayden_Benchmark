@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 from envs.mo_bipedal_walker.utils.mo_bipedal_walker import MOBipedalWalker
-from envs.generalization_evaluator import DREnv
+from morl_generalization.algos.dr import DREnv
 from collections import namedtuple
 
 EnvConfig = namedtuple('EnvConfig', [

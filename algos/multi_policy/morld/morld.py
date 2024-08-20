@@ -553,7 +553,7 @@ class MORLD(MOAgent):
 
             # dont allow archive and weight adaptation in domain randomization 
             # because it is not possible to compare pareto front when environment constantly changes
-            if test_generalization:
+            if self.log and test_generalization:
                 self.env.eval(self, ref_point=ref_point, global_step=self.global_step)
 
             if self.weight_adaptation_method is not None:

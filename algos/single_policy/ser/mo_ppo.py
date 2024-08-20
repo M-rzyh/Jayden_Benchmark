@@ -17,6 +17,7 @@ from torch.distributions import Normal
 from mo_utils.evaluation import log_episode_info
 from mo_utils.morl_algorithm import MOPolicy
 from mo_utils.networks import layer_init, mlp
+from morl_generalization.algos.dr import DRWrapper
 
 
 class PPOReplayBuffer:
@@ -104,7 +105,7 @@ class PPOReplayBuffer:
         )
 
 
-def make_env(env_id, seed, idx, run_name, gamma):
+def make_env(env_id, seed, idx, run_name, gamma, is_randomized_env=False):
     """Returns a function to create environments. This is because PPO works better with vectorized environments. Also, some tricks like clipping and normalizing the environments' features are applied.
 
     Args:
@@ -137,6 +138,10 @@ def make_env(env_id, seed, idx, run_name, gamma):
             env = mo_gym.utils.MONormalizeReward(env, idx=o, gamma=gamma)
             env = mo_gym.utils.MOClipReward(env, idx=o, min_r=-10, max_r=10)
         env = MORecordEpisodeStatistics(env, gamma=gamma)
+
+        if is_randomized_env: # randomizes domain every `reset` call
+            env = DRWrapper(env)
+
         env.reset(seed=seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)

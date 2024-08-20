@@ -2,7 +2,7 @@ import os
 import gymnasium as gym
 import numpy as np
 from .utils.mo_lunar_lander import MOLunarLander
-from envs.generalization_evaluator import DREnv
+from morl_generalization.algos.dr import DREnv
 from gymnasium.utils import EzPickle
 
 class MOLunarLanderDR(MOLunarLander, DREnv, EzPickle):

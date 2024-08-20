@@ -23,7 +23,6 @@ from mo_utils.networks import layer_init, mlp, polyak_update
 from mo_utils.weights import equally_spaced_weights
 
 import gymnasium as gym
-from envs.generalization_evaluator import MORLGeneralizationEvaluator
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -186,7 +185,7 @@ class CAPQL(MOAgent, MOPolicy):
 
     def __init__(
         self,
-        env: Union[gym.Env, MORLGeneralizationEvaluator],
+        env: gym.Env,
         learning_rate: float = 3e-4,
         gamma: float = 0.99,
         tau: float = 0.005,

@@ -1,4 +1,14 @@
+from abc import ABC, abstractmethod
 import gymnasium as gym
+
+# TODO: implement this for all dr envs
+class DREnv(ABC):
+    def __init__(self):
+        pass
+    
+    @abstractmethod
+    def reset_random(self):
+        pass
 
 class DRWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
     """Wrapper for DR environment."""

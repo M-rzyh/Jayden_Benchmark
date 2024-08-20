@@ -23,6 +23,7 @@ from mo_utils.pareto import ParetoArchive
 from mo_utils.performance_indicators import hypervolume, sparsity
 from mo_utils.weights import equally_spaced_weights
 from algos.single_policy.ser.mo_ppo import MOPPO, MOPPONet, make_env
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 
 class PerformancePredictor:
@@ -403,6 +404,7 @@ class PGMORL(MOAgent):
         target_kl: Optional[float] = None,
         gae: bool = True,
         gae_lambda: float = 0.95,
+        is_randomized_env: bool = False,
         device: Union[th.device, str] = "auto",
     ):
         """Initializes the PGMORL agent.
@@ -443,6 +445,7 @@ class PGMORL(MOAgent):
             target_kl: target KL divergence
             gae: whether to use generalized advantage estimation
             gae_lambda: lambda parameter for GAE
+            is_randomized_env: whether the environment is domain randomized
             device: device on which the code should run
         """
         super().__init__(env, device=device, seed=seed)
@@ -506,9 +509,9 @@ class PGMORL(MOAgent):
         # env setup
         if env is None:
             if self.seed is not None:
-                envs = [make_env(env_id, self.seed + i, i, experiment_name, self.gamma) for i in range(self.num_envs)]
+                envs = [make_env(env_id, self.seed + i, i, experiment_name, self.gamma, is_randomized_env) for i in range(self.num_envs)]
             else:
-                envs = [make_env(env_id, i, i, experiment_name, self.gamma) for i in range(self.num_envs)]
+                envs = [make_env(env_id, i, i, experiment_name, self.gamma, is_randomized_env) for i in range(self.num_envs)]
             self.env = mo_gym.MOSyncVectorEnv(envs)
         else:
             raise ValueError("Environments should be vectorized for PPO. You should provide an environment id instead.")
@@ -604,6 +607,7 @@ class PGMORL(MOAgent):
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         add_to_prediction: bool = True,
+        test_generalization: bool = False,
     ):
         """Evaluates all agents and store their current performances on the buffer and pareto archive."""
         for i, agent in enumerate(self.agents):
@@ -619,9 +623,9 @@ class PGMORL(MOAgent):
                 )
             evaluations_before_train[i] = discounted_reward
 
-        if self.log:
-            print("Current pareto archive:")
-            print(self.archive.evaluations)
+        print("Current pareto archive:")
+        print(self.archive.evaluations[:50])
+        if self.log and not test_generalization:
             log_all_multi_policy_metrics(
                 current_front=self.archive.evaluations,
                 hv_ref_point=ref_point,
@@ -704,7 +708,7 @@ class PGMORL(MOAgent):
     def train(
         self,
         total_timesteps: int,
-        eval_env: gym.Env,
+        eval_env: Union[gym.Env, MORLGeneralizationEvaluator],
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_weights_for_eval: int = 50,
@@ -731,6 +735,7 @@ class PGMORL(MOAgent):
             ref_point=ref_point,
             known_pareto_front=known_pareto_front,
             add_to_prediction=False,
+            test_generalization=test_generalization,
         )
         self.start_time = time.time()
 
@@ -746,6 +751,7 @@ class PGMORL(MOAgent):
             evaluations_before_train=current_evaluations,
             ref_point=ref_point,
             known_pareto_front=known_pareto_front,
+            test_generalization=test_generalization,
         )
 
         # Evolution
@@ -772,12 +778,17 @@ class PGMORL(MOAgent):
                     )
                 self.__train_all_agents(iteration=iteration, max_iterations=max_iterations)
                 iteration += 1
+            
             self.__eval_all_agents(
                 eval_env=eval_env,
                 evaluations_before_train=current_evaluations,
                 ref_point=ref_point,
                 known_pareto_front=known_pareto_front,
+                test_generalization=test_generalization,
             )
+            if self.log and test_generalization:
+                eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
+
             evolutionary_generation += 1
 
         print("Done training!")

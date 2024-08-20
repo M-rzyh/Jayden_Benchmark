@@ -47,12 +47,12 @@ MOSuperMarioBrosDR-v2:
 MOSuperMarioBrosDayDR-v2:
   normalization:
     discounted:
-      0: [0, 40] # actual [0, 28.7]
+      0: [0, 30] # actual [0, 28.7]
       1: [-1, 0] # actual [-0.63, -0.49]
       2: [0, 10] # actual [0, 6]
-      3: [0, 50] # actual [0, 41]
+      3: [0, 45] # actual [0, 41]
     undiscounted:
-      0: [0, 100] # actual [-2, 84]
+      0: [0, 90] # actual [-2, 84]
       1: [-15, 0] # actual [-11.3, 0]
       2: [0, 20] # actual [0, 16]
       3: [0, 400] # actual [0, 379]

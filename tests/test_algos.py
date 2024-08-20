@@ -27,7 +27,7 @@ from algos.single_policy.ser.mo_q_learning import MOQLearning
 
 
 from envs.registration import make as gym_make
-from envs.generalization_evaluator import MORLGeneralizationEvaluator
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 def test_pql():
     env_id = "deep-sea-treasure-v0"

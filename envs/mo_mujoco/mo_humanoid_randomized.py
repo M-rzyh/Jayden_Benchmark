@@ -17,7 +17,7 @@ import gymnasium as gym
 from gymnasium.utils import EzPickle
 from gymnasium.spaces import Box
 from envs.mo_mujoco.utils.random_mujoco_env import RandomMujocoEnv
-from envs.generalization_evaluator import DREnv
+from morl_generalization.algos.dr import DREnv
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 1,

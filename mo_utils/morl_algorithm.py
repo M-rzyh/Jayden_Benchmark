@@ -12,7 +12,7 @@ import torch.nn
 import wandb
 from gymnasium import spaces
 from mo_gymnasium.utils import MOSyncVectorEnv
-from envs.generalization_evaluator import MORLGeneralizationEvaluator
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 from mo_utils.evaluation import (
     eval_mo_reward_conditioned,

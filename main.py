@@ -3,7 +3,7 @@ import numpy as np
 from mo_utils.evaluation import policy_evaluation_mo
 from algos.multi_policy.capql.capql import CAPQL
 
-from envs.generalization_evaluator import MORLGeneralizationEvaluator
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 from envs.register_envs import register_envs
 from mo_utils.evaluation import seed_everything
 
@@ -51,15 +51,19 @@ def test_capql_dr():
 
     env = gym.make("MOHalfCheetahDR-v5")
     eval_env = gym.make("MOHalfCheetahDR-v5")
-    env = MORLGeneralizationEvaluator(env, 
-                          generalization_algo="domain_randomization", 
-                          test_envs=[
-                                "MOHalfCheetahLight-v5",
-                                "MOHalfCheetahHeavy-v5",
-                                "MOHalfCheetahSlippery-v5",
-                                "MOHalfCheetahHard-v5",
-                                "MOHalfCheetahDR-v5"
-                          ])
+    env = MORLGeneralizationEvaluator(
+        env, 
+        algo_name="capql",
+        seed=42,
+        generalization_algo="domain_randomization", 
+        test_envs=[
+            "MOHalfCheetahLight-v5",
+            "MOHalfCheetahHeavy-v5",
+            "MOHalfCheetahSlippery-v5",
+            "MOHalfCheetahHard-v5",
+            "MOHalfCheetahDR-v5"
+        ],
+    )
     
     agent = CAPQL(
         env,
