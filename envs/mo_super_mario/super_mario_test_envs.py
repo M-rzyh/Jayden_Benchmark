@@ -27,7 +27,6 @@ def _register_mario_env(id, is_random=False, **kwargs):
         id=id,
         entry_point=entry_point,
         kwargs=kwargs,
-        nondeterministic=True,
     )
 
 
@@ -48,7 +47,6 @@ def _register_mario_stage_env(id, **kwargs):
         id=id,
         entry_point='envs.mo_super_mario.utils.mo_super_mario:MOSuperMarioBros',
         kwargs=kwargs,
-        nondeterministic=True,
     )
 
 def register_mario():

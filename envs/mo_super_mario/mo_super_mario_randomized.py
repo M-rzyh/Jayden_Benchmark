@@ -215,7 +215,6 @@ if __name__ == "__main__":
     register(
         id="MOSuperMarioBrosDR",
         entry_point="envs.mo_super_mario.mo_super_mario_randomized:MOSuperMarioBrosDR",
-        nondeterministic=True,
     )
     env = gym.make(
         "MOSuperMarioBrosDR", 

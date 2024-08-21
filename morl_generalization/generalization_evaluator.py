@@ -29,6 +29,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             record_video_freq: int = 1000,
             num_eval_weights: int = 100,
             num_eval_episodes: int = 5,
+            fixed_weights: List[List[float]] = None,
             eval_params: Optional[dict] = None,
             normalization_type: str = "discounted",
             save_weights: bool = False,
@@ -76,11 +77,15 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
 
-        self.num_eval_weights = num_eval_weights
-        self.num_eval_episodes = num_eval_episodes
-        self.reward_dim = env.reward_space.shape[0]
-        self.eval_weights = equally_spaced_weights(self.reward_dim, self.num_eval_weights)
+        if fixed_weights:
+            self.eval_weights = [np.array(w) for w in fixed_weights]
+            self.num_eval_weights = len(self.eval_weights)
+        else:
+            self.num_eval_weights = num_eval_weights
+            self.eval_weights = equally_spaced_weights(self.reward_dim, self.num_eval_weights)
 
+        self.reward_dim = env.reward_space.shape[0]
+        self.num_eval_episodes = num_eval_episodes
         self.eval_params = eval_params
         self.normalization = False # whether to calculate normalised results
         self.recover_single_objective = False # whether to log single-objective rewards
