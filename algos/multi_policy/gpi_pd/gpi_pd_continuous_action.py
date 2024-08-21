@@ -561,6 +561,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         eval_env=None,
         eval_freq: int = 1000,
         reset_num_timesteps: bool = False,
+        verbose: bool = False,
     ):
         """Train the agent.
 
@@ -572,6 +573,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             eval_env (Optional[gym.Env]): Environment to use for evaluation.
             eval_freq (int): Number of timesteps between evaluations.
             reset_num_timesteps (bool): Whether to reset the number of timesteps.
+            verbose (bool): whether to print the episode info.
         """
         weight_support = unique_tol(weight_support)
         self.set_weight_support(weight_support)
@@ -636,7 +638,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 self.num_episodes += 1
 
                 if self.log and "episode" in info.keys():
-                    log_episode_info(info["episode"], np.dot, weight, self.global_step)
+                    log_episode_info(info["episode"], np.dot, weight, self.global_step, verbose=verbose)
 
                 if change_weight_every_episode:
                     weight = random.choice(weight_support)
@@ -658,6 +660,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
         checkpoints: bool = False,
+        verbose: bool = False,
         test_generalization: bool = False,
     ):
         """Train the agent.
@@ -675,6 +678,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             eval_freq (int): Number of timesteps between evaluations during an iteration.
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
+            verbose (bool): whether to print the episode info.
             test_generalization (bool): Whether to test generalizability of the model.
         """
         if self.log:
@@ -727,6 +731,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 change_weight_every_episode=weight_selection_algo == "gpi-ls",
                 eval_env=eval_env,
                 eval_freq=eval_freq,
+                verbose=verbose,
             )
 
             if weight_selection_algo == "ols":

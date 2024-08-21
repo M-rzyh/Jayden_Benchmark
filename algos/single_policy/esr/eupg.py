@@ -332,7 +332,14 @@ class EUPG(MOPolicy, MOAgent):
         forward_rewards = flip_rewards.flip(dims=[0])
         return forward_rewards
 
-    def train(self, total_timesteps: int, eval_env: Optional[gym.Env] = None, eval_freq: int = 1000, start_time=None):
+    def train(
+        self, 
+        total_timesteps: int, 
+        eval_env: Optional[gym.Env] = None, 
+        eval_freq: int = 1000, 
+        start_time = None,
+        verbose: bool = False,
+    ):
         """Train the agent.
 
         Args:
@@ -340,6 +347,7 @@ class EUPG(MOPolicy, MOAgent):
             eval_env: Environment to run policy evaluation on
             eval_freq: Frequency of policy evaluation
             start_time: Start time of the training (for SPS)
+            verbose: whether to print the episode info.
         """
         if start_time is None:
             start_time = time.time()
@@ -380,6 +388,7 @@ class EUPG(MOPolicy, MOAgent):
                         weights=self.weights,
                         id=self.id,
                         global_timestep=self.global_step,
+                        verbose=verbose
                     )
 
             else:

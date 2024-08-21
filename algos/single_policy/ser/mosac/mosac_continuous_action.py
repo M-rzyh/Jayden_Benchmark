@@ -492,7 +492,8 @@ class MOSAC(MOPolicy):
         self, 
         total_timesteps: int, 
         eval_env: Optional[gym.Env] = None, 
-        start_time=None, 
+        start_time = None,
+        verbose: bool = False,
     ):
         """Train the agent.
 
@@ -500,6 +501,7 @@ class MOSAC(MOPolicy):
             total_timesteps (int): Total number of timesteps (env steps) to train for
             eval_env (Optional[gym.Env]): Gym environment used for evaluation.
             start_time (Optional[float]): Starting time for the training procedure. If None, it will be set to the current time.
+            verbose (bool): whether to print the episode info.
         """
         if start_time is None:
             start_time = time.time()
@@ -530,7 +532,7 @@ class MOSAC(MOPolicy):
             if terminated or truncated:
                 obs, _ = self.env.reset()
                 if self.log and "episode" in infos.keys():
-                    log_episode_info(infos["episode"], np.dot, self.weights, self.global_step, self.id)
+                    log_episode_info(infos["episode"], np.dot, self.weights, self.global_step, self.id, verbose=verbose)
 
             # ALGO LOGIC: training.
             if self.global_step > self.learning_starts:

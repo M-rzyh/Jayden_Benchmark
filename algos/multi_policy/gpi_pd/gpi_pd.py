@@ -759,6 +759,7 @@ class GPIPD(MOPolicy, MOAgent):
         eval_env: Optional[gym.Env] = None,
         eval_freq: int = 1000,
         reset_learning_starts: bool = False,
+        verbose: bool = False
     ):
         """Train the agent for one iteration.
 
@@ -771,6 +772,7 @@ class GPIPD(MOPolicy, MOAgent):
             eval_env (Optional[gym.Env]): Environment to evaluate on
             eval_freq (int): Number of timesteps between evaluations
             reset_learning_starts (bool): Whether to reset the learning starts
+            verbose (bool): whether to print the episode info.
         """
         weight_support = unique_tol(weight_support)  # remove duplicates
         self.set_weight_support(weight_support)
@@ -830,7 +832,7 @@ class GPIPD(MOPolicy, MOAgent):
                 self.num_episodes += 1
 
                 if self.log and "episode" in info.keys():
-                    log_episode_info(info["episode"], np.dot, weight, self.global_step, verbose=False)
+                    log_episode_info(info["episode"], np.dot, weight, self.global_step, verbose=verbose)
                     wandb.log(
                         {"metrics/policy_index": np.array(self.policy_indices), "global_step": self.global_step},
                     )
@@ -856,6 +858,7 @@ class GPIPD(MOPolicy, MOAgent):
         eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
         checkpoints: bool = False,
+        verbose: bool = False,
         test_generalization: bool = False,
     ):
         """Train agent.
@@ -873,6 +876,7 @@ class GPIPD(MOPolicy, MOAgent):
             eval_freq (int): Number of timesteps between evaluations.
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
+            verbose (bool): whether to print the episode info.
             test_generalization (bool): Whether to test generalizability of the model.
         """
         if self.log:
@@ -930,6 +934,7 @@ class GPIPD(MOPolicy, MOAgent):
                 eval_freq=eval_freq,
                 reset_num_timesteps=False,
                 reset_learning_starts=False,
+                verbose=verbose,
             )
 
             if weight_selection_algo == "ols":

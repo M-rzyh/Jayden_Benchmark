@@ -412,12 +412,13 @@ class MOPPO(MOPolicy):
         # This allows to broadcast the tensor to match the additional dimension of rewards
         return tensor.unsqueeze(1).repeat(1, self.networks.reward_dim)
 
-    def __collect_samples(self, obs: th.Tensor, done: th.Tensor):
+    def __collect_samples(self, obs: th.Tensor, done: th.Tensor, verbose: bool = False):
         """Fills the batch with {self.steps_per_iteration} samples collected from the environments.
 
         Args:
             obs: current observations
             done: current dones
+            verbose: whether to print the episode info.
 
         Returns:
             next observation and dones
@@ -447,6 +448,7 @@ class MOPPO(MOPolicy):
                         weights=self.weights,
                         global_timestep=self.global_step,
                         id=self.id,
+                        verbose=verbose,
                     )
                     break
 

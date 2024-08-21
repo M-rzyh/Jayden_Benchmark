@@ -396,6 +396,7 @@ class CAPQL(MOAgent, MOPolicy):
         eval_freq: int = 10000,
         reset_num_timesteps: bool = False,
         checkpoints: bool = False,
+        verbose: bool = False,
         test_generalization: bool = False,
     ):
         """Train the agent.
@@ -411,6 +412,7 @@ class CAPQL(MOAgent, MOPolicy):
             eval_freq (int): Number of timesteps between evaluations during an iteration.
             reset_num_timesteps (bool): Whether to reset the number of timesteps.
             checkpoints (bool): Whether to save checkpoints.
+            verbose (bool): whether to print the episode info.
             test_generalization (bool): Whether to test generalizability of the model.
         """
         if self.log:
@@ -466,7 +468,7 @@ class CAPQL(MOAgent, MOPolicy):
                 self.num_episodes += 1
 
                 if self.log and "episode" in info.keys():
-                    log_episode_info(info["episode"], np.dot, w, self.global_step)
+                    log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)
             else:
                 obs = next_obs
 
