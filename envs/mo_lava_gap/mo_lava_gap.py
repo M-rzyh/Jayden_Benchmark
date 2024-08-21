@@ -1,6 +1,8 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np 
+import random
+
 from minigrid.core.constants import COLOR_TO_IDX, OBJECT_TO_IDX
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
@@ -218,9 +220,23 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
                 return True
             return False
         
+        grid_width = self.width - 2
+        grid_height = self.height - 2
+
+        # Create a list of all possible positions
+        all_positions = [(x, y) for x in range(grid_width) for y in range(grid_height)]
+
+        # Remove the agent and goal positions
+        all_positions.remove((0, 0))
+        all_positions.remove((grid_width - 1, grid_height - 1))
+
+        # Randomly sample `n_lava` unique positions
         n_lava = self._resample_n_lava()
-        for _ in range(n_lava):  
-            self.place_obj(Lava(), max_tries=100, reject_fn=reject_fn)
+        selected_positions = random.sample(all_positions, n_lava)
+
+        # Place the Lava objects at the randomly selected positions
+        for x, y in selected_positions:
+            self.put_obj(Lava(), x + 1, y + 1)
         
         # Double check that the agent and goal doesn't overlap with an object
         start_cell = self.grid.get(*self.agent_start_pos)
