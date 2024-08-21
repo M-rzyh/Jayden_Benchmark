@@ -6,6 +6,7 @@ pygame>=2.1.0
 scipy>=1.7.3
 pymoo>=0.6.0
 wandb>=0.14.0
+minigrid==2.3.1
 imageio
 moviepy
 seaborn

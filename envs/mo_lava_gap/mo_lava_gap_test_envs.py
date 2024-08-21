@@ -4,7 +4,7 @@ from envs.mo_lava_gap.mo_lava_gap import MOLavaGapDR
 class MOLavaGapPool(MOLavaGapDR):
     def __init__(self, **kwargs):
         bit_map = [
-            [0, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 1, 1, 1, 1, 1, 1, 1],
             [0, 1, 1, 1, 1, 1, 1, 1, 1],
             [0, 1, 1, 1, 1, 1, 1, 1, 1],

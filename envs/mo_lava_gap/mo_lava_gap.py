@@ -45,7 +45,7 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
         agent_start_pos=(1, 1),
         agent_start_dir=0,
         goal_pos=None,
-        n_lava=64,
+        n_lava=1000,
         bit_map=None,
         **kwargs,
     ):

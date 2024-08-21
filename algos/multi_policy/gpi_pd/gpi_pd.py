@@ -830,7 +830,7 @@ class GPIPD(MOPolicy, MOAgent):
                 self.num_episodes += 1
 
                 if self.log and "episode" in info.keys():
-                    log_episode_info(info["episode"], np.dot, weight, self.global_step)
+                    log_episode_info(info["episode"], np.dot, weight, self.global_step, verbose=False)
                     wandb.log(
                         {"metrics/policy_index": np.array(self.policy_indices), "global_step": self.global_step},
                     )
