@@ -359,8 +359,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             assert b_obs_seq.shape == (batch_size * self.num_sample_w, seq_len, *self.observation_shape)
 
             with th.no_grad():
-                b_next_feat_seq = self.target_feat_net(b_next_obs_seq, return_hidden=False)
-                target = self.envelope_target(b_next_feat_seq, w, sampled_w)
+                b_next_feat_seq = self.feat_net(b_next_obs_seq, return_hidden=False)
+                b_next_feat_seq_targ = self.target_feat_net(b_next_obs_seq, return_hidden=False)
+                target = self.envelope_target(b_next_feat_seq, b_next_feat_seq_targ, w, sampled_w)
 
                 # TODO: Check if this is correct
                 assert target.shape == (batch_size * self.num_sample_w, seq_len, self.reward_dim)
@@ -390,6 +391,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 auxiliary_loss = mean_of_unmasked_elements(auxiliary_loss, b_masks_seq.squeeze(-1))
                 critic_loss = (1 - self.homotopy_lambda) * critic_loss + self.homotopy_lambda * auxiliary_loss
 
+            self.feat_optim.zero_grad()
             self.q_optim.zero_grad()
             critic_loss.backward()
             if self.log and self.global_step % 100 == 0:
@@ -401,6 +403,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 )
             if self.max_grad_norm is not None:
                 th.nn.utils.clip_grad_norm_(self.q_net.parameters(), self.max_grad_norm)
+            self.feat_optim.step()
             self.q_optim.step()
             critic_losses.append(critic_loss.item())
 
@@ -418,6 +421,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
         if self.tau != 1 or self.global_step % self.target_net_update_freq == 0:
             polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.tau)
+            polyak_update(self.feat_net.parameters(), self.target_feat_net.parameters(), self.tau)
 
         if self.epsilon_decay_steps is not None:
             self.epsilon = linearly_decaying_value(
@@ -506,11 +510,12 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         return max_act.detach().item()
 
     @th.no_grad()
-    def envelope_target(self, obs: th.Tensor, w: th.Tensor, sampled_w: th.Tensor) -> th.Tensor:
+    def envelope_target(self, obs: th.Tensor, obs_targ: th.Tensor, w: th.Tensor, sampled_w: th.Tensor) -> th.Tensor:
         """Computes the envelope target for the given observation sequence and weight.
 
         Args:
-            obs: Batched sequences of latent observations (batch_size, seq_len, obs_dim).
+            obs: Batched sequences of latent observations for main q net (batch_size, seq_len, obs_dim).
+            obs: Batched sequences of latent observations for target q net (batch_size, seq_len, obs_dim).
             w: Current weight vector (batch_size, reward_dim).
             sampled_w: Set of sampled weight vectors (num_sampled_weights, reward_dim).
             hidden_states: Initial hidden states for the recurrent network.
@@ -523,6 +528,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
         # Repeat the observations for each sampled weight and reshape
         next_obs = obs.repeat_interleave(num_sampled_weights, dim=0).view(-1, obs.size(-1))
+        next_obs_targ = obs_targ.repeat_interleave(num_sampled_weights, dim=0).view(-1, obs_targ.size(-1))
 
         # Repeat the weights for each sample
         W = sampled_w.repeat(batch_size * seq_len, 1)
@@ -541,7 +547,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         pref = th.argmax(max_q, dim=1)
 
         # MO Q-values evaluated on the target network
-        next_q_values_target = self.target_q_net(next_obs, W)
+        next_q_values_target = self.target_q_net(next_obs_targ, W)
         next_q_values_target = next_q_values_target.view(batch_size, num_sampled_weights, seq_len, self.action_dim, self.reward_dim)
 
         # Index the Q-values for the max actions
@@ -554,29 +560,6 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         max_next_q = max_next_q.gather(1, pref.unsqueeze(1).unsqueeze(3).expand(max_next_q.size(0), 1, max_next_q.size(2), max_next_q.size(3))).squeeze(1)
         
         return max_next_q
-
-    @th.no_grad()
-    def ddqn_target(self, obs: th.Tensor, w: th.Tensor) -> th.Tensor:
-        """Double DQN target for the given observation and weight.
-
-        Args:
-            obs: observation
-            w: weight vector.
-
-        Returns: the DQN target.
-        """
-        # Max action for each state
-        q_values = self.q_net(obs, w)
-        scalarized_q_values = th.einsum("br,bar->ba", w, q_values)
-        max_acts = th.argmax(scalarized_q_values, dim=1)
-        # Action evaluated with the target network
-        q_values_target = self.target_q_net(obs, w)
-        q_values_target = q_values_target.gather(
-            1,
-            max_acts.long().reshape(-1, 1, 1).expand(q_values_target.size(0), 1, q_values_target.size(2)),
-        )
-        q_values_target = q_values_target.reshape(-1, self.reward_dim)
-        return q_values_target
 
     def train(
         self,
