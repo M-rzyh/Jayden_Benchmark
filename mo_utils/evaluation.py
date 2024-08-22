@@ -2,7 +2,6 @@
 import os
 import random
 from typing import List, Optional, Tuple
-import importlib
 
 import numpy as np
 import torch as th
@@ -27,6 +26,7 @@ def eval_mo(
     w: Optional[np.ndarray] = None,
     scalarization=np.dot,
     render: bool = False,
+    reset_hidden: bool = False,
 ) -> Tuple[float, float, np.ndarray, np.ndarray]:
     """Evaluates one episode of the agent in the environment.
 
@@ -45,11 +45,9 @@ def eval_mo(
     vec_return, disc_vec_return = np.zeros_like(w), np.zeros_like(w)
     gamma = 1.0
 
-    # hack to prevent circular import
-    RecurrentMOPolicy = getattr(importlib.import_module('module_name'), 'RecurrentMOPolicy')
-    if isinstance(agent, RecurrentMOPolicy):
-        agent.reinitialize_hidden()  # IMPORTANT: reinitialize hidden state for each episode
-    
+    if reset_hidden:
+        agent.reinitialize_hidden() # reset hidden state for recurrent agents
+
     while not done:
         if render:
             env.render()
@@ -122,7 +120,7 @@ def eval_mo_reward_conditioned(
 
 
 def policy_evaluation_mo(
-    agent, env, w: Optional[np.ndarray], scalarization=np.dot, rep: int = 5
+    agent, env, w: Optional[np.ndarray], scalarization=np.dot, rep: int = 5, reset_hidden: bool = False
 ) -> Tuple[float, float, np.ndarray, np.ndarray]:
     """Evaluates the value of a policy by running the policy for multiple episodes. Returns the average returns.
 
@@ -136,7 +134,7 @@ def policy_evaluation_mo(
     Returns:
         (float, float, np.ndarray, np.ndarray): Avg scalarized return, Avg scalarized discounted return, Avg vectorized return, Avg vectorized discounted return
     """
-    evals = [eval_mo(agent=agent, env=env, w=w, scalarization=scalarization) for _ in range(rep)]
+    evals = [eval_mo(agent=agent, env=env, w=w, scalarization=scalarization, reset_hidden=reset_hidden) for _ in range(rep)]
     avg_scalarized_return = np.mean([eval[0] for eval in evals])
     avg_scalarized_discounted_return = np.mean([eval[1] for eval in evals])
     avg_vec_return = np.mean([eval[2] for eval in evals], axis=0)

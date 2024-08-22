@@ -676,7 +676,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                     eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
                     current_front = [
-                        self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log)[3]
+                        self.policy_eval(eval_env, weights=ew, num_episodes=num_eval_episodes_for_front, log=self.log, reset_hidden=True)[3]
                         for ew in eval_weights
                     ]
                     log_all_multi_policy_metrics(
