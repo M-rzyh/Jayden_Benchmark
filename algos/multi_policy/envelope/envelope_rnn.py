@@ -464,6 +464,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         feat, self.hidden = self.feat_net(obs, self.hidden)
         action = self.max_action(feat, w, num_envs)
         self.q_net.train()
+        self.feat_net.train()
 
         return action
 
