@@ -133,7 +133,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         epsilon_decay_steps: int = None,  # None == fixed epsilon
         tau: float = 1.0,
         target_net_update_freq: int = 200,  # ignored if tau != 1.0
-        buffer_size: int = int(1e6),
+        buffer_size: int = 4000,
         net_arch: List = [256, 256, 256, 256],
         batch_size: int = 32,
         learning_starts: int = 100,
@@ -165,7 +165,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             epsilon_decay_steps: The number of steps to decay epsilon over.
             tau: The soft update coefficient (keep in [0, 1]).
             target_net_update_freq: The frequency with which the target network is updated.
-            buffer_size: The size of the replay buffer.
+            buffer_size: The size of the replay buffer. Note that the buffer size is the number of episodes.
             net_arch: The size of the hidden layers of the value net.
             batch_size: The size of the batch to sample from the replay buffer. Note that the batch size is the number of episodes.
             learning_starts: The number of steps before learning starts i.e. the agent will be random until learning starts.
@@ -219,6 +219,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         self.q_optim = optim.Adam(self.q_net.parameters(), lr=self.learning_rate)
 
         self.sequence_length = self.env.spec.max_episode_steps
+        assert self.learning_starts >= self.sequence_length * self.batch_size, "Not enough episodes to start replay"
         self.envelope = envelope
         self.num_sample_w = num_sample_w
         self.homotopy_lambda = self.initial_homotopy_lambda

@@ -252,7 +252,7 @@ class RecurrentPrioritizedReplayBuffer:
             sequence_length: Length of the sequences to store
             min_priority: Minimum priority of the buffer
         """
-        max_size = max_size // sequence_length
+        self.max_size = max_size
         self.sequence_length = sequence_length
         self.ptr = 0
         self.size = 0
