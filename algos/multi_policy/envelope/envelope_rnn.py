@@ -32,7 +32,7 @@ from morl_generalization.generalization_evaluator import MORLGeneralizationEvalu
 
 
 class FeaturesNet(nn.Module):
-    def __init__(self, obs_shape, hidden_dim, rnn_layers=1, recurrent_type='lstm'):
+    def __init__(self, obs_shape, hidden_dim, rnn_layers=2, recurrent_type='lstm'):
         super().__init__()
         self.obs_shape = obs_shape
 
@@ -147,6 +147,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         initial_homotopy_lambda: float = 0.0,
         final_homotopy_lambda: float = 1.0,
         homotopy_decay_steps: int = None,
+        rnn_layers: int = 2,
         project_name: str = "MORL-Baselines",
         experiment_name: str = "EnvelopeRNN",
         wandb_entity: Optional[str] = None,
@@ -179,6 +180,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             initial_homotopy_lambda: The initial value of the homotopy parameter for homotopy optimization.
             final_homotopy_lambda: The final value of the homotopy parameter.
             homotopy_decay_steps: The number of steps to decay the homotopy parameter over.
+            rnn_layers: The number of layers in the RNN.
             project_name: The name of the project, for wandb logging.
             experiment_name: The name of the experiment, for wandb logging.
             wandb_entity: The entity of the project, for wandb logging.
@@ -208,9 +210,10 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
+        self.rnn_layers = rnn_layers
         self.dist = dist
 
-        self.feat_net = FeaturesNet(self.observation_shape, net_arch[0]).to(self.device)
+        self.feat_net = FeaturesNet(self.observation_shape, net_arch[0], rnn_layers=rnn_layers).to(self.device)
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
         
         self.target_feat_net = create_target(self.feat_net)
@@ -266,6 +269,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             "initial_homotopy_lambda": self.initial_homotopy_lambda,
             "final_homotopy_lambda": self.final_homotopy_lambda,
             "homotopy_decay_steps": self.homotopy_decay_steps,
+            "rnn_layers": self.rnn_layers,
             "learning_starts": self.learning_starts,
             "seed": self.seed,
         }
