@@ -44,11 +44,14 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
     def __init__(
         self,
         size=11,
+        max_steps=256,
         agent_start_pos=(1, 1),
         agent_start_dir=0,
         goal_pos=None,
         n_lava=1000,
         bit_map=None,
+        is_rgb=False,
+        tile_size=8,
         **kwargs,
     ):
         self.agent_start_pos = agent_start_pos
@@ -59,7 +62,6 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
         # Reduce lava if there are too many
         self.n_lava = min(int(n_lava), (size-2)**2 - 2)
 
-        max_steps = size * size
         super().__init__(
             mission_space=mission_space,
             grid_size=size,
@@ -82,14 +84,23 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
                 self.put_obj(Lava(), x + 1, y + 1)
 
         # Observation space
-        imgShape = (self.width, self.height, 3)
-        imgSize = reduce(operator.mul, imgShape, 1)
-        self.observation_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=(imgSize,),
-            dtype='float32'
-        )
+        self.is_rgb = is_rgb
+        if self.is_rgb:
+            self.observation_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(self.width * tile_size, self.height * tile_size, 3),
+                dtype='uint8'
+            )
+        else:
+            imgShape = (self.width, self.height, 3)
+            imgSize = reduce(operator.mul, imgShape, 1)
+            self.observation_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(imgSize,),
+                dtype='float32'
+            )
         # lava damage, time penalty
         self.reward_space = spaces.Box(
             low=np.array([-max_steps, -max_steps]),
@@ -152,14 +163,14 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
                 self.agent_dir += 4
             if in_lava: 
                 # stay in lava
-                vec_reward[0] = -1
+                vec_reward[0] = -5
 
         # Rotate right
         elif action == self.actions.right:
             self.agent_dir = (self.agent_dir + 1) % 4
             if in_lava: 
                 # stay in lava
-                vec_reward[0] = -1
+                vec_reward[0] = -5
 
         # Move forward
         elif action == self.actions.forward:
@@ -171,7 +182,7 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
                 vec_reward += 100
             if fwd_cell is not None and fwd_cell.type == "lava": 
                 # walk into lava
-                vec_reward[0] = -1
+                vec_reward[0] = -5
         else:
             raise ValueError(f"Unknown action: {action}")
 
@@ -181,6 +192,9 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
         if self.render_mode == "human":
             self.render()
 
+        if self.is_rgb:
+            return self.rgb_observation(), vec_reward, terminated, truncated, {}
+        
         return self.observation(), vec_reward, terminated, truncated, {}
 
     def reset(
@@ -202,6 +216,8 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
         if self.render_mode == "human":
             self.render()
 
+        if self.is_rgb:
+            return self.rgb_observation(), {}
         return self.observation(), {}
     
     def _resample_n_lava(self):
@@ -253,6 +269,15 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
 
         full_grid = full_grid.flatten()
         return full_grid/ 1.
+    
+    def rgb_observation(self):
+        env = self.unwrapped
+        rgb_img = self.grid.render(
+            self.tile_size,
+            env.agent_pos,
+            env.agent_dir,
+        )
+        return rgb_img
 
 if __name__ == "__main__":
     from gymnasium.envs.registration import register
@@ -268,6 +293,7 @@ if __name__ == "__main__":
     env = gym.make(
         "MOLavaGapDR", 
         render_mode="human",
+        # is_rgb=True,
     )
 
     terminated = False
@@ -275,8 +301,10 @@ if __name__ == "__main__":
     env.reset()
     while True:
         obs, r, terminated, truncated, info = env.step(env.action_space.sample())
-        print(r, terminated, truncated)
-
+        print(r, terminated, truncated, obs.shape)
+        # plt.figure()
+        # plt.imshow(obs, vmin=0, vmax=255)
+        # plt.show()
         env.render()
         if terminated or truncated:
             env.unwrapped.reset_random()

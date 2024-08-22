@@ -12,7 +12,6 @@ import torch.nn
 import wandb
 from gymnasium import spaces
 from mo_gymnasium.utils import MOSyncVectorEnv
-from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 from mo_utils.evaluation import (
     eval_mo_reward_conditioned,
@@ -192,12 +191,25 @@ class MOPolicy(ABC):
         """
         pass
 
+class RecurrentMOPolicy(MOPolicy):
+    def __init__(self, *args, **kwargs) -> None:
+        """
+        Wrapper for recurrent policies
+        """
+        super().__init__(*args, **kwargs)
+
+        self.hidden = None
+    
+    def reinitialize_hidden(self) -> None:
+        """Reinitializes the hidden state of the policy."""
+        print("Reinitializing hidden state")
+        self.hidden = None
 
 
 class MOAgent(ABC):
     """An MORL Agent, can contain one or multiple MOPolicies. Contains helpers to extract features from the environment, setup logging etc."""
 
-    def __init__(self, env: Optional[Union[gym.Env, MORLGeneralizationEvaluator]], device: Union[th.device, str] = "auto", seed: Optional[int] = None) -> None:
+    def __init__(self, env: Optional[gym.Env], device: Union[th.device, str] = "auto", seed: Optional[int] = None) -> None:
         """Initializes the agent.
 
         Args:
@@ -213,7 +225,7 @@ class MOAgent(ABC):
         self.seed = seed
         self.np_random = np.random.default_rng(self.seed)
 
-    def extract_env_info(self, env: Optional[Union[gym.Env, MORLGeneralizationEvaluator]]) -> None:
+    def extract_env_info(self, env: gym.Env) -> None:
         """Extracts all the features of the environment: observation space, action space, ...
 
         Args:

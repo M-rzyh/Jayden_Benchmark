@@ -2,6 +2,7 @@
 import os
 import random
 from typing import List, Optional, Tuple
+import importlib
 
 import numpy as np
 import torch as th
@@ -43,6 +44,12 @@ def eval_mo(
     done = False
     vec_return, disc_vec_return = np.zeros_like(w), np.zeros_like(w)
     gamma = 1.0
+
+    # hack to prevent circular import
+    RecurrentMOPolicy = getattr(importlib.import_module('module_name'), 'RecurrentMOPolicy')
+    if isinstance(agent, RecurrentMOPolicy):
+        agent.reinitialize_hidden()  # IMPORTANT: reinitialize hidden state for each episode
+    
     while not done:
         if render:
             env.render()

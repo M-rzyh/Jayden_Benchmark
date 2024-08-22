@@ -3,6 +3,7 @@ import argparse
 
 from algos.multi_policy.capql.capql import CAPQL
 from algos.multi_policy.envelope.envelope import Envelope
+from algos.multi_policy.envelope.envelope_rnn import EnvelopeRNN
 from algos.multi_policy.gpi_pd.gpi_pd import GPILS, GPIPD
 from algos.multi_policy.gpi_pd.gpi_pd_continuous_action import (
     GPILSContinuousAction,
@@ -20,6 +21,7 @@ from algos.multi_policy.pgmorl.pgmorl import PGMORL
 ALGOS = {
     "pgmorl": PGMORL,
     "envelope": Envelope,
+    "envelope_rnn": EnvelopeRNN,
     "gpi_pd_continuous": GPIPDContinuousAction,
     "gpi_pd_discrete": GPIPD,
     "gpi_ls_continuous": GPILSContinuousAction,

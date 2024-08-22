@@ -4,7 +4,7 @@ import os
 from typing import Callable, List
 
 import numpy as np
-
+import torch as th
 
 def linearly_decaying_value(initial_value, decay_period, step, warmup_steps, final_value):
     """Returns the current value for a linearly decaying parameter.
@@ -105,6 +105,8 @@ def nearest_neighbors(
 
     return nearest_neighbors_ids
 
+def mean_of_unmasked_elements(tensor: th.tensor, mask: th.tensor) -> th.tensor:
+    return th.mean(tensor * mask) / mask.sum() * np.prod(mask.shape)
 
 def reset_wandb_env():
     """Reset the wandb environment variables.

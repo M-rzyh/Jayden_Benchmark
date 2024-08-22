@@ -2,6 +2,7 @@
 import os
 from typing import List, Optional, Union
 from typing_extensions import override
+from copy import deepcopy
 
 import gymnasium as gym
 import numpy as np
@@ -16,7 +17,7 @@ from mo_utils.evaluation import (
     log_all_multi_policy_metrics,
     log_episode_info,
 )
-from mo_utils.morl_algorithm import MOAgent, MOPolicy
+from mo_utils.morl_algorithm import MOAgent, RecurrentMOPolicy
 from mo_utils.networks import (
     NatureCNN,
     get_grad_norm,
@@ -24,12 +25,50 @@ from mo_utils.networks import (
     mlp,
     polyak_update,
 )
-from mo_utils.prioritized_buffer import PrioritizedReplayBuffer
-from mo_utils.utils import linearly_decaying_value
+from mo_utils.prioritized_buffer import RecurrentPrioritizedReplayBuffer
+from mo_utils.utils import linearly_decaying_value, mean_of_unmasked_elements
 from mo_utils.weights import equally_spaced_weights, random_weights
 from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 
+class FeaturesNet(nn.Module):
+    def __init__(self, obs_shape, hidden_dim, rnn_layers=1, recurrent_type='lstm'):
+        super().__init__()
+        self.obs_shape = obs_shape
+
+        if len(obs_shape) == 1:
+            self.state_features = mlp(obs_shape[0], -1, [hidden_dim])
+        elif len(obs_shape) > 1:  # Image observation
+            self.state_features = NatureCNN(self.obs_shape, features_dim=hidden_dim)
+
+        if recurrent_type == 'lstm':
+            self.rnn = nn.LSTM(hidden_dim, hidden_dim, batch_first=True, num_layers=rnn_layers)
+        elif recurrent_type == 'rnn':
+            self.rnn = nn.RNN(hidden_dim, hidden_dim, batch_first=True, num_layers=rnn_layers)
+        elif recurrent_type == 'gru':
+            self.rnn = nn.GRU(hidden_dim, hidden_dim, batch_first=True, num_layers=rnn_layers)
+        else:
+            raise ValueError(f"{recurrent_type} not recognized")
+        
+        self.apply(layer_init)
+        
+        for name, param in self.rnn.named_parameters():
+            if 'bias' in name:
+                nn.init.constant_(param, 0)
+            elif 'weight' in name:
+                nn.init.orthogonal_(param)
+
+    def forward(self, obs, hidden=None, return_hidden=True):
+        self.rnn.flatten_parameters()
+        if obs.dim() == 1:
+            obs = obs.unsqueeze(0)
+        sf = self.state_features(obs)
+        summary, hidden = self.rnn(sf, hidden)
+        if return_hidden:
+            return summary, hidden
+        else:
+            return summary
+ 
 class QNet(nn.Module):
     """Multi-objective Q-Network conditioned on the weight vector."""
 
@@ -46,37 +85,38 @@ class QNet(nn.Module):
         self.obs_shape = obs_shape
         self.action_dim = action_dim
         self.rew_dim = rew_dim
-        if len(obs_shape) == 1:
-            self.feature_extractor = mlp(obs_shape[0], -1, net_arch[:1])
-            input_dim = net_arch[0] + rew_dim
-        elif len(obs_shape) > 1:  # Image observation
-            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
-            input_dim = self.feature_extractor.features_dim + rew_dim
         # |S| + |R| -> ... -> |A| * |R|
-        self.net = mlp(input_dim, action_dim * rew_dim, net_arch[1:])
+        self.net = mlp(net_arch[0] + rew_dim, action_dim * rew_dim, net_arch[1:])
         self.apply(layer_init)
 
     def forward(self, obs, w):
         """Predict Q values for all actions.
 
         Args:
-            obs: current observation
+            obs: latent observation
             w: weight vector
 
         Returns: the Q values for all actions
 
         """
-        features = self.feature_extractor(obs)
         if w.dim() == 1:
             w = w.unsqueeze(0)
-        if features.dim() == 1:
-            features = features.unsqueeze(0)
-        input = th.cat((features, w), dim=features.dim() - 1)
+        if obs.dim() == 1:
+            obs = obs.unsqueeze(0)
+        input = th.cat((obs, w), dim=w.dim() - 1)
         q_values = self.net(input)
         return q_values.view(-1, self.action_dim, self.rew_dim)  # Batch size X Actions X Rewards
 
+def set_requires_grad_flag(net: nn.Module, requires_grad: bool) -> None:
+    for p in net.parameters():
+        p.requires_grad = requires_grad
 
-class Envelope(MOPolicy, MOAgent):
+def create_target(net: nn.Module) -> nn.Module:
+    target = deepcopy(net)
+    set_requires_grad_flag(target, False)
+    return target
+
+class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
     """Envelope Q-Leaning Algorithm.
 
     Envelope uses a conditioned network to embed multiple policies (taking the weight as input).
@@ -95,7 +135,7 @@ class Envelope(MOPolicy, MOAgent):
         target_net_update_freq: int = 200,  # ignored if tau != 1.0
         buffer_size: int = int(1e6),
         net_arch: List = [256, 256, 256, 256],
-        batch_size: int = 256,
+        batch_size: int = 32,
         learning_starts: int = 100,
         gradient_updates: int = 1,
         gamma: float = 0.99,
@@ -108,7 +148,7 @@ class Envelope(MOPolicy, MOAgent):
         final_homotopy_lambda: float = 1.0,
         homotopy_decay_steps: int = None,
         project_name: str = "MORL-Baselines",
-        experiment_name: str = "Envelope",
+        experiment_name: str = "EnvelopeRNN",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         log: bool = True,
@@ -127,7 +167,7 @@ class Envelope(MOPolicy, MOAgent):
             target_net_update_freq: The frequency with which the target network is updated.
             buffer_size: The size of the replay buffer.
             net_arch: The size of the hidden layers of the value net.
-            batch_size: The size of the batch to sample from the replay buffer.
+            batch_size: The size of the batch to sample from the replay buffer. Note that the batch size is the number of episodes.
             learning_starts: The number of steps before learning starts i.e. the agent will be random until learning starts.
             gradient_updates: The number of gradient updates per step.
             gamma: The discount factor (gamma).
@@ -148,7 +188,7 @@ class Envelope(MOPolicy, MOAgent):
             device: The device to use for training.
         """
         MOAgent.__init__(self, env, device=device, seed=seed)
-        MOPolicy.__init__(self, device)
+        RecurrentMOPolicy.__init__(self, device)
         self.learning_rate = learning_rate
         self.initial_epsilon = initial_epsilon
         self.epsilon = initial_epsilon
@@ -169,24 +209,27 @@ class Envelope(MOPolicy, MOAgent):
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
 
+        self.feat_net = FeaturesNet(self.observation_shape, net_arch[0]).to(self.device)
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
-        self.target_q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
-        self.target_q_net.load_state_dict(self.q_net.state_dict())
-        for param in self.target_q_net.parameters():
-            param.requires_grad = False
+        
+        self.target_feat_net = create_target(self.feat_net)
+        self.target_q_net = create_target(self.q_net)
 
+        self.feat_optim = optim.Adam(self.feat_net.parameters(), lr=self.learning_rate)
         self.q_optim = optim.Adam(self.q_net.parameters(), lr=self.learning_rate)
 
+        self.sequence_length = self.env.spec.max_episode_steps
         self.envelope = envelope
         self.num_sample_w = num_sample_w
         self.homotopy_lambda = self.initial_homotopy_lambda
         if self.per:
-            self.replay_buffer = PrioritizedReplayBuffer(
+            self.replay_buffer = RecurrentPrioritizedReplayBuffer(
                 self.observation_shape,
                 1,
                 rew_dim=self.reward_dim,
                 max_size=buffer_size,
                 action_dtype=np.uint8,
+                sequence_length=self.sequence_length,
             )
         else:
             self.replay_buffer = ReplayBuffer(
@@ -237,8 +280,10 @@ class Envelope(MOPolicy, MOAgent):
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
         saved_params = {}
+        saved_params["feat_net_state_dict"] = self.feat_net.state_dict()
         saved_params["q_net_state_dict"] = self.q_net.state_dict()
 
+        saved_params["feat_net_optimizer_state_dict"] = self.feat_optim.state_dict()
         saved_params["q_net_optimizer_state_dict"] = self.q_optim.state_dict()
         if save_replay_buffer:
             saved_params["replay_buffer"] = self.replay_buffer
@@ -253,8 +298,11 @@ class Envelope(MOPolicy, MOAgent):
             load_replay_buffer: Whether to load the replay buffer too.
         """
         params = th.load(path)
+        self.feat_net.load_state_dict(params["feat_net_state_dict"])
         self.q_net.load_state_dict(params["q_net_state_dict"])
+        self.target_feat_net.load_state_dict(params["feat_net_state_dict"])
         self.target_q_net.load_state_dict(params["q_net_state_dict"])
+        self.feat_optim.load_state_dict(params["feat_net_optimizer_state_dict"])
         self.q_optim.load_state_dict(params["q_net_optimizer_state_dict"])
         if load_replay_buffer and "replay_buffer" in params:
             self.replay_buffer = params["replay_buffer"]
@@ -268,56 +316,77 @@ class Envelope(MOPolicy, MOAgent):
         for g in range(self.gradient_updates):
             if self.per:
                 (
-                    b_obs,
-                    b_actions,
-                    b_rewards,
-                    b_next_obs,
-                    b_dones,
+                    b_obs_seq,
+                    b_actions_seq,
+                    b_rewards_seq,
+                    b_next_obs_seq,
+                    b_masks_seq,
                     b_inds,
                 ) = self.__sample_batch_experiences()
             else:
                 (
-                    b_obs,
-                    b_actions,
-                    b_rewards,
-                    b_next_obs,
-                    b_dones,
+                    b_obs_seq,
+                    b_actions_seq,
+                    b_rewards_seq,
+                    b_next_obs_seq,
+                    b_masks_seq,
                 ) = self.__sample_batch_experiences()
 
+            assert b_obs_seq.shape == (self.batch_size, self.sequence_length, *self.observation_shape)
+
+            batch_size, seq_len, _ = b_obs_seq.size()
+
+            # Sample weights for scalarization
             sampled_w = (
                 th.tensor(random_weights(dim=self.reward_dim, n=self.num_sample_w, dist="gaussian", rng=self.np_random))
                 .float()
                 .to(self.device)
             )  # sample num_sample_w random weights
-            w = sampled_w.repeat_interleave(b_obs.size(0), 0)  # repeat the weights for each sample
-            b_obs, b_actions, b_rewards, b_next_obs, b_dones = (
-                b_obs.repeat(self.num_sample_w, *(1 for _ in range(b_obs.dim() - 1))),
-                b_actions.repeat(self.num_sample_w, 1),
-                b_rewards.repeat(self.num_sample_w, 1),
-                b_next_obs.repeat(self.num_sample_w, *(1 for _ in range(b_next_obs.dim() - 1))),
-                b_dones.repeat(self.num_sample_w, 1),
+            w_repeated = sampled_w.repeat(batch_size, 1)
+
+            # Reshape to (batch_size * num_sample_w, seq_len, reward_dim)
+            w = w_repeated.view(batch_size * self.num_sample_w, 1, -1).expand(-1, seq_len, -1)
+            
+            # Repeat sequences for each weight
+            b_obs_seq, b_actions_seq, b_rewards_seq, b_next_obs_seq, b_masks_seq = (
+                b_obs_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, *self.observation_shape),
+                b_actions_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
+                b_rewards_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, self.reward_dim),
+                b_next_obs_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, *self.observation_shape),
+                b_masks_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
             )
+            assert b_obs_seq.shape == (batch_size * self.num_sample_w, seq_len, *self.observation_shape)
 
             with th.no_grad():
-                if self.envelope:
-                    target = self.envelope_target(b_next_obs, w, sampled_w)
-                else:
-                    target = self.ddqn_target(b_next_obs, w)
-                target_q = b_rewards + (1 - b_dones) * self.gamma * target
+                b_next_feat_seq = self.target_feat_net(b_next_obs_seq, return_hidden=False)
+                target = self.envelope_target(b_next_feat_seq, w, sampled_w)
 
-            q_values = self.q_net(b_obs, w)
-            q_value = q_values.gather(
-                1,
-                b_actions.long().reshape(-1, 1, 1).expand(q_values.size(0), 1, q_values.size(2)),
+                # TODO: Check if this is correct
+                assert target.shape == (batch_size * self.num_sample_w, seq_len, self.reward_dim)
+                target_q = b_rewards_seq + (1 - b_masks_seq) * self.gamma * target
+
+            feat_seq = self.feat_net(b_obs_seq, return_hidden=False)
+            q_values_seq = self.q_net(feat_seq, w).view(-1, seq_len, self.action_dim, self.reward_dim)
+            # Gather the Q-values for the actions taken in the sequences
+            b_actions = b_actions_seq.unsqueeze(-1).expand(-1, -1, -1, 2)
+            q_values = q_values_seq.gather(
+                2,
+                b_actions.long(),
             )
-            q_value = q_value.reshape(-1, self.reward_dim)
+            q_values = q_values.squeeze(2)
 
-            critic_loss = F.mse_loss(q_value, target_q)
+            assert q_values.shape == target_q.shape
+
+            critic_loss = (q_values - target_q)**2
+            critic_loss = mean_of_unmasked_elements(critic_loss, b_masks_seq)
+
+            assert critic_loss.shape == ()
 
             if self.homotopy_lambda > 0:
-                wQ = th.einsum("br,br->b", q_value, w)
-                wTQ = th.einsum("br,br->b", target_q, w)
-                auxiliary_loss = F.mse_loss(wQ, wTQ)
+                wQ = th.einsum("bsr,bsr->bs", q_values, w)
+                wTQ = th.einsum("bsr,bsr->bs", target_q, w)
+                auxiliary_loss = (wQ - wTQ)**2
+                auxiliary_loss = mean_of_unmasked_elements(auxiliary_loss, b_masks_seq.squeeze(-1))
                 critic_loss = (1 - self.homotopy_lambda) * critic_loss + self.homotopy_lambda * auxiliary_loss
 
             self.q_optim.zero_grad()
@@ -335,8 +404,13 @@ class Envelope(MOPolicy, MOAgent):
             critic_losses.append(critic_loss.item())
 
             if self.per:
-                td_err = (q_value[: len(b_inds)] - target_q[: len(b_inds)]).detach()
-                priority = th.einsum("sr,sr->s", td_err, w[: len(b_inds)]).abs()
+                # many repeated values, take the original batch size
+                td_err = (q_values[: len(b_inds)] - target_q[: len(b_inds)]).detach()
+                td_err = td_err * b_masks_seq[: len(b_inds)]
+                priority = th.einsum("bsr,bsr->bs", td_err, w[: len(b_inds)]).abs()
+                priority_max = priority.max(dim=1).values
+                priority_mean = priority.mean(dim=1)
+                priority = 0.9 * priority_max + 0.1 * priority_mean  # R2D2 method
                 priority = priority.cpu().numpy().flatten()
                 priority = (priority + self.replay_buffer.min_priority) ** self.per_alpha
                 self.replay_buffer.update_priorities(b_inds, priority)
@@ -385,7 +459,9 @@ class Envelope(MOPolicy, MOAgent):
         w = th.as_tensor(w).float().to(self.device)
 
         self.q_net.eval() # Set the network to evaluation mode
-        action = self.max_action(obs, w, num_envs)
+        self.feat_net.eval()
+        feat, self.hidden = self.feat_net(obs, self.hidden)
+        action = self.max_action(feat, w, num_envs)
         self.q_net.train()
 
         return action
@@ -399,10 +475,11 @@ class Envelope(MOPolicy, MOAgent):
 
         Returns: an integer representing the action to take.
         """
+        feat, self.hidden = self.feat_net(obs, self.hidden)
         if self.np_random.random() < self.epsilon:
             return self.env.action_space.sample()
         else:
-            return self.max_action(obs, w)
+            return self.max_action(feat, w)
 
     @th.no_grad()
     def max_action(self, obs: th.Tensor, w: th.Tensor, num_envs: int = 1) -> int:
@@ -428,40 +505,52 @@ class Envelope(MOPolicy, MOAgent):
 
     @th.no_grad()
     def envelope_target(self, obs: th.Tensor, w: th.Tensor, sampled_w: th.Tensor) -> th.Tensor:
-        """Computes the envelope target for the given observation and weight.
+        """Computes the envelope target for the given observation sequence and weight.
 
         Args:
-            obs: current observation.
-            w: current weight vector.
-            sampled_w: set of sampled weight vectors (>1!).
+            obs: Batched sequences of latent observations (batch_size, seq_len, obs_dim).
+            w: Current weight vector (batch_size, reward_dim).
+            sampled_w: Set of sampled weight vectors (num_sampled_weights, reward_dim).
+            hidden_states: Initial hidden states for the recurrent network.
 
-        Returns: the envelope target.
+        Returns: 
+            max_next_q: The envelope target Q-values (batch_size, seq_len, reward_dim).
         """
+        batch_size, seq_len, _ = obs.size()
+        num_sampled_weights = sampled_w.size(0)
+
+        # Repeat the observations for each sampled weight and reshape
+        next_obs = obs.repeat_interleave(num_sampled_weights, dim=0).view(-1, obs.size(-1))
+
         # Repeat the weights for each sample
-        W = sampled_w.repeat(obs.size(0), 1)
-        # Repeat the observations for each sampled weight
-        next_obs = obs.repeat_interleave(sampled_w.size(0), 0)
-        # Batch size X Num sampled weights X Num actions X Num objectives
-        next_q_values = self.q_net(next_obs, W).view(obs.size(0), sampled_w.size(0), self.action_dim, self.reward_dim)
+        W = sampled_w.repeat(batch_size * seq_len, 1)
+
+        # Batch size X Num sampled weights X Seq len X Num actions X Num objectives
+        next_q_values = self.q_net(next_obs, W)
+        next_q_values = next_q_values.view(batch_size, num_sampled_weights, seq_len, self.action_dim, self.reward_dim)
+        
         # Scalarized Q values for each sampled weight
-        scalarized_next_q_values = th.einsum("br,bwar->bwa", w, next_q_values)
+        scalarized_next_q_values = th.einsum("bsr,bwsar->bwsa", w, next_q_values)
+        
         # Max Q values for each sampled weight
-        max_q, ac = th.max(scalarized_next_q_values, dim=2)
-        # Max weights in the envelope
+        max_q, ac = th.max(scalarized_next_q_values, dim=3)
+        
+        # Max weights in the envelope (taking the max over sampled weights)
         pref = th.argmax(max_q, dim=1)
 
         # MO Q-values evaluated on the target network
-        next_q_values_target = self.target_q_net(next_obs, W).view(
-            obs.size(0), sampled_w.size(0), self.action_dim, self.reward_dim
-        )
+        next_q_values_target = self.target_q_net(next_obs, W)
+        next_q_values_target = next_q_values_target.view(batch_size, num_sampled_weights, seq_len, self.action_dim, self.reward_dim)
 
         # Index the Q-values for the max actions
         max_next_q = next_q_values_target.gather(
-            2,
-            ac.unsqueeze(2).unsqueeze(3).expand(next_q_values.size(0), next_q_values.size(1), 1, next_q_values.size(3)),
-        ).squeeze(2)
+            3,
+            ac.unsqueeze(3).unsqueeze(4).expand(next_q_values.size(0), next_q_values.size(1), next_q_values.size(2), 1, next_q_values.size(4)),
+        ).squeeze(3)
+        
         # Index the Q-values for the max sampled weights
-        max_next_q = max_next_q.gather(1, pref.reshape(-1, 1, 1).expand(max_next_q.size(0), 1, max_next_q.size(2))).squeeze(1)
+        max_next_q = max_next_q.gather(1, pref.unsqueeze(1).unsqueeze(3).expand(max_next_q.size(0), 1, max_next_q.size(2), max_next_q.size(3))).squeeze(1)
+        
         return max_next_q
 
     @th.no_grad()
@@ -553,6 +642,12 @@ class Envelope(MOPolicy, MOAgent):
         w = weight if weight is not None else random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
         tensor_w = th.tensor(w).float().to(self.device)
 
+        obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
+        action_seq = np.zeros((self.sequence_length, 1))
+        reward_seq = np.zeros((self.sequence_length, self.reward_dim))
+        next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
+        mask_seq = np.zeros((self.sequence_length, 1))
+        index = 0
         for _ in range(1, total_timesteps + 1):
             if total_episodes is not None and num_episodes == total_episodes:
                 break
@@ -566,7 +661,13 @@ class Envelope(MOPolicy, MOAgent):
             next_obs, vec_reward, terminated, truncated, info = self.env.step(action)
             self.global_step += 1
 
-            self.replay_buffer.add(obs, action, vec_reward, next_obs, terminated)
+            obs_seq[index] = obs
+            action_seq[index] = action
+            reward_seq[index] = vec_reward
+            next_obs_seq[index] = next_obs
+            mask_seq[index] = 1
+            index = (index + 1) % self.sequence_length
+
             if self.global_step >= self.learning_starts:
                 self.update()
 
@@ -586,11 +687,22 @@ class Envelope(MOPolicy, MOAgent):
                         n_sample_weights=num_eval_weights_for_eval,
                         ref_front=known_pareto_front,
                     )
+                self.reinitialize_hidden() # IMPORTANT: reset hidden state because there can be stale hidden states from recent eval
 
             if terminated or truncated:
                 obs, _ = self.env.reset()
                 num_episodes += 1
                 self.num_episodes += 1
+
+                self.replay_buffer.add(obs_seq, action_seq, reward_seq, next_obs_seq, mask_seq)
+                obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
+                action_seq = np.zeros((self.sequence_length, 1))
+                reward_seq = np.zeros((self.sequence_length, self.reward_dim))
+                next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
+                mask_seq = np.zeros((self.sequence_length, 1))
+                index = 0
+
+                self.reinitialize_hidden() # IMPORTANT: reset hidden state after each episode
 
                 if self.log and "episode" in info.keys():
                     log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)
