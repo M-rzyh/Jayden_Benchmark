@@ -203,7 +203,6 @@ class RecurrentMOPolicy(MOPolicy):
     
     def reinitialize_hidden(self) -> None:
         """Reinitializes the hidden state of the policy."""
-        print("Reinitializing hidden state")
         self.hidden = None
 
 
