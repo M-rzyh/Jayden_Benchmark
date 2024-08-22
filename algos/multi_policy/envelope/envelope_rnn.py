@@ -140,7 +140,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         gradient_updates: int = 1,
         gamma: float = 0.99,
         max_grad_norm: Optional[float] = 1.0,
-        envelope: bool = True,
+        dist: str = "gaussian",
         num_sample_w: int = 4,
         per: bool = True,
         per_alpha: float = 0.6,
@@ -172,7 +172,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             gradient_updates: The number of gradient updates per step.
             gamma: The discount factor (gamma).
             max_grad_norm: The maximum norm for the gradient clipping. If None, no gradient clipping is applied.
-            envelope: Whether to use the envelope method.
+            dist: The distribution to sample the weight vectors from. Either 'gaussian' or 'dirichlet'.
             num_sample_w: The number of weight vectors to sample for the envelope target.
             per: Whether to use prioritized experience replay.
             per_alpha: The alpha parameter for prioritized experience replay.
@@ -208,6 +208,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
+        self.dist = dist
 
         self.feat_net = FeaturesNet(self.observation_shape, net_arch[0]).to(self.device)
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
@@ -220,7 +221,6 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
         self.sequence_length = self.env.spec.max_episode_steps
         assert self.learning_starts >= self.sequence_length * self.batch_size, "Not enough episodes to start replay"
-        self.envelope = envelope
         self.num_sample_w = num_sample_w
         self.homotopy_lambda = self.initial_homotopy_lambda
         if self.per:
@@ -257,7 +257,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             "clip_grad_norm": self.max_grad_norm,
             "target_net_update_freq": self.target_net_update_freq,
             "gamma": self.gamma,
-            "use_envelope": self.envelope,
+            "use_envelope": True,
             "num_sample_w": self.num_sample_w,
             "net_arch": self.net_arch,
             "per": self.per,
@@ -339,7 +339,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
             # Sample weights for scalarization
             sampled_w = (
-                th.tensor(random_weights(dim=self.reward_dim, n=self.num_sample_w, dist="gaussian", rng=self.np_random))
+                th.tensor(random_weights(dim=self.reward_dim, n=self.num_sample_w, dist=self.dist, rng=self.np_random))
                 .float()
                 .to(self.device)
             )  # sample num_sample_w random weights
@@ -624,7 +624,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
         obs, _ = self.env.reset()
 
-        w = weight if weight is not None else random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
+        w = weight if weight is not None else random_weights(self.reward_dim, 1, dist=self.dist, rng=self.np_random)
         tensor_w = th.tensor(w).float().to(self.device)
 
         obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
@@ -693,7 +693,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                     log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)
 
                 if weight is None:
-                    w = random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
+                    w = random_weights(self.reward_dim, 1, dist=self.dist, rng=self.np_random)
                     tensor_w = th.tensor(w).float().to(self.device)
 
             else:

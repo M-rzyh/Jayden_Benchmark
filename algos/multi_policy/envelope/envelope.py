@@ -101,6 +101,7 @@ class Envelope(MOPolicy, MOAgent):
         gamma: float = 0.99,
         max_grad_norm: Optional[float] = 1.0,
         envelope: bool = True,
+        dist: str = "gaussian",
         num_sample_w: int = 4,
         per: bool = True,
         per_alpha: float = 0.6,
@@ -133,6 +134,7 @@ class Envelope(MOPolicy, MOAgent):
             gamma: The discount factor (gamma).
             max_grad_norm: The maximum norm for the gradient clipping. If None, no gradient clipping is applied.
             envelope: Whether to use the envelope method.
+            dist: The distribution to sample the weights from. Either 'gaussian' or 'dirichlet'.
             num_sample_w: The number of weight vectors to sample for the envelope target.
             per: Whether to use prioritized experience replay.
             per_alpha: The alpha parameter for prioritized experience replay.
@@ -168,6 +170,7 @@ class Envelope(MOPolicy, MOAgent):
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
+        self.dist = dist
 
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
         self.target_q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
@@ -285,7 +288,7 @@ class Envelope(MOPolicy, MOAgent):
                 ) = self.__sample_batch_experiences()
 
             sampled_w = (
-                th.tensor(random_weights(dim=self.reward_dim, n=self.num_sample_w, dist="gaussian", rng=self.np_random))
+                th.tensor(random_weights(dim=self.reward_dim, n=self.num_sample_w, dist=self.dist, rng=self.np_random))
                 .float()
                 .to(self.device)
             )  # sample num_sample_w random weights
@@ -550,7 +553,7 @@ class Envelope(MOPolicy, MOAgent):
         eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
         obs, _ = self.env.reset()
 
-        w = weight if weight is not None else random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
+        w = weight if weight is not None else random_weights(self.reward_dim, 1, dist=self.dist, rng=self.np_random)
         tensor_w = th.tensor(w).float().to(self.device)
 
         for _ in range(1, total_timesteps + 1):
@@ -596,7 +599,7 @@ class Envelope(MOPolicy, MOAgent):
                     log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)
 
                 if weight is None:
-                    w = random_weights(self.reward_dim, 1, dist="gaussian", rng=self.np_random)
+                    w = random_weights(self.reward_dim, 1, dist=self.dist, rng=self.np_random)
                     tensor_w = th.tensor(w).float().to(self.device)
 
             else:
