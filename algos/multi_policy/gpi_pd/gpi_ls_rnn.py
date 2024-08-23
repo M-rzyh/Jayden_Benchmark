@@ -29,7 +29,7 @@ from mo_utils.networks import (
     polyak_update,
 )
 from mo_utils.prioritized_buffer import RecurrentPrioritizedReplayBuffer
-from mo_utils.utils import linearly_decaying_value, unique_tol, mean_of_unmasked_elements
+from mo_utils.utils import linearly_decaying_value, unique_tol, mean_of_unmasked_elements, get_mask_from_dones
 from mo_utils.weights import equally_spaced_weights
 from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 from algos.multi_policy.linear_support.linear_support import LinearSupport
@@ -339,19 +339,24 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
             else:
                 s_obs, s_actions, s_rewards, s_next_obs, s_dones = self._sample_batch_experiences()
 
+            # termination step should not be masked, agent needs to predict the value of the last state
+            s_masks = get_mask_from_dones(s_dones)
+
             num_repeats = 1
             if len(self.weight_support) > 1:
-                s_obs, s_actions, s_rewards, s_next_obs, s_dones = (
+                s_obs, s_actions, s_rewards, s_next_obs, s_dones, s_masks = (
                     s_obs.repeat(2, *(1 for _ in range(s_obs.dim() - 1))),
                     s_actions.repeat(2, *(1 for _ in range(s_actions.dim() - 1))),
                     s_rewards.repeat(2, *(1 for _ in range(s_rewards.dim() - 1))),
                     s_next_obs.repeat(2, *(1 for _ in range(s_obs.dim() - 1))),
                     s_dones.repeat(2, *(1 for _ in range(s_dones.dim() - 1))),
+                    s_masks.repeat(2, *(1 for _ in range(s_masks.dim() - 1))),
                 )
                 # Half of the batch uses the given weight vector, the other half uses weights sampled from the support set
                 w = th.vstack(
                     [weight for _ in range(s_obs.size(0) // 2)] + random.choices(self.weight_support, k=s_obs.size(0) // 2)
                 )
+                num_repeats += 1
             else:
                 w = weight.repeat(s_obs.size(0), 1)
 
@@ -378,11 +383,11 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 max_q = th.einsum("bsr,bsar->bsa", w, next_q_values)
                 max_acts = th.argmax(max_q, dim=2) # b x s
 
-                q_targets = next_q_values.gather(
+                target_q = next_q_values.gather(
                     2, max_acts.long().reshape(max_acts.size(0), max_acts.size(1), 1, 1).expand(next_q_values.size(0), next_q_values.size(1), 1, next_q_values.size(3))
-                )
+                ).squeeze(2)
 
-                assert q_targets.shape == (self.batch_size * num_repeats, self.sequence_length, self.reward_dim)
+                assert target_q.shape == (self.batch_size * num_repeats, self.sequence_length, self.reward_dim)
                 target_q = s_rewards + (1 - s_dones) * self.gamma * target_q
 
             losses = []
@@ -401,7 +406,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
 
                 td_error = psi_value - target_q # (b, s, r)
                 loss = td_error ** 2
-                loss = mean_of_unmasked_elements(loss, (1 - s_dones))
+                loss = mean_of_unmasked_elements(loss, s_masks)
                 assert loss.shape == ()
                 losses.append(loss)
                 if self.per:
@@ -596,21 +601,20 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 th.tensor(dones).to(self.device),
             )
             features = self.feat_nets[0](obs, return_hidden=False)
-            q_values = self.q_nets[0](features, w.repeat(obs.size(0), obs.size(1), 1))
+            q_values = self.q_nets[0](features, w.repeat(obs.size(0), obs.size(1), 1)).view(-1, self.sequence_length, self.action_dim, self.reward_dim)
             actions = actions.unsqueeze(-1).expand(-1, -1, -1, self.reward_dim)
             q_a = q_values.gather(2, actions.long()).squeeze(2)
 
             next_features = self.feat_nets[0](next_obs, return_hidden=False)
-            next_q_values = self.q_nets[0](next_features, w.repeat(next_obs.size(0), next_obs.size(1), 1))
+            next_q_values = self.q_nets[0](next_features, w.repeat(next_obs.size(0), next_obs.size(1), 1)).view(-1, self.sequence_length, self.action_dim, self.reward_dim)
             max_q = th.einsum("r,bsar->bsa", w, next_q_values)
             max_acts = th.argmax(max_q, dim=2)
 
             target_features = self.target_feat_nets[0](next_obs, return_hidden=False)
-            q_targets = self.target_q_nets[0](target_features, w.repeat(next_obs.size(0), next_obs.size(1), 1))
-            q_targets = q_targets.gather(
+            q_targets = self.target_q_nets[0](target_features, w.repeat(next_obs.size(0), next_obs.size(1), 1)).view(-1, self.sequence_length, self.action_dim, self.reward_dim)
+            max_next_q = q_targets.gather(
                 2, max_acts.long().reshape(max_acts.size(0), max_acts.size(1), 1, 1).expand(next_q_values.size(0), next_q_values.size(1), 1, next_q_values.size(3))
-            )
-            max_next_q = q_targets.reshape(-1, self.sequence_length, self.reward_dim)
+            ).squeeze(2)
 
             gtderror = th.einsum("r,bsr->bs", w, (rewards + (1 - dones) * self.gamma * max_next_q - q_a)).abs()
             priority_max = gtderror.max(dim=1).values

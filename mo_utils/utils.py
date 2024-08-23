@@ -105,8 +105,25 @@ def nearest_neighbors(
 
     return nearest_neighbors_ids
 
-def mean_of_unmasked_elements(tensor: th.tensor, mask: th.tensor) -> th.tensor:
-    return th.mean(tensor * mask) / mask.sum() * np.prod(mask.shape)
+def mean_of_unmasked_elements(tensor: th.Tensor, mask: th.Tensor) -> th.Tensor:
+    masked_tensor = tensor * mask
+    num_unmasked_elements = mask.sum()
+
+    if num_unmasked_elements == 0:
+        return th.tensor(0.0, device=tensor.device)  # Avoid division by zero
+    
+    return masked_tensor.sum() / num_unmasked_elements
+
+def get_mask_from_dones(dones: th.Tensor) -> th.Tensor:
+    mask = th.ones_like(dones)
+    
+    for i in range(dones.size(0)):
+        done_indices = th.where(dones[i] == 1)[0]
+        if len(done_indices) > 0:
+            first_done_index = done_indices[0].item()
+            mask[i, first_done_index+1:] = 0
+    
+    return mask
 
 def reset_wandb_env():
     """Reset the wandb environment variables.

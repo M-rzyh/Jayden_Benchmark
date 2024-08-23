@@ -26,7 +26,7 @@ from mo_utils.networks import (
     polyak_update,
 )
 from mo_utils.prioritized_buffer import RecurrentPrioritizedReplayBuffer
-from mo_utils.utils import linearly_decaying_value, mean_of_unmasked_elements
+from mo_utils.utils import linearly_decaying_value, mean_of_unmasked_elements, get_mask_from_dones
 from mo_utils.weights import equally_spaced_weights, random_weights
 from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
@@ -339,6 +339,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
             assert b_obs_seq.shape == (self.batch_size, self.sequence_length, *self.observation_shape)
 
+            # termination step should not be masked, agent needs to predict the value of the last state
+            s_masks = get_mask_from_dones(b_dones_seq)
+
             batch_size, seq_len, _ = b_obs_seq.size()
 
             # Sample weights for scalarization
@@ -353,12 +356,13 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             w = w_repeated.view(batch_size * self.num_sample_w, 1, -1).expand(-1, seq_len, -1)
             
             # Repeat sequences for each weight
-            b_obs_seq, b_actions_seq, b_rewards_seq, b_next_obs_seq, b_dones_seq = (
+            b_obs_seq, b_actions_seq, b_rewards_seq, b_next_obs_seq, b_dones_seq, s_masks = (
                 b_obs_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, *self.observation_shape),
                 b_actions_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
                 b_rewards_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, self.reward_dim),
                 b_next_obs_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, *self.observation_shape),
                 b_dones_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
+                s_masks.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
             )
             assert b_obs_seq.shape == (batch_size * self.num_sample_w, seq_len, *self.observation_shape)
 
@@ -384,7 +388,8 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             assert q_values.shape == target_q.shape
 
             critic_loss = (q_values - target_q)**2
-            critic_loss = mean_of_unmasked_elements(critic_loss, (1-b_dones_seq))
+
+            critic_loss = mean_of_unmasked_elements(critic_loss, s_masks)
 
             assert critic_loss.shape == ()
 
@@ -392,7 +397,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 wQ = th.einsum("bsr,bsr->bs", q_values, w)
                 wTQ = th.einsum("bsr,bsr->bs", target_q, w)
                 auxiliary_loss = (wQ - wTQ)**2
-                auxiliary_loss = mean_of_unmasked_elements(auxiliary_loss, (1-b_dones_seq).squeeze(-1))
+                auxiliary_loss = mean_of_unmasked_elements(auxiliary_loss, s_masks.squeeze(-1))
                 critic_loss = (1 - self.homotopy_lambda) * critic_loss + self.homotopy_lambda * auxiliary_loss
 
             self.feat_optim.zero_grad()

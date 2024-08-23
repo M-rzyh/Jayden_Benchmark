@@ -262,7 +262,7 @@ class RecurrentPrioritizedReplayBuffer:
         self.next_obs = np.zeros((max_size, sequence_length, ) + (obs_shape), dtype=obs_dtype)
         self.actions = np.zeros((max_size, sequence_length, action_dim), dtype=action_dtype)
         self.rewards = np.zeros((max_size, sequence_length, rew_dim), dtype=np.float32)
-        self.dones = np.zeros((max_size, sequence_length, 1), dtype=np.float32)
+        self.dones = np.ones((max_size, sequence_length, 1), dtype=np.float32)
 
         self.tree = SumTree(max_size)
         self.min_priority = min_priority
