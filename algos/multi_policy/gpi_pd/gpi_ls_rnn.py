@@ -146,7 +146,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         drop_rate: float = 0.01,
         layer_norm: bool = True,
         project_name: str = "MORL-Baselines",
-        experiment_name: str = "GPI-PD",
+        experiment_name: str = "GPI-LS-RNN",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         log: bool = True,
