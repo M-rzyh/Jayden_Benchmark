@@ -133,7 +133,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         epsilon_decay_steps: int = None,  # None == fixed epsilon
         tau: float = 1.0,
         target_net_update_freq: int = 200,  # ignored if tau != 1.0
-        buffer_size: int = 4000,
+        buffer_size: int = 10000,
         net_arch: List = [256, 256, 256, 256],
         batch_size: int = 32,
         learning_starts: int = 100,

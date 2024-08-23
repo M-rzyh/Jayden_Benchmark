@@ -130,7 +130,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         epsilon_decay_steps: int = None,  # None == fixed epsilon
         tau: float = 1.0,
         target_net_update_freq: int = 1000,  # ignored if tau != 1.0
-        buffer_size: int = 4000,
+        buffer_size: int = 10000,
         net_arch: List = [256, 256, 256, 256],
         num_nets: int = 2,
         rnn_layers: int = 2,
