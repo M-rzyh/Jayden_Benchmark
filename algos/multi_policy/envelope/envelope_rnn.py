@@ -325,7 +325,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                     b_actions_seq,
                     b_rewards_seq,
                     b_next_obs_seq,
-                    b_masks_seq,
+                    b_dones_seq,
                     b_inds,
                 ) = self.__sample_batch_experiences()
             else:
@@ -334,7 +334,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                     b_actions_seq,
                     b_rewards_seq,
                     b_next_obs_seq,
-                    b_masks_seq,
+                    b_dones_seq,
                 ) = self.__sample_batch_experiences()
 
             assert b_obs_seq.shape == (self.batch_size, self.sequence_length, *self.observation_shape)
@@ -353,12 +353,12 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             w = w_repeated.view(batch_size * self.num_sample_w, 1, -1).expand(-1, seq_len, -1)
             
             # Repeat sequences for each weight
-            b_obs_seq, b_actions_seq, b_rewards_seq, b_next_obs_seq, b_masks_seq = (
+            b_obs_seq, b_actions_seq, b_rewards_seq, b_next_obs_seq, b_dones_seq = (
                 b_obs_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, *self.observation_shape),
                 b_actions_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
                 b_rewards_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, self.reward_dim),
                 b_next_obs_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, *self.observation_shape),
-                b_masks_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
+                b_dones_seq.repeat(self.num_sample_w, 1, 1).view(batch_size * self.num_sample_w, seq_len, 1),
             )
             assert b_obs_seq.shape == (batch_size * self.num_sample_w, seq_len, *self.observation_shape)
 
@@ -369,12 +369,12 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
                 # TODO: Check if this is correct
                 assert target.shape == (batch_size * self.num_sample_w, seq_len, self.reward_dim)
-                target_q = b_rewards_seq + (1 - b_masks_seq) * self.gamma * target
+                target_q = b_rewards_seq + (1 - b_dones_seq) * self.gamma * target
 
             feat_seq = self.feat_net(b_obs_seq, return_hidden=False)
             q_values_seq = self.q_net(feat_seq, w).view(-1, seq_len, self.action_dim, self.reward_dim)
             # Gather the Q-values for the actions taken in the sequences
-            b_actions = b_actions_seq.unsqueeze(-1).expand(-1, -1, -1, 2)
+            b_actions = b_actions_seq.unsqueeze(-1).expand(-1, -1, -1, self.reward_dim)
             q_values = q_values_seq.gather(
                 2,
                 b_actions.long(),
@@ -384,7 +384,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             assert q_values.shape == target_q.shape
 
             critic_loss = (q_values - target_q)**2
-            critic_loss = mean_of_unmasked_elements(critic_loss, b_masks_seq)
+            critic_loss = mean_of_unmasked_elements(critic_loss, (1-b_dones_seq))
 
             assert critic_loss.shape == ()
 
@@ -392,7 +392,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 wQ = th.einsum("bsr,bsr->bs", q_values, w)
                 wTQ = th.einsum("bsr,bsr->bs", target_q, w)
                 auxiliary_loss = (wQ - wTQ)**2
-                auxiliary_loss = mean_of_unmasked_elements(auxiliary_loss, b_masks_seq.squeeze(-1))
+                auxiliary_loss = mean_of_unmasked_elements(auxiliary_loss, (1-b_dones_seq).squeeze(-1))
                 critic_loss = (1 - self.homotopy_lambda) * critic_loss + self.homotopy_lambda * auxiliary_loss
 
             self.feat_optim.zero_grad()
@@ -414,10 +414,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             if self.per:
                 # many repeated values, take the original batch size
                 td_err = (q_values[: len(b_inds)] - target_q[: len(b_inds)]).detach()
-                td_err = td_err * b_masks_seq[: len(b_inds)]
-                priority = th.einsum("bsr,bsr->bs", td_err, w[: len(b_inds)]).abs()
-                priority_max = priority.max(dim=1).values
-                priority_mean = priority.mean(dim=1)
+                per = th.einsum("bsr,bsr->bs", td_err, w[: len(b_inds)]).abs()
+                priority_max = per.max(dim=1).values
+                priority_mean = per.mean(dim=1)
                 priority = 0.9 * priority_max + 0.1 * priority_mean  # R2D2 method
                 priority = priority.cpu().numpy().flatten()
                 priority = (priority + self.replay_buffer.min_priority) ** self.per_alpha
@@ -457,9 +456,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             if self.per:
                 wandb.log(
                     {
-                        "metrics/mean_priority": np.mean(priority_mean),
-                        "metrics/max_priority": np.max(priority_mean),
-                        "metrics/mean_td_error_w": priority_mean.abs().mean().item(),
+                        "metrics/mean_priority": np.mean(priority),
+                        "metrics/max_priority": np.max(priority),
+                        "metrics/mean_td_error_w": per.abs().mean().item(),
                     },
                     commit=False,
                 )
@@ -642,7 +641,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         action_seq = np.zeros((self.sequence_length, 1))
         reward_seq = np.zeros((self.sequence_length, self.reward_dim))
         next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
-        mask_seq = np.zeros((self.sequence_length, 1))
+        done_seq = np.zeros((self.sequence_length, 1))
         index = 0
         for _ in range(1, total_timesteps + 1):
             if total_episodes is not None and num_episodes == total_episodes:
@@ -661,7 +660,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             action_seq[index] = action
             reward_seq[index] = vec_reward
             next_obs_seq[index] = next_obs
-            mask_seq[index] = 1
+            done_seq[index] = int(terminated)
             index = (index + 1) % self.sequence_length
 
             if self.global_step >= self.learning_starts:
@@ -690,12 +689,13 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 num_episodes += 1
                 self.num_episodes += 1
 
-                self.replay_buffer.add(obs_seq, action_seq, reward_seq, next_obs_seq, mask_seq)
+                self.replay_buffer.add(obs_seq, action_seq, reward_seq, next_obs_seq, done_seq)
                 obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
                 action_seq = np.zeros((self.sequence_length, 1))
                 reward_seq = np.zeros((self.sequence_length, self.reward_dim))
                 next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
-                mask_seq = np.zeros((self.sequence_length, 1))
+                done_seq = np.zeros((self.sequence_length, 1))
+                done_seq = np.zeros((self.sequence_length, 1))
                 index = 0
 
                 self.reinitialize_hidden() # IMPORTANT: reset hidden state after each episode
