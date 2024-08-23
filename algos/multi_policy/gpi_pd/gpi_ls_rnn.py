@@ -117,13 +117,8 @@ def create_target(net: nn.Module) -> nn.Module:
     set_requires_grad_flag(target, False)
     return target
 
-class GPIPD(RecurrentMOPolicy, MOAgent):
-    """GPI-PD Algorithm.
-
-    Sample-Efficient Multi-Objective Learning via Generalized Policy Improvement Prioritization
-    Lucas N. Alegre, Ana L. C. Bazzan, Diederik M. Roijers, Ann Nowé, Bruno C. da Silva
-    AAMAS 2023
-    Paper: https://arxiv.org/abs/2301.07784
+class GPILSRNN(RecurrentMOPolicy, MOAgent):
+    """GPI-LS algorithm adapted with recurrent networks and recurrent experience replay.
     """
 
     def __init__(
