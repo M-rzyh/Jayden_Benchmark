@@ -339,8 +339,8 @@ class Envelope(MOPolicy, MOAgent):
 
             if self.per:
                 td_err = (q_value[: len(b_inds)] - target_q[: len(b_inds)]).detach()
-                priority = th.einsum("sr,sr->s", td_err, w[: len(b_inds)]).abs()
-                priority = priority.cpu().numpy().flatten()
+                per = th.einsum("sr,sr->s", td_err, w[: len(b_inds)]).abs()
+                priority = per.cpu().numpy().flatten()
                 priority = (priority + self.replay_buffer.min_priority) ** self.per_alpha
                 self.replay_buffer.update_priorities(b_inds, priority)
 
@@ -375,7 +375,14 @@ class Envelope(MOPolicy, MOAgent):
                 },
             )
             if self.per:
-                wandb.log({"metrics/mean_priority": np.mean(priority)})
+                wandb.log(
+                    {
+                        "metrics/mean_priority": np.mean(priority),
+                        "metrics/max_priority": np.max(priority),
+                        "metrics/mean_td_error_w": per.abs().mean().item(),
+                    },
+                    commit=False,
+                )
 
     @override
     def eval(self, 

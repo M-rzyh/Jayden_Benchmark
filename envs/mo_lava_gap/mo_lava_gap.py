@@ -268,7 +268,7 @@ class MOLavaGapDR(MiniGridEnv, DREnv):
         ])
 
         full_grid = full_grid.flatten()
-        return full_grid/ 1.
+        return full_grid.astype(np.float32) / 1.
     
     def rgb_observation(self):
         env = self.unwrapped

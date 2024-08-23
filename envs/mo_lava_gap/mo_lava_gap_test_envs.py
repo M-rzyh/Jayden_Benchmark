@@ -1,18 +1,18 @@
 import gymnasium as gym
 from envs.mo_lava_gap.mo_lava_gap import MOLavaGapDR
 
-class MOLavaGapPool(MOLavaGapDR):
+class MOLavaGapCreek(MOLavaGapDR):
     def __init__(self, **kwargs):
         bit_map = [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0]
+            [0, 0, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 1, 1, 1, 1, 1, 1],
+            [0, 1, 0, 0, 1, 1, 1, 1, 1],
+            [0, 1, 1, 0, 0, 1, 1, 1, 1],
+            [0, 1, 1, 1, 0, 0, 1, 1, 1],
+            [0, 1, 1, 1, 1, 0, 0, 1, 1],
+            [0, 1, 1, 1, 1, 1, 0, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0]
         ]
         super().__init__(bit_map=bit_map, **kwargs)
 
@@ -58,8 +58,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapPool-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapPool",
+            id="MOLavaGapCreek-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapCreek",
             max_episode_steps=256,
         )
     except Exception as e:

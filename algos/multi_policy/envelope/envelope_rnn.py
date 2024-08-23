@@ -455,7 +455,14 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 },
             )
             if self.per:
-                wandb.log({"metrics/mean_priority": np.mean(priority)})
+                wandb.log(
+                    {
+                        "metrics/mean_priority": np.mean(priority_mean),
+                        "metrics/max_priority": np.max(priority_mean),
+                        "metrics/mean_td_error_w": priority_mean.abs().mean().item(),
+                    },
+                    commit=False,
+                )
 
     @override
     def eval(self, 
