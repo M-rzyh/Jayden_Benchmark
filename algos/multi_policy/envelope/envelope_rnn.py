@@ -343,7 +343,6 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
     def update(self):
         critic_losses = []
         for g in range(self.gradient_updates):
-            print(f"Gradient update {g}")
             if self.per:
                 (
                     b_obs_seq,
