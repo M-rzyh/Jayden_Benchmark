@@ -60,8 +60,14 @@ class FeaturesNet(nn.Module):
 
     def forward(self, obs, hidden=None, return_hidden=True):
         self.rnn.flatten_parameters()
-        if obs.dim() == 1:
-            obs = obs.unsqueeze(0)
+
+        # If obs is not batched (1D), add batch and sequence dimensions
+        if len(obs.shape) == len(self.obs_shape):
+            obs = obs.unsqueeze(0).unsqueeze(1)  # (1, 1, obs_dim)
+        # If obs is batched but not sequenced (2D), add sequence dimension
+        elif len(obs.shape) == len(self.obs_shape) + 1:
+            obs = obs.unsqueeze(1)  # (batch_size, 1, obs_dim)
+
         sf = self.state_features(obs)
         summary, hidden = self.rnn(sf, hidden)
         if return_hidden:
@@ -99,10 +105,20 @@ class QNet(nn.Module):
         Returns: the Q values for all actions
 
         """
+        # If w is not batched (1D), add batch and sequence dimensions
         if w.dim() == 1:
-            w = w.unsqueeze(0)
+            w = w.unsqueeze(0).unsqueeze(1)  # (1, 1, w_dim)
+        # If w is batched but not sequenced (2D), add sequence dimension
+        elif w.dim() == 2:
+            w = w.unsqueeze(1)  # (batch_size, 1, w_dim)
+
+        # If obs is not batched (1D), add batch and sequence dimensions
         if obs.dim() == 1:
-            obs = obs.unsqueeze(0)
+            obs = obs.unsqueeze(0).unsqueeze(1)  # (1, 1, obs_dim)
+        # If obs is batched but not sequenced (2D), add sequence dimension
+        elif obs.dim() == 2:
+            obs = obs.unsqueeze(1)  # (batch_size, 1, obs_dim)
+
         input = th.cat((obs, w), dim=w.dim() - 1)
         q_values = self.net(input)
         return q_values.view(-1, self.action_dim, self.rew_dim)  # Batch size X Actions X Rewards
