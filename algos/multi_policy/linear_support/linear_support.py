@@ -57,7 +57,11 @@ class LinearSupport:
             self.queue.append((float("inf"), w))
 
     def next_weight(
-        self, algo: str = "ols", gpi_agent: Optional[MOPolicy] = None, env: Optional[Env] = None, rep_eval: int = 1
+        self, 
+        algo: str = "ols", 
+        gpi_agent: Optional[MOPolicy] = None, 
+        env: Optional[Env] = None, 
+        rep_eval: int = 1,
     ) -> np.ndarray:
         """Returns the next weight vector with highest priority.
 

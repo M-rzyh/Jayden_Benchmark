@@ -101,7 +101,6 @@ class MOPolicy(ABC):
         num_episodes: int = 5,
         scalarization=np.dot,
         weights: Optional[np.ndarray] = None,
-        reset_hidden: bool = False,
         log: bool = False,
     ):
         """Runs a policy evaluation (typically over a few episodes) on eval_env and logs some metrics if asked.
@@ -121,7 +120,7 @@ class MOPolicy(ABC):
             scalarized_discounted_return,
             vec_return,
             discounted_vec_return,
-        ) = policy_evaluation_mo(self, eval_env, scalarization=scalarization, w=weights, rep=num_episodes, reset_hidden=reset_hidden)
+        ) = policy_evaluation_mo(self, eval_env, scalarization=scalarization, w=weights, rep=num_episodes)
 
         if log:
             self.__report(
