@@ -148,7 +148,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         final_epsilon: float = 0.01,
         epsilon_decay_steps: int = None,  # None == fixed epsilon
         tau: float = 1.0,
-        target_net_update_freq: int = 200,  # ignored if tau != 1.0
+        target_net_update_freq: int = 5,  # ignored if tau != 1.0
         buffer_size: int = 10000,
         net_arch: List = [256, 256, 256, 256],
         batch_size: int = 32,
@@ -172,7 +172,15 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
     ):
-        """Envelope Q-learning algorithm.
+        """Envelope Q-learning algorithm adapted for recurrent policies.
+
+        Key differences with recurrent version:
+        - Environment should have a `max_episode_steps` during registration as it will be used as a fixed sequence length.
+        - Replay buffer size and batch size is in episodes rather than steps. Each episode is of length `max_episode_steps`.
+        - Policy updates happen on episodic basis rather than step basis. As such, 
+          `gradient_updates` should be higher and `target_net_update_freq` should be lower.
+        - `self.reinitialize_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
+          to zero-start the RNN's hidden state.
 
         Args:
             env: The environment to learn from.
@@ -181,7 +189,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             final_epsilon: The final epsilon value for epsilon-greedy exploration.
             epsilon_decay_steps: The number of steps to decay epsilon over.
             tau: The soft update coefficient (keep in [0, 1]).
-            target_net_update_freq: The frequency with which the target network is updated.
+            target_net_update_freq: The frequency with which the target network is updated. Note this frequency is measured in episodes * gradient_updates.
             buffer_size: The size of the replay buffer. Note that the buffer size is the number of episodes.
             net_arch: The size of the hidden layers of the value net.
             batch_size: The size of the batch to sample from the replay buffer. Note that the batch size is the number of episodes.
@@ -335,6 +343,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
     def update(self):
         critic_losses = []
         for g in range(self.gradient_updates):
+            print(f"Gradient update {g}")
             if self.per:
                 (
                     b_obs_seq,
@@ -443,7 +452,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 priority = (priority + self.replay_buffer.min_priority) ** self.per_alpha
                 self.replay_buffer.update_priorities(b_inds, priority)
 
-        if self.tau != 1 or self.global_step % self.target_net_update_freq == 0:
+        if self.tau != 1 or self.num_episodes % self.target_net_update_freq == 0:
             polyak_update(self.q_net.parameters(), self.target_q_net.parameters(), self.tau)
             polyak_update(self.feat_net.parameters(), self.target_feat_net.parameters(), self.tau)
 
@@ -684,10 +693,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             done_seq[index] = int(terminated)
             index = (index + 1) % self.sequence_length
 
-            if self.global_step >= self.learning_starts:
-                self.update()
-
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
+                saved_training_hidden = deepcopy(self.hidden)
+
                 if test_generalization:
                     eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:
@@ -703,7 +711,10 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                         n_sample_weights=num_eval_weights_for_eval,
                         ref_front=known_pareto_front,
                     )
-                self.reinitialize_hidden() # IMPORTANT: reset hidden state because there can be stale hidden states from recent eval
+                
+                # IMPORTANT: reset hidden state back to previous training step's hidden state because `self.hidden` gets
+                # manipulated during evaluation
+                self.hidden = saved_training_hidden
 
             if terminated or truncated:
                 obs, _ = self.env.reset()
@@ -718,6 +729,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 done_seq = np.zeros((self.sequence_length, 1))
                 done_seq = np.zeros((self.sequence_length, 1))
                 index = 0
+
+                if self.global_step >= self.learning_starts:
+                    self.update()
 
                 self.reinitialize_hidden() # IMPORTANT: reset hidden state after each episode
 

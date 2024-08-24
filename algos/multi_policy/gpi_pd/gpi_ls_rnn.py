@@ -122,7 +122,7 @@ class QNet(nn.Module):
         # If obs is batched but not sequenced (2D), add sequence dimension
         elif sf.dim() == 2:
             sf = sf.unsqueeze(1)  # (batch_size, 1, obs_dim)
-            
+
         q_values = self.net(sf * wf)
 
         # (Batch size X Actions X Rewards), (Batch size X hidden states)
@@ -149,7 +149,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         final_epsilon: float = 0.01,
         epsilon_decay_steps: int = None,  # None == fixed epsilon
         tau: float = 1.0,
-        target_net_update_freq: int = 1000,  # ignored if tau != 1.0
+        target_net_update_freq: int = 5,  # ignored if tau != 1.0
         buffer_size: int = 10000,
         net_arch: List = [256, 256, 256, 256],
         num_nets: int = 2,
@@ -173,7 +173,15 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
     ):
-        """Initialize the GPI-PD algorithm.
+        """GPI-LS algorithm adapted with recurrent networks and recurrent experience replay.
+
+        Key differences with recurrent version:
+        - Environment should have a `max_episode_steps` during registration as it will be used as a fixed sequence length.
+        - Replay buffer size and batch size is in episodes rather than steps. Each episode is of length `max_episode_steps`.
+        - Policy updates happen on episodic basis rather than step basis. As such, 
+          `gradient_updates` should be higher and `target_net_update_freq` should be lower.
+        - `self.reinitialize_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
+          to zero-start the RNN's hidden state.
 
         Args:
             env: The environment to learn from.
@@ -182,7 +190,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
             final_epsilon: The final epsilon value.
             epsilon_decay_steps: The number of steps to decay epsilon.
             tau: The soft update coefficient.
-            target_net_update_freq: The target network update frequency.
+            target_net_update_freq: The target network update frequency. Note this frequency is measured in episodes * gradient_updates.
             buffer_size: The size of the replay buffer. Note that the buffer size is the number of episodes.
             net_arch: The network architecture.
             num_nets: The number of networks.
@@ -464,7 +472,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
 
                 self.replay_buffer.update_priorities(idxes, priority)
 
-        if self.tau != 1 or self.global_step % self.target_net_update_freq == 0:
+        if self.tau != 1 or self.num_episodes % self.target_net_update_freq == 0:
             for psi_net, target_psi_net in zip(self.q_nets, self.target_q_nets):
                 polyak_update(psi_net.parameters(), target_psi_net.parameters(), self.tau)
             for feat_net, target_feat_net in zip(self.feat_nets, self.target_feat_nets):
@@ -709,9 +717,6 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
             done_seq[index] = int(terminated)
             index = (index + 1) % self.sequence_length
 
-            if self.global_step >= self.learning_starts:
-                self.update(tensor_w)
-
             if terminated or truncated:
                 obs, _ = self.env.reset()
                 self.num_episodes += 1
@@ -723,6 +728,9 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
                 done_seq = np.zeros((self.sequence_length, 1))
                 index = 0
+
+                if self.global_step >= self.learning_starts:
+                    self.update(tensor_w)
 
                 self.reinitialize_hidden() # IMPORTANT: reset hidden state after each episode
 
