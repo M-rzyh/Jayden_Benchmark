@@ -153,7 +153,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         net_arch: List = [256, 256, 256, 256],
         batch_size: int = 32,
         learning_starts: int = 100,
-        gradient_updates: int = 1,
+        gradient_updates: Optional[int] = None,
         gamma: float = 0.99,
         max_grad_norm: Optional[float] = 1.0,
         dist: str = "gaussian",
@@ -194,7 +194,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             net_arch: The size of the hidden layers of the value net.
             batch_size: The size of the batch to sample from the replay buffer. Note that the batch size is the number of episodes.
             learning_starts: The number of steps before learning starts i.e. the agent will be random until learning starts.
-            gradient_updates: The number of gradient updates per step.
+            gradient_updates: The number of gradient updates per episode. Ideally, this should be equal to the number of steps in an episode to match the non-recurrent version.
             gamma: The discount factor (gamma).
             max_grad_norm: The maximum norm for the gradient clipping. If None, no gradient clipping is applied.
             dist: The distribution to sample the weight vectors from. Either 'gaussian' or 'dirichlet'.
@@ -230,7 +230,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         self.batch_size = batch_size
         self.per = per
         self.per_alpha = per_alpha
-        self.gradient_updates = gradient_updates
+        self.gradient_updates = self.env.spec.max_episode_steps if gradient_updates is None else gradient_updates
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps

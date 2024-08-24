@@ -156,7 +156,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         rnn_layers: int = 2,
         batch_size: int = 32,
         learning_starts: int = 100,
-        gradient_updates: int = 1,
+        gradient_updates: Optional[int] = None,
         gamma: float = 0.99,
         max_grad_norm: Optional[float] = None,
         use_gpi: bool = True,
@@ -197,7 +197,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
             rnn_layers: The number of RNN layers.
             batch_size: The batch size. Note that the buffer size is the number of episodes.
             learning_starts: The number of steps before learning starts.
-            gradient_updates: The number of gradient updates per step.
+            gradient_updates: The number of gradient updates per episode. Ideally, this should be equal to the number of steps in an episode to match the non-recurrent version.
             gamma: The discount factor.
             max_grad_norm: The maximum gradient norm.
             use_gpi: Whether to use GPI.
@@ -230,7 +230,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.net_arch = net_arch
         self.learning_starts = learning_starts
         self.batch_size = batch_size
-        self.gradient_updates = gradient_updates
+        self.gradient_updates = self.env.spec.max_episode_steps if gradient_updates is None else gradient_updates
         self.num_nets = num_nets
         self.drop_rate = drop_rate
         self.layer_norm = layer_norm
