@@ -44,8 +44,8 @@ def eval_mo(
     vec_return, disc_vec_return = np.zeros_like(w), np.zeros_like(w)
     gamma = 1.0
 
-    if hasattr(agent, 'reinitialize_hidden'):
-        agent.reinitialize_hidden()  # reset hidden state for recurrent agents
+    if hasattr(agent, 'zero_start_rnn_hidden'):
+        agent.zero_start_rnn_hidden()  # reset hidden state for recurrent agents
 
     while not done:
         if render:

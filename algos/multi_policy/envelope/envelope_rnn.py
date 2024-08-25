@@ -31,15 +31,17 @@ from mo_utils.weights import equally_spaced_weights, random_weights
 from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 
-class FeaturesNet(nn.Module):
-    def __init__(self, obs_shape, hidden_dim, rnn_layers=2, recurrent_type='lstm'):
+class FeaturesExtractor(nn.Module):
+    def __init__(self, obs_shape, hidden_dim, rnn_layers=1, recurrent_type='lstm'):
         super().__init__()
         self.obs_shape = obs_shape
 
         if len(obs_shape) == 1:
             self.state_features = mlp(obs_shape[0], -1, [hidden_dim])
+            self.shortcut_state_features = mlp(obs_shape[0], -1, [hidden_dim])
         elif len(obs_shape) > 1:  # Image observation
             self.state_features = NatureCNN(self.obs_shape, features_dim=hidden_dim)
+            self.shortcut_state_features = NatureCNN(self.obs_shape, features_dim=hidden_dim)
 
         if recurrent_type == 'lstm':
             self.rnn = nn.LSTM(hidden_dim, hidden_dim, batch_first=True, num_layers=rnn_layers)
@@ -58,33 +60,58 @@ class FeaturesNet(nn.Module):
             elif 'weight' in name:
                 nn.init.orthogonal_(param)
 
-    def forward(self, obs, hidden=None, return_hidden=True):
-        self.rnn.flatten_parameters()
-
+    def _enforce_sequence_dim(self, obs):
         # If obs is not batched (1D), add batch and sequence dimensions
         if len(obs.shape) == len(self.obs_shape):
             obs = obs.unsqueeze(0).unsqueeze(1)  # (1, 1, obs_dim)
         # If obs is batched but not sequenced (2D), add sequence dimension
         elif len(obs.shape) == len(self.obs_shape) + 1:
             obs = obs.unsqueeze(1)  # (batch_size, 1, obs_dim)
+        
+        return obs
+    
+    def _get_shortcut_obs_embedding(self, obs):
+        obs = self._enforce_sequence_dim(obs)
 
+        return self.shortcut_state_features(obs)
+    
+    def _get_rnn_hidden_states(self, obs, hidden=None):
+        self.rnn.flatten_parameters()
+
+        obs = self._enforce_sequence_dim(obs)
         sf = self.state_features(obs)
-        summary, hidden = self.rnn(sf, hidden)
+        belief, hidden = self.rnn(sf, hidden)
+
+        return belief, hidden
+
+    def forward(self, obs, hidden=None, return_hidden=True):
+        # 1. get hidden/belief states of the whole/sub trajectories, aligned with states
+        # return the hidden states (B, T+1, dim)
+        belief, hidden = self._get_rnn_hidden_states(obs, hidden)
+
+        # 2. another branch for get shortcut embedding on current obs
+        curr_embed = self._get_shortcut_obs_embedding(obs)  # (B, T+1, dim)
+
+        # 3. joint embed
+        assert curr_embed.shape == belief.shape
+        joint_embeds = th.cat((belief, curr_embed), dim=-1)  # (B, T+1, dim)
+
         if return_hidden:
-            return summary, hidden
+            return joint_embeds, hidden
         else:
-            return summary
+            return joint_embeds
  
 class QNet(nn.Module):
     """Multi-objective Q-Network conditioned on the weight vector."""
 
-    def __init__(self, obs_shape, action_dim, rew_dim, net_arch):
+    def __init__(self, obs_shape, action_dim, rew_dim, input_dim, net_arch):
         """Initialize the Q network.
 
         Args:
             obs_shape: shape of the observation
             action_dim: number of actions
             rew_dim: number of objectives
+            input_dim: input dimension (rnn embed dim + shortcut state embed dim)
             net_arch: network architecture (number of units per layer)
         """
         super().__init__()
@@ -92,19 +119,10 @@ class QNet(nn.Module):
         self.action_dim = action_dim
         self.rew_dim = rew_dim
         # |S| + |R| -> ... -> |A| * |R|
-        self.net = mlp(net_arch[0] + rew_dim, action_dim * rew_dim, net_arch[1:])
+        self.net = mlp(input_dim + rew_dim, action_dim * rew_dim, net_arch[0:])
         self.apply(layer_init)
 
-    def forward(self, obs, w):
-        """Predict Q values for all actions.
-
-        Args:
-            obs: latent observation
-            w: weight vector
-
-        Returns: the Q values for all actions
-
-        """
+    def _enforce_sequence_dim(self, obs, w):
         # If w is not batched (1D), add batch and sequence dimensions
         if w.dim() == 1:
             w = w.unsqueeze(0).unsqueeze(1)  # (1, 1, w_dim)
@@ -118,6 +136,20 @@ class QNet(nn.Module):
         # If obs is batched but not sequenced (2D), add sequence dimension
         elif obs.dim() == 2:
             obs = obs.unsqueeze(1)  # (batch_size, 1, obs_dim)
+
+        return obs, w
+
+    def forward(self, obs, w):
+        """Predict Q values for all actions.
+
+        Args:
+            obs: latent observation (rnn embed + shortcut state embed)
+            w: weight vector
+
+        Returns: the Q values for all actions
+
+        """
+        obs, w = self._enforce_sequence_dim(obs, w)
 
         input = th.cat((obs, w), dim=w.dim() - 1)
         q_values = self.net(input)
@@ -150,7 +182,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         tau: float = 1.0,
         target_net_update_freq: int = 5,  # ignored if tau != 1.0
         buffer_size: int = 10000,
-        net_arch: List = [256, 256, 256, 256],
+        net_arch: List = [256, 256],
+        rnn_hidden_dim: int = 128,
+        rnn_layers: int = 1,
         batch_size: int = 32,
         learning_starts: int = 100,
         gradient_updates: Optional[int] = None,
@@ -163,7 +197,6 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         initial_homotopy_lambda: float = 0.0,
         final_homotopy_lambda: float = 1.0,
         homotopy_decay_steps: int = None,
-        rnn_layers: int = 2,
         project_name: str = "MORL-Baselines",
         experiment_name: str = "EnvelopeRNN",
         wandb_entity: Optional[str] = None,
@@ -179,7 +212,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         - Replay buffer size and batch size is in episodes rather than steps. Each episode is of length `max_episode_steps`.
         - Policy updates happen on episodic basis rather than step basis. As such, 
           `gradient_updates` should be higher and `target_net_update_freq` should be lower.
-        - `self.reinitialize_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
+        - `self.zero_start_rnn_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
           to zero-start the RNN's hidden state.
 
         Args:
@@ -192,6 +225,8 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             target_net_update_freq: The frequency with which the target network is updated. Note this frequency is measured in episodes * gradient_updates.
             buffer_size: The size of the replay buffer. Note that the buffer size is the number of episodes.
             net_arch: The size of the hidden layers of the value net.
+            rnn_hidden_dim: The size of the hidden layers of the RNN.
+            rnn_layers: The number of layers in the RNN.
             batch_size: The size of the batch to sample from the replay buffer. Note that the batch size is the number of episodes.
             learning_starts: The number of steps before learning starts i.e. the agent will be random until learning starts.
             gradient_updates: The number of gradient updates per episode. Ideally, this should be equal to the number of steps in an episode to match the non-recurrent version.
@@ -204,7 +239,6 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             initial_homotopy_lambda: The initial value of the homotopy parameter for homotopy optimization.
             final_homotopy_lambda: The final value of the homotopy parameter.
             homotopy_decay_steps: The number of steps to decay the homotopy parameter over.
-            rnn_layers: The number of layers in the RNN.
             project_name: The name of the project, for wandb logging.
             experiment_name: The name of the experiment, for wandb logging.
             wandb_entity: The entity of the project, for wandb logging.
@@ -235,10 +269,11 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
         self.rnn_layers = rnn_layers
+        self.rnn_hidden_dim = rnn_hidden_dim
         self.dist = dist
 
-        self.feat_net = FeaturesNet(self.observation_shape, net_arch[0], rnn_layers=rnn_layers).to(self.device)
-        self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
+        self.feat_net = FeaturesExtractor(self.observation_shape, self.rnn_hidden_dim, rnn_layers=rnn_layers).to(self.device)
+        self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, input_dim=self.rnn_hidden_dim*2, net_arch=net_arch).to(self.device)
         
         self.target_feat_net = create_target(self.feat_net)
         self.target_q_net = create_target(self.q_net)
@@ -294,6 +329,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             "final_homotopy_lambda": self.final_homotopy_lambda,
             "homotopy_decay_steps": self.homotopy_decay_steps,
             "rnn_layers": self.rnn_layers,
+            "rnn_hidden_dim": self.rnn_hidden_dim,
             "learning_starts": self.learning_starts,
             "seed": self.seed,
         }
@@ -732,7 +768,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 if self.global_step >= self.learning_starts:
                     self.update()
 
-                self.reinitialize_hidden() # IMPORTANT: reset hidden state after each episode
+                self.zero_start_rnn_hidden() # IMPORTANT: reset hidden state after each episode
 
                 if self.log and "episode" in info.keys():
                     log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)

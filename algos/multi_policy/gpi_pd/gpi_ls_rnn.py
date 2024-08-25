@@ -35,15 +35,17 @@ from morl_generalization.generalization_evaluator import MORLGeneralizationEvalu
 from algos.multi_policy.linear_support.linear_support import LinearSupport
 
 
-class FeaturesNet(nn.Module):
-    def __init__(self, obs_shape, hidden_dim, rnn_layers=2, recurrent_type='lstm'):
+class FeaturesExtractor(nn.Module):
+    def __init__(self, obs_shape, hidden_dim, rnn_layers=1, recurrent_type='lstm'):
         super().__init__()
         self.obs_shape = obs_shape
 
         if len(obs_shape) == 1:
             self.state_features = mlp(obs_shape[0], -1, [hidden_dim])
+            self.shortcut_state_features = mlp(obs_shape[0], -1, [hidden_dim])
         elif len(obs_shape) > 1:  # Image observation
             self.state_features = NatureCNN(self.obs_shape, features_dim=hidden_dim)
+            self.shortcut_state_features = NatureCNN(self.obs_shape, features_dim=hidden_dim)
 
         if recurrent_type == 'lstm':
             self.rnn = nn.LSTM(hidden_dim, hidden_dim, batch_first=True, num_layers=rnn_layers)
@@ -62,27 +64,51 @@ class FeaturesNet(nn.Module):
             elif 'weight' in name:
                 nn.init.orthogonal_(param)
 
-    def forward(self, obs, hidden=None, return_hidden=True):
-        self.rnn.flatten_parameters()
-
-       # If obs is not batched (1D), add batch and sequence dimensions
+    def _enforce_sequence_dim(self, obs):
+        # If obs is not batched (1D), add batch and sequence dimensions
         if len(obs.shape) == len(self.obs_shape):
             obs = obs.unsqueeze(0).unsqueeze(1)  # (1, 1, obs_dim)
         # If obs is batched but not sequenced (2D), add sequence dimension
         elif len(obs.shape) == len(self.obs_shape) + 1:
             obs = obs.unsqueeze(1)  # (batch_size, 1, obs_dim)
+        
+        return obs
+    
+    def _get_shortcut_obs_embedding(self, obs):
+        obs = self._enforce_sequence_dim(obs)
 
+        return self.shortcut_state_features(obs)
+    
+    def _get_rnn_hidden_states(self, obs, hidden=None):
+        self.rnn.flatten_parameters()
+
+        obs = self._enforce_sequence_dim(obs)
         sf = self.state_features(obs)
-        summary, hidden = self.rnn(sf, hidden)
+        belief, hidden = self.rnn(sf, hidden)
+
+        return belief, hidden
+
+    def forward(self, obs, hidden=None, return_hidden=True):
+        # 1. get hidden/belief states of the whole/sub trajectories, aligned with states
+        # return the hidden states (B, T+1, dim)
+        belief, hidden = self._get_rnn_hidden_states(obs, hidden)
+
+        # 2. another branch for get shortcut embedding on current obs
+        curr_embed = self._get_shortcut_obs_embedding(obs)  # (B, T+1, dim)
+
+        # 3. joint embed
+        assert curr_embed.shape == belief.shape
+        joint_embeds = th.cat((belief, curr_embed), dim=-1)  # (B, T+1, dim)
+
         if return_hidden:
-            return summary, hidden
+            return joint_embeds, hidden
         else:
-            return summary
+            return joint_embeds
 
 class QNet(nn.Module):
     """Conditioned MO Q network."""
 
-    def __init__(self, obs_shape, action_dim, rew_dim, net_arch, drop_rate=0.01, layer_norm=True):
+    def __init__(self, obs_shape, action_dim, rew_dim, net_arch, input_dim, drop_rate=0.00, layer_norm=False):
         """Initialize the net.
 
         Args:
@@ -98,17 +124,15 @@ class QNet(nn.Module):
         self.action_dim = action_dim
         self.phi_dim = rew_dim
 
-        self.weights_features = mlp(rew_dim, -1, net_arch[:1])
+        self.weights_features = mlp(rew_dim, -1, net_arch[0])
 
         self.net = mlp(
-            net_arch[0], action_dim * rew_dim, net_arch[1:], drop_rate=drop_rate, layer_norm=layer_norm
+            input_dim, action_dim * rew_dim, net_arch[0:], drop_rate=drop_rate, layer_norm=layer_norm
         )  # 128/128 256 256 256
 
         self.apply(layer_init)
 
-    def forward(self, sf, w):
-        """Forward pass."""
-        wf = self.weights_features(w)
+    def _enforce_sequence_dim(self, sf, w):
         # If w is not batched (1D), add batch and sequence dimensions
         if wf.dim() == 1:
             wf = wf.unsqueeze(0).unsqueeze(1)  # (1, 1, w_dim)
@@ -122,6 +146,14 @@ class QNet(nn.Module):
         # If obs is batched but not sequenced (2D), add sequence dimension
         elif sf.dim() == 2:
             sf = sf.unsqueeze(1)  # (batch_size, 1, obs_dim)
+        
+        return sf, wf
+
+    def forward(self, sf, w):
+        """Forward pass."""
+        wf = self.weights_features(w)
+        
+        sf, wf = self._enforce_sequence_dim(sf, wf)
 
         q_values = self.net(sf * wf)
 
@@ -151,9 +183,10 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         tau: float = 1.0,
         target_net_update_freq: int = 5,  # ignored if tau != 1.0
         buffer_size: int = 10000,
-        net_arch: List = [256, 256, 256, 256],
+        net_arch: List = [256, 256],
+        rnn_hidden_dim: int = 128,
+        rnn_layers: int = 1,
         num_nets: int = 2,
-        rnn_layers: int = 2,
         batch_size: int = 32,
         learning_starts: int = 100,
         gradient_updates: Optional[int] = None,
@@ -180,7 +213,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         - Replay buffer size and batch size is in episodes rather than steps. Each episode is of length `max_episode_steps`.
         - Policy updates happen on episodic basis rather than step basis. As such, 
           `gradient_updates` should be higher and `target_net_update_freq` should be lower.
-        - `self.reinitialize_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
+        - `self.zero_start_rnn_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
           to zero-start the RNN's hidden state.
 
         Args:
@@ -193,8 +226,9 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
             target_net_update_freq: The target network update frequency. Note this frequency is measured in episodes * gradient_updates.
             buffer_size: The size of the replay buffer. Note that the buffer size is the number of episodes.
             net_arch: The network architecture.
-            num_nets: The number of networks.
+            rnn_hidden_dim: The hidden dimension of the RNN.
             rnn_layers: The number of RNN layers.
+            num_nets: The number of networks.
             batch_size: The batch size. Note that the buffer size is the number of episodes.
             learning_starts: The number of steps before learning starts.
             gradient_updates: The number of gradient updates per episode. Ideally, this should be equal to the number of steps in an episode to match the non-recurrent version.
@@ -235,12 +269,13 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.drop_rate = drop_rate
         self.layer_norm = layer_norm
         self.rnn_layers = rnn_layers
+        self.rnn_hidden_dim = rnn_hidden_dim
 
         # Q-Networks
         self.feat_nets = [
-            FeaturesNet(
+            FeaturesExtractor(
                 self.observation_shape,
-                net_arch[0],
+                self.rnn_hidden_dim,
                 rnn_layers=rnn_layers,
             ).to(self.device)
             for _ in range(self.num_nets)
@@ -251,6 +286,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 self.action_dim,
                 self.reward_dim,
                 net_arch=net_arch,
+                input_dim=self.rnn_hidden_dim * 2,
                 drop_rate=drop_rate,
                 layer_norm=layer_norm,
             ).to(self.device)
@@ -702,7 +738,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
         done_seq = np.zeros((self.sequence_length, 1))
         index = 0
-        self.reinitialize_hidden() # IMPORTANT: reset hidden state because there can be stale hidden states from recent eval
+        self.zero_start_rnn_hidden() # IMPORTANT: reset hidden state because there can be stale hidden states from recent eval
         for _ in range(1, total_timesteps + 1):
             self.global_step += 1
 
@@ -732,7 +768,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 if self.global_step >= self.learning_starts:
                     self.update(tensor_w)
 
-                self.reinitialize_hidden() # IMPORTANT: reset hidden state after each episode
+                self.zero_start_rnn_hidden() # IMPORTANT: reset hidden state after each episode
 
                 if self.log and "episode" in info.keys():
                     log_episode_info(info["episode"], np.dot, weight, self.global_step, verbose=verbose)

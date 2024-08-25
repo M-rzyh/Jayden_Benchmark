@@ -138,7 +138,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         mask = np.ones(self.test_envs.num_envs, dtype=bool)
 
         if isinstance(agent, RecurrentMOPolicy):
-            agent.reinitialize_hidden() # IMPORTANT: reinitialize hidden state for each episode
+            agent.zero_start_rnn_hidden() # IMPORTANT: reinitialize hidden state for each episode
 
         if self.is_pcn:
             orig_desired_return, orig_desired_horizon = agent.desired_return.copy(), agent.desired_horizon.copy()
