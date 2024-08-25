@@ -187,7 +187,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         rnn_layers: int = 1,
         batch_size: int = 32,
         learning_starts: int = 100,
-        gradient_updates: Optional[int] = None,
+        gradient_updates: float = 0.1,
         gamma: float = 0.99,
         max_grad_norm: Optional[float] = 1.0,
         dist: str = "gaussian",
@@ -210,8 +210,8 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         Key differences with recurrent version:
         - Environment should have a `max_episode_steps` during registration as it will be used as a fixed sequence length.
         - Replay buffer size and batch size is in episodes rather than steps. Each episode is of length `max_episode_steps`.
-        - Policy updates happen on episodic basis rather than step basis. As such, 
-          `gradient_updates` should be higher and `target_net_update_freq` should be lower.
+        - Policy updates happen on episodic basis rather than step basis. As such, `target_net_update_freq` should be lower.
+        - `gradient_updates` parameter is measured in proportion of steps taken in an episode to update the networks.
         - `self.zero_start_rnn_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
           to zero-start the RNN's hidden state.
 
@@ -229,7 +229,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             rnn_layers: The number of layers in the RNN.
             batch_size: The size of the batch to sample from the replay buffer. Note that the batch size is the number of episodes.
             learning_starts: The number of steps before learning starts i.e. the agent will be random until learning starts.
-            gradient_updates: The number of gradient updates per episode. Ideally, this should be equal to the number of steps in an episode to match the non-recurrent version.
+            gradient_updates: The proportion of steps taken in an episode to update the networks. Must be 0.0 < gradient_updates <= 1.0.
             gamma: The discount factor (gamma).
             max_grad_norm: The maximum norm for the gradient clipping. If None, no gradient clipping is applied.
             dist: The distribution to sample the weight vectors from. Either 'gaussian' or 'dirichlet'.
@@ -264,13 +264,14 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         self.batch_size = batch_size
         self.per = per
         self.per_alpha = per_alpha
-        self.gradient_updates = self.env.spec.max_episode_steps if gradient_updates is None else gradient_updates
         self.initial_homotopy_lambda = initial_homotopy_lambda
         self.final_homotopy_lambda = final_homotopy_lambda
         self.homotopy_decay_steps = homotopy_decay_steps
         self.rnn_layers = rnn_layers
         self.rnn_hidden_dim = rnn_hidden_dim
         self.dist = dist
+        self.gradient_updates = gradient_updates
+        assert 0.0 < gradient_updates <= 1.0, "Gradient updates must be in the range (0.0, 1.0]"
 
         self.feat_net = FeaturesExtractor(self.observation_shape, self.rnn_hidden_dim, rnn_layers=rnn_layers).to(self.device)
         self.q_net = QNet(self.observation_shape, self.action_dim, self.reward_dim, input_dim=self.rnn_hidden_dim*2, net_arch=net_arch).to(self.device)
@@ -376,9 +377,9 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         return self.replay_buffer.sample(self.batch_size, to_tensor=True, device=self.device)
 
     @override
-    def update(self):
+    def update(self, num_updates: int = 1):
         critic_losses = []
-        for g in range(self.gradient_updates):
+        for _ in range(num_updates):
             if self.per:
                 (
                     b_obs_seq,
@@ -692,6 +693,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
         self.global_step = 0 if reset_num_timesteps else self.global_step
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
+        self.gradient_updates_count = 0
         if reset_learning_starts:  # Resets epsilon-greedy exploration
             self.learning_starts = self.global_step
 
@@ -708,6 +710,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
         done_seq = np.zeros((self.sequence_length, 1))
         index = 0
+        episode_steps = 0
         for _ in range(1, total_timesteps + 1):
             if total_episodes is not None and num_episodes == total_episodes:
                 break
@@ -727,6 +730,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
             next_obs_seq[index] = next_obs
             done_seq[index] = int(terminated)
             index = (index + 1) % self.sequence_length
+            episode_steps += 1
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
                 saved_training_hidden = deepcopy(self.hidden)
@@ -767,7 +771,10 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
 
                 if self.global_step >= self.learning_starts:
                     self.update()
-
+                    self.gradient_updates_count += max(1, int(self.gradient_updates * episode_steps))
+                    wandb.log({"charts/gradient_updates_count": self.gradient_updates_count, "global_step": self.global_step})
+                
+                episode_steps = 0
                 self.zero_start_rnn_hidden() # IMPORTANT: reset hidden state after each episode
 
                 if self.log and "episode" in info.keys():

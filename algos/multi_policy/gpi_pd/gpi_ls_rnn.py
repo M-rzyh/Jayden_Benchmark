@@ -189,7 +189,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         num_nets: int = 2,
         batch_size: int = 32,
         learning_starts: int = 100,
-        gradient_updates: Optional[int] = None,
+        gradient_updates: float = 0.1,
         gamma: float = 0.99,
         max_grad_norm: Optional[float] = None,
         use_gpi: bool = True,
@@ -211,8 +211,8 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         Key differences with recurrent version:
         - Environment should have a `max_episode_steps` during registration as it will be used as a fixed sequence length.
         - Replay buffer size and batch size is in episodes rather than steps. Each episode is of length `max_episode_steps`.
-        - Policy updates happen on episodic basis rather than step basis. As such, 
-          `gradient_updates` should be higher and `target_net_update_freq` should be lower.
+        - Policy updates happen on episodic basis rather than step basis. As such, `target_net_update_freq` should be lower.
+        - `gradient_updates` parameter is measured in proportion of steps taken in an episode to update the networks.
         - `self.zero_start_rnn_hidden()` should be called at the beginning of each episode BOTH during training and evaluation
           to zero-start the RNN's hidden state.
 
@@ -231,7 +231,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
             num_nets: The number of networks.
             batch_size: The batch size. Note that the buffer size is the number of episodes.
             learning_starts: The number of steps before learning starts.
-            gradient_updates: The number of gradient updates per episode. Ideally, this should be equal to the number of steps in an episode to match the non-recurrent version.
+            gradient_updates: The proportion of steps taken in an episode to update the networks. Must be 0.0 < gradient_updates <= 1.0.
             gamma: The discount factor.
             max_grad_norm: The maximum gradient norm.
             use_gpi: Whether to use GPI.
@@ -260,11 +260,13 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.gamma = gamma
         self.max_grad_norm = max_grad_norm
         self.use_gpi = use_gpi
-        self.buffer_size = buffer_size
-        self.net_arch = net_arch
         self.learning_starts = learning_starts
         self.batch_size = batch_size
-        self.gradient_updates = self.env.spec.max_episode_steps if gradient_updates is None else gradient_updates
+        self.gradient_updates = gradient_updates
+        assert 0.0 < gradient_updates <= 1.0, "Gradient updates must be in the range (0.0, 1.0]"
+        
+        # Network parameters
+        self.net_arch = net_arch
         self.num_nets = num_nets
         self.drop_rate = drop_rate
         self.layer_norm = layer_norm
@@ -304,6 +306,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.q_optim = optim.Adam(chain(*[net.parameters() for net in self.q_nets]), lr=self.learning_rate)
 
         # Prioritized experience replay parameters
+        self.buffer_size = buffer_size
         self.per = per
         self.sequence_length = self.env.spec.max_episode_steps
         assert self.learning_starts >= self.sequence_length * self.batch_size, "Not enough episodes to start replay"
@@ -394,10 +397,10 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
     def _sample_batch_experiences(self):
         return self.replay_buffer.sample(self.batch_size, to_tensor=True, device=self.device)
     
-    def update(self, weight: th.Tensor):
+    def update(self, weight: th.Tensor, num_updates: int = 1):
         """Update the parameters of the networks."""
         critic_losses = []
-        for _ in range(self.gradient_updates):
+        for _ in range(num_updates):
             if self.per:
                 s_obs, s_actions, s_rewards, s_next_obs, s_dones, idxes = self._sample_batch_experiences()
             else:
@@ -738,6 +741,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         next_obs_seq = np.zeros((self.sequence_length, *self.observation_shape))
         done_seq = np.zeros((self.sequence_length, 1))
         index = 0
+        episode_steps = 0
         self.zero_start_rnn_hidden() # IMPORTANT: reset hidden state because there can be stale hidden states from recent eval
         for _ in range(1, total_timesteps + 1):
             self.global_step += 1
@@ -752,6 +756,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
             next_obs_seq[index] = next_obs
             done_seq[index] = int(terminated)
             index = (index + 1) % self.sequence_length
+            episode_steps += 1
 
             if terminated or truncated:
                 obs, _ = self.env.reset()
@@ -766,8 +771,12 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 index = 0
 
                 if self.global_step >= self.learning_starts:
-                    self.update(tensor_w)
-
+                    # update for proportion of the number of steps taken in the episode (determined by gradient_updates)
+                    self.update(tensor_w, num_updates=max(1, int(self.gradient_updates * episode_steps)))
+                    self.gradient_updates_count += max(1, int(self.gradient_updates * episode_steps))
+                    wandb.log({"charts/gradient_updates_count": self.gradient_updates_count, "global_step": self.global_step})
+                
+                episode_steps = 0
                 self.zero_start_rnn_hidden() # IMPORTANT: reset hidden state after each episode
 
                 if self.log and "episode" in info.keys():
@@ -829,6 +838,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                     "eval_mo_freq": eval_mo_freq,
                 }
             )
+        self.gradient_updates_count = 0
         max_iter = total_timesteps // timesteps_per_iter
         linear_support = LinearSupport(num_objectives=self.reward_dim, epsilon=0.0 if weight_selection_algo == "ols" else None)
 
