@@ -124,10 +124,10 @@ class QNet(nn.Module):
         self.action_dim = action_dim
         self.phi_dim = rew_dim
 
-        self.weights_features = mlp(rew_dim, -1, net_arch[0])
+        self.weights_features = mlp(rew_dim, -1, net_arch[:1])
 
         self.net = mlp(
-            input_dim, action_dim * rew_dim, net_arch[0:], drop_rate=drop_rate, layer_norm=layer_norm
+            input_dim, action_dim * rew_dim, net_arch[1:], drop_rate=drop_rate, layer_norm=layer_norm
         )  # 128/128 256 256 256
 
         self.apply(layer_init)
@@ -183,7 +183,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         tau: float = 1.0,
         target_net_update_freq: int = 5,  # ignored if tau != 1.0
         buffer_size: int = 10000,
-        net_arch: List = [256, 256],
+        net_arch: List = [256, 256, 256],
         rnn_hidden_dim: int = 128,
         rnn_layers: int = 1,
         num_nets: int = 2,
