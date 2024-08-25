@@ -770,7 +770,7 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
                 index = 0
 
                 if self.global_step >= self.learning_starts:
-                    self.update()
+                    self.update(num_updates=max(1, int(self.gradient_updates * episode_steps)))
                     self.gradient_updates_count += max(1, int(self.gradient_updates * episode_steps))
                     wandb.log({"charts/gradient_updates_count": self.gradient_updates_count, "global_step": self.global_step})
                 
