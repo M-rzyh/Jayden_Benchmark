@@ -132,7 +132,7 @@ class QNet(nn.Module):
 
         self.apply(layer_init)
 
-    def _enforce_sequence_dim(self, sf, w):
+    def _enforce_sequence_dim(self, sf, wf):
         # If w is not batched (1D), add batch and sequence dimensions
         if wf.dim() == 1:
             wf = wf.unsqueeze(0).unsqueeze(1)  # (1, 1, w_dim)
