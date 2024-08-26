@@ -471,8 +471,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 assert psi_value.shape == target_q.shape
 
                 td_error = psi_value - target_q # (b, s, r)
-                loss = td_error ** 2
-                loss = mean_of_unmasked_elements(loss, s_masks)
+                loss = huber((td_error * s_masks).abs(), self.min_priority)
                 assert loss.shape == ()
                 losses.append(loss)
                 if self.per:
