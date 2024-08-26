@@ -283,7 +283,6 @@ class EnvelopeRNN(RecurrentMOPolicy, MOAgent):
         self.q_optim = optim.Adam(self.q_net.parameters(), lr=self.learning_rate)
 
         self.sequence_length = self.env.spec.max_episode_steps
-        assert self.learning_starts >= self.sequence_length * self.batch_size, "Not enough episodes to start replay"
         self.num_sample_w = num_sample_w
         self.homotopy_lambda = self.initial_homotopy_lambda
         if self.per:

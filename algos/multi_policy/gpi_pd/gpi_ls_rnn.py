@@ -263,7 +263,6 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.learning_starts = learning_starts
         self.batch_size = batch_size
         self.gradient_updates = gradient_updates
-        assert 0.0 < gradient_updates <= 1.0, "Gradient updates must be in the range (0.0, 1.0]"
         
         # Network parameters
         self.net_arch = net_arch
