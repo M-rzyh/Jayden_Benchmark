@@ -263,6 +263,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.learning_starts = learning_starts
         self.batch_size = batch_size
         self.gradient_updates = gradient_updates
+        assert 0.0 < gradient_updates <= 1.0, "Gradient updates must be in the range (0.0, 1.0]"
         
         # Network parameters
         self.net_arch = net_arch
@@ -308,7 +309,6 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.buffer_size = buffer_size
         self.per = per
         self.sequence_length = self.env.spec.max_episode_steps
-        assert self.learning_starts >= self.sequence_length * self.batch_size, "Not enough episodes to start replay"
         if self.per:
             self.replay_buffer = RecurrentPrioritizedReplayBuffer(
                 self.observation_shape,
