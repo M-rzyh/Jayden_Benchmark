@@ -471,7 +471,14 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
                 assert psi_value.shape == target_q.shape
 
                 td_error = psi_value - target_q # (b, s, r)
-                loss = huber((td_error * s_masks).abs(), self.min_priority)
+
+                # Huber loss
+                masked_td_error = (td_error * s_masks).abs()
+                loss = th.where(masked_td_error < self.min_priority,
+                                0.5 * masked_td_error.pow(2),
+                                self.min_priority * masked_td_error).sum(dim=[1,2])
+                valid_transitions = s_masks.sum(dim=[1,2])
+                loss = (loss / valid_transitions).mean()
                 assert loss.shape == ()
                 losses.append(loss)
                 if self.per:
