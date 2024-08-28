@@ -19,7 +19,7 @@ import requests
 from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.record_video import RecordVideo
 
-from mo_gymnasium.utils import MORecordEpisodeStatistics
+from mo_utils.wrappers import MORecordEpisodeStatistics
 from mo_utils.evaluation import seed_everything
 from mo_utils.experiments import (
     ALGOS,

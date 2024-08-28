@@ -7,7 +7,7 @@ import mo_gymnasium as mo_gym
 import numpy as np
 import wandb
 import yaml
-from mo_gymnasium.utils import MORecordEpisodeStatistics
+from mo_utils.wrappers import MORecordEpisodeStatistics
 
 from mo_utils.evaluation import seed_everything
 from mo_utils.experiments import (
