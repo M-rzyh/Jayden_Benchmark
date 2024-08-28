@@ -173,8 +173,8 @@ class PerformancePredictor:
             current_sigma *= 2.0
             current_neighb_threshold *= 2.0
 
-            print(f"current_neighb_threshold: {current_neighb_threshold}")
-            print(f"np.abs(policy_eval): {np.abs(policy_eval)}")
+            # print(f"current_neighb_threshold: {current_neighb_threshold}")
+            # print(f"np.abs(policy_eval): {np.abs(policy_eval)}")
             if current_neighb_threshold == np.inf or current_sigma == np.inf:
                 raise ValueError("Cannot find at least 4 neighbors by enlarging the neighborhood.")
 
@@ -571,6 +571,7 @@ class PGMORL(MOAgent):
             "pop_size": self.pop_size,
             "warmup_iterations": self.warmup_iterations,
             "evolutionary_iterations": self.evolutionary_iterations,
+            "steps_per_iteration": self.steps_per_iteration,
             "num_weight_candidates": self.num_weight_candidates,
             "num_performance_buffer": self.num_performance_buffer,
             "performance_buffer_size": self.performance_buffer_size,
@@ -607,11 +608,11 @@ class PGMORL(MOAgent):
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         add_to_prediction: bool = True,
-        test_generalization: bool = False,
+        log: bool = False,
     ):
         """Evaluates all agents and store their current performances on the buffer and pareto archive."""
         for i, agent in enumerate(self.agents):
-            _, _, _, discounted_reward = agent.policy_eval(eval_env, weights=agent.np_weights, log=self.log)
+            _, _, _, discounted_reward = agent.policy_eval(eval_env, weights=agent.np_weights, log=log)
             # Storing current results
             self.population.add(agent, discounted_reward)
             self.archive.add(agent, discounted_reward)
@@ -625,7 +626,7 @@ class PGMORL(MOAgent):
 
         print("Current pareto archive:")
         print(self.archive.evaluations[:50])
-        if self.log and not test_generalization:
+        if log:
             log_all_multi_policy_metrics(
                 current_front=self.archive.evaluations,
                 hv_ref_point=ref_point,
@@ -705,6 +706,52 @@ class PGMORL(MOAgent):
                 f"current eval: {best_eval} - estimated next: {best_predicted_eval} - deltas {(best_predicted_eval - best_eval)}"
             )
 
+    # TODO: implement this search more optimally
+    def _select_nearest_policy(self, given_weight) -> MOPPO:
+        """
+        Selects the policy with weights nearest to the given weight vector.
+        """
+        # Initialize variables to track the minimum distance and the selected policy
+        min_distance = float('inf')
+        selected_policy = None
+
+        # Iterate through each policy in the population
+        for policy in self.archive.individuals:
+            # Calculate the Euclidean distance between the policy's weights and the given weights
+            distance = np.sum(np.square(np.array(policy.weights) - given_weight))
+            
+            # Update the minimum distance and selected policy if the current distance is smaller
+            if distance < min_distance:
+                min_distance = distance
+                selected_policy = policy
+
+        return selected_policy
+
+    @th.no_grad()
+    def eval(
+        self, 
+        obs: Union[np.ndarray, th.Tensor],
+        w: Union[np.ndarray, th.Tensor], 
+        torch_action: bool = False,
+        num_envs: int = 1,
+        **kwargs
+    ) -> Union[np.ndarray, th.Tensor]:
+        """
+        Evaluate the policy action for the given observation and weight vector.
+        Implemented for testing generalization.
+        """
+        if isinstance(obs, np.ndarray):
+            obs = th.tensor(obs).float().to(self.device)
+
+        # w is tiled to match the number of environments
+        policy = self._select_nearest_policy(w[0]) # Select the MOPPO with weights nearest to the given weight vector
+        action = policy.eval(obs, w[0], num_envs=num_envs)
+
+        if not torch_action and isinstance(action, th.Tensor):
+            action = action.detach().cpu().numpy()
+
+        return action
+
     def train(
         self,
         total_timesteps: int,
@@ -712,6 +759,7 @@ class PGMORL(MOAgent):
         ref_point: np.ndarray,
         known_pareto_front: Optional[List[np.ndarray]] = None,
         num_eval_weights_for_eval: int = 50,
+        eval_mo_freq: int = 10000,
         test_generalization: bool = False,
     ):
         """Trains the agents."""
@@ -726,6 +774,9 @@ class PGMORL(MOAgent):
             )
         self.num_eval_weights_for_eval = num_eval_weights_for_eval
         max_iterations = total_timesteps // self.steps_per_iteration // self.num_envs
+        next_eval_step = eval_mo_freq
+        print(f"Total iterations: {max_iterations}")
+
         iteration = 0
         # Init
         current_evaluations = [np.zeros(self.reward_dim) for _ in range(len(self.agents))]
@@ -735,7 +786,7 @@ class PGMORL(MOAgent):
             ref_point=ref_point,
             known_pareto_front=known_pareto_front,
             add_to_prediction=False,
-            test_generalization=test_generalization,
+            log=(self.log and not test_generalization),
         )
         self.start_time = time.time()
 
@@ -746,12 +797,13 @@ class PGMORL(MOAgent):
                 wandb.log({"charts/warmup_iterations": i, "global_step": self.global_step})
             self.__train_all_agents(iteration=iteration, max_iterations=max_iterations)
             iteration += 1
+            self.global_step += self.steps_per_iteration * self.num_envs
         self.__eval_all_agents(
             eval_env=eval_env,
             evaluations_before_train=current_evaluations,
             ref_point=ref_point,
             known_pareto_front=known_pareto_front,
-            test_generalization=test_generalization,
+            log=(self.log and not test_generalization),
         )
 
         # Evolution
@@ -784,12 +836,21 @@ class PGMORL(MOAgent):
                 evaluations_before_train=current_evaluations,
                 ref_point=ref_point,
                 known_pareto_front=known_pareto_front,
-                test_generalization=test_generalization,
+                log=(self.log and not test_generalization),
             )
-            if self.log and test_generalization:
-                eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
+            if self.log and test_generalization and self.global_step >= next_eval_step:
+                eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
+                next_eval_step += eval_mo_freq
 
             evolutionary_generation += 1
+            self.global_step += self.steps_per_iteration * self.num_envs
+
+            wandb.log(
+                {
+                    "metrics/archive_individuals": len(self.archive.individuals),
+                    "global_step": self.global_step,
+                },
+            )
 
         print("Done training!")
         self.env.close()

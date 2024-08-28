@@ -504,6 +504,7 @@ class MOPPO(MOPolicy):
         self, 
         obs: np.ndarray, 
         w: Optional[np.ndarray],
+        num_envs: Optional[int] = None,
         **kwargs,
     ):
         """Returns the best action to perform for the given obs
@@ -512,11 +513,18 @@ class MOPPO(MOPolicy):
             action as a numpy array (continuous actions)
         """
         obs = th.as_tensor(obs).float().to(self.device)
-        obs = obs.unsqueeze(0).repeat(self.num_envs, 1)  # duplicate observation to fit the NN input
+
+        # standard eval env is single env, so we need to duplicate the obs to fit the NN input
+        if num_envs is None:
+            obs = obs.unsqueeze(0).repeat(self.num_envs, 1)  # duplicate observation to fit the NN input
+
         with th.no_grad():
             action, _, _, _ = self.networks.get_action_and_value(obs)
 
-        return action[0].detach().cpu().numpy()
+        if num_envs is None:
+            return action[0].detach().cpu().numpy() # return action for the first env
+        
+        return action.detach().cpu().numpy()
 
     @override
     def update(self):

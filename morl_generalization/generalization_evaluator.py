@@ -105,9 +105,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
         self.seed = seed 
 
-        # ============ Algorithm Specific ============
-        self.is_pcn = algo_name == 'pcn' # for PCN, we need to readjust the desired return and horizon after each step
-
     def eval_mo(
         self,
         agent,
@@ -140,7 +137,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         if isinstance(agent, RecurrentMOPolicy):
             agent.zero_start_rnn_hidden() # IMPORTANT: reinitialize hidden state for each episode
 
-        if self.is_pcn:
+        if self.algo_name == 'pcn':
             orig_desired_return, orig_desired_horizon = agent.desired_return.copy(), agent.desired_horizon.copy()
 
         while not all(done):
@@ -171,10 +168,10 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             mask &= ~terminated  # Update the mask
             done |= np.logical_or(terminated, truncated)
 
-            if self.is_pcn:
+            if self.algo_name == 'pcn':
                 agent.readjust_desired_return_and_horizon(r)
 
-        if self.is_pcn: # reset the desired return and horizon to the original values for next repetition
+        if self.algo_name == 'pcn': # reset the desired return and horizon to the original values for next repetition
             agent.set_desired_return_and_horizon(orig_desired_return, orig_desired_horizon)
 
         return (vec_return, disc_vec_return, original_return, disc_original_return)
@@ -320,7 +317,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         original_scalar_returns = []
         disc_original_scalar_returns = []
 
-        if self.is_pcn:
+        if self.algo_name == 'pcn':
             n = min(len(self.eval_weights), len(agent.experience_replay))
             episodes = agent._nlargest(n)
             desired_returns, desired_horizons = list(zip(*[(e[2][0].reward, len(e[2])) for e in episodes]))
@@ -338,7 +335,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             desired_returns = np.tile(desired_returns, (self.test_envs.num_envs, 1, 1))
 
         for i, ew in enumerate(self.eval_weights):
-            if self.is_pcn:
+            if self.algo_name == 'pcn':
                 agent.set_desired_return_and_horizon(desired_returns[:, i], desired_horizons[:, i])
             
             (

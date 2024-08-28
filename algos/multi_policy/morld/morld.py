@@ -5,6 +5,7 @@ See Felten, Talbi & Danoy (2024): https://arxiv.org/abs/2311.12495.
 import os
 import math
 import time
+import wandb
 from typing import Callable, List, Optional, Tuple, Union
 from typing_extensions import override
 
@@ -299,7 +300,7 @@ class MORLD(MOAgent):
         num_eval_weights_for_eval: int,
         ref_point: np.ndarray,
         known_front: Optional[List[np.ndarray]] = None,
-        test_generalization: bool = False,
+        log: bool = False,
     ):
         """Evaluates all policies and store their current performances on the buffer and pareto archive."""
         evals = []
@@ -313,7 +314,7 @@ class MORLD(MOAgent):
         print(self.archive.evaluations[:50])
         print(self.archive.evaluations[-50:])
 
-        if self.log and not test_generalization:
+        if log:
             log_all_multi_policy_metrics(
                 self.archive.evaluations,
                 ref_point,
@@ -421,8 +422,8 @@ class MORLD(MOAgent):
                 if len(p.wrapped.get_buffer()) > 0 and p != current:
                     p.wrapped.update()
 
-    # TODO: implement this more optimally using binary search
-    def select_nearest_policy(self, given_weight) -> Policy:
+    # TODO: implement this search more optimally
+    def _select_nearest_policy(self, given_weight) -> Policy:
         """
         Selects the policy with weights nearest to the given weight vector.
         """
@@ -431,7 +432,7 @@ class MORLD(MOAgent):
         selected_policy = None
 
         # Iterate through each policy in the population
-        for policy in self.population:
+        for policy in self.archive.individuals:
             # Calculate the Euclidean distance between the policy's weights and the given weights
             distance = self.dist_metric(policy.weights, given_weight)
             
@@ -458,7 +459,7 @@ class MORLD(MOAgent):
         if isinstance(obs, np.ndarray):
             obs = th.tensor(obs).float().to(self.device)
 
-        policy = self.select_nearest_policy(w) # Select the policy with weights nearest to the given weight vector
+        policy = self._select_nearest_policy(w) # Select the policy with weights nearest to the given weight vector
         if self.policy_name == "MOSAC" or self.policy_name == "MOSACDiscrete":
             action, _, _ = policy.wrapped.actor.get_action(obs) # MOSAC Policy
         elif self.policy_name == "EUPG":
@@ -501,6 +502,7 @@ class MORLD(MOAgent):
         num_eval_episodes_for_front: int = 5,
         num_eval_weights_for_front: int = 100,
         reset_num_timesteps: bool = False,
+        eval_mo_freq: int = 10000,
         test_generalization: bool = False,
     ):
         """Trains the algorithm.
@@ -513,11 +515,9 @@ class MORLD(MOAgent):
             num_eval_episodes_for_front: number of episodes for each policy evaluation
             num_eval_weights_for_front (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
             reset_num_timesteps: whether to reset the number of timesteps or not
+            eval_mo_freq: frequency of evaluating the multi-objective performance. Used for generalization evaluation only.
             test_generalization (bool): Whether to test generalizability of the model.
         """
-        # if test_generalization: # weight adaptation and archive is not supported in domain randomization
-        #     assert self.weight_adaptation_method is None, "Weight adaptation is not supported in domain randomization."
-
         if self.log:
             self.register_additional_config(
                 {
@@ -532,13 +532,14 @@ class MORLD(MOAgent):
         # Init
         self.global_step = 0 if reset_num_timesteps else self.global_step
         self.num_episodes = 0 if reset_num_timesteps else self.num_episodes
+        next_eval_step = eval_mo_freq
         start_time = time.time()
 
         obs, _ = self.env.reset()
         print("Starting training...")
 
         self.__eval_all_policies(
-            eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front, test_generalization
+            eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front, log=(self.log and not test_generalization)
         )
 
         while self.global_step < total_timesteps:
@@ -554,21 +555,28 @@ class MORLD(MOAgent):
 
             # dont allow archive and weight adaptation in domain randomization 
             # because it is not possible to compare pareto front when environment constantly changes
-            if self.log and test_generalization:
-                eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
+            if self.log and test_generalization and self.global_step >= next_eval_step:
+                eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
+                next_eval_step += eval_mo_freq
 
-            if self.weight_adaptation_method is not None:
-                # Update archive
-                evals = self.__eval_all_policies(
-                    eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front, test_generalization
-                )
+            # Update archive
+            evals = self.__eval_all_policies(
+                eval_env, num_eval_episodes_for_front, num_eval_weights_for_front, ref_point, known_pareto_front, log=(self.log and not test_generalization)
+            )
 
-                # Adaptation
-                self.__adapt_weights(evals)
+            # Adaptation
+            self.__adapt_weights(evals)
 
             # cooperation
             self.__share(policy)
             self.__adapt_ref_point()
+
+            wandb.log(
+                {
+                    "metrics/archive_individuals": len(self.archive.individuals),
+                    "global_step": self.global_step,
+                },
+            )
 
         print("done!")
         self.env.close()
