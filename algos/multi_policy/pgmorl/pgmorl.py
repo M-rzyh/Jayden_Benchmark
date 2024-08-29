@@ -718,7 +718,7 @@ class PGMORL(MOAgent):
         # Iterate through each policy in the population
         for policy in self.archive.individuals:
             # Calculate the Euclidean distance between the policy's weights and the given weights
-            distance = np.sum(np.square(np.array(policy.weights) - given_weight))
+            distance = np.sum(np.square(policy.weights.detach().cpu().numpy() - given_weight))
             
             # Update the minimum distance and selected policy if the current distance is smaller
             if distance < min_distance:
@@ -839,6 +839,7 @@ class PGMORL(MOAgent):
                 log=(self.log and not test_generalization),
             )
             if self.log and test_generalization and self.global_step >= next_eval_step:
+                next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
                 eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
                 next_eval_step += eval_mo_freq
 

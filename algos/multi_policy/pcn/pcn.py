@@ -565,6 +565,7 @@ class PCN(MOAgent, MOPolicy):
             
             # unable to log at nice steps that are multiples of eval_mo_freq because each episode can have irregular length if terminated early
             if self.log and self.global_step >= next_eval_step:
+                next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
                 if test_generalization:
                     eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
                 else:
