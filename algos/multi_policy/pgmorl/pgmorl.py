@@ -835,9 +835,9 @@ class PGMORL(MOAgent):
                     )
                 self.__train_all_agents(iteration=iteration, max_iterations=max_iterations)
                 iteration += 1
+                self.global_step += self.steps_per_iteration * self.num_envs
 
             evolutionary_generation += 1
-            self.global_step += self.steps_per_iteration * self.num_envs
             
             self.__eval_all_agents(
                 eval_env=eval_env,
