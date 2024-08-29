@@ -506,7 +506,7 @@ class Envelope(MOPolicy, MOAgent):
         weight: Optional[np.ndarray] = None,
         total_episodes: Optional[int] = None,
         reset_num_timesteps: bool = True,
-        eval_freq: int = 10000,
+        eval_mo_freq: int = 10000,
         num_eval_weights_for_front: int = 100,
         num_eval_episodes_for_front: int = 5,
         num_eval_weights_for_eval: int = 50,
@@ -524,7 +524,7 @@ class Envelope(MOPolicy, MOAgent):
             weight: weight vector. If None, it is randomly sampled every episode (as done in the paper).
             total_episodes: total number of episodes to train for. If None, it is ignored.
             reset_num_timesteps: whether to reset the number of timesteps. Useful when training multiple times.
-            eval_freq: policy evaluation frequency (in number of steps).
+            eval_mo_freq: policy evaluation frequency (in number of steps).
             num_eval_weights_for_front: number of weights to sample for creating the pareto front when evaluating.
             num_eval_episodes_for_front: number of episodes to run when evaluating the policy.
             num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
@@ -543,7 +543,7 @@ class Envelope(MOPolicy, MOAgent):
                     "weight": weight.tolist() if weight is not None else None,
                     "total_episodes": total_episodes,
                     "reset_num_timesteps": reset_num_timesteps,
-                    "eval_freq": eval_freq,
+                    "eval_mo_freq": eval_mo_freq,
                     "num_eval_weights_for_front": num_eval_weights_for_front,
                     "num_eval_episodes_for_front": num_eval_episodes_for_front,
                     "num_eval_weights_for_eval": num_eval_weights_for_eval,
@@ -580,7 +580,7 @@ class Envelope(MOPolicy, MOAgent):
             if self.global_step >= self.learning_starts:
                 self.update()
 
-            if eval_env is not None and self.log and self.global_step % eval_freq == 0:
+            if eval_env is not None and self.log and self.global_step % eval_mo_freq == 0:
                 if test_generalization:
                     eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
                 else:

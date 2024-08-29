@@ -393,7 +393,7 @@ class CAPQL(MOAgent, MOPolicy):
         num_eval_weights_for_front: int = 100,
         num_eval_episodes_for_front: int = 5,
         num_eval_weights_for_eval: int = 50,
-        eval_freq: int = 10000,
+        eval_mo_freq: int = 10000,
         reset_num_timesteps: bool = False,
         checkpoints: bool = False,
         verbose: bool = False,
@@ -409,7 +409,7 @@ class CAPQL(MOAgent, MOPolicy):
             num_eval_weights_for_front (int): Number of weights to evaluate for the Pareto front.
             num_eval_episodes_for_front: number of episodes to run when evaluating the policy.
             num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
-            eval_freq (int): Number of timesteps between evaluations during an iteration.
+            eval_mo_freq (int): Number of timesteps between evaluations during an iteration.
             reset_num_timesteps (bool): Whether to reset the number of timesteps.
             checkpoints (bool): Whether to save checkpoints.
             verbose (bool): whether to print the episode info.
@@ -424,7 +424,7 @@ class CAPQL(MOAgent, MOPolicy):
                     "num_eval_weights_for_front": num_eval_weights_for_front,
                     "num_eval_episodes_for_front": num_eval_episodes_for_front,
                     "num_eval_weights_for_eval": num_eval_weights_for_eval,
-                    "eval_freq": eval_freq,
+                    "eval_mo_freq": eval_mo_freq,
                     "reset_num_timesteps": reset_num_timesteps,
                 }
             )
@@ -472,7 +472,7 @@ class CAPQL(MOAgent, MOPolicy):
             else:
                 obs = next_obs
 
-            if self.log and self.global_step % eval_freq == 0:
+            if self.log and self.global_step % eval_mo_freq == 0:
                 # Evaluation
                 if test_generalization:
                     eval_env.eval(self, ref_point=ref_point, global_step=self.global_step)
