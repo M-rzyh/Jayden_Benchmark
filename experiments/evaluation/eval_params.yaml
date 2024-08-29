@@ -33,15 +33,15 @@ MOHumanoidDR-v5:
 MOSuperMarioBrosDR-v2:
   normalization:
     discounted:
-      0: [0, 40] # actual [0, 28.7]
+      0: [0, 28] # actual [0, 28.7]
       1: [-1, 0] # actual [-0.63, -0.49]
-      2: [0, 10] # actual [0, 6]
-      3: [0, 50] # actual [0, 41]
+      2: [0, 6] # actual [0, 6]
+      3: [0, 40] # actual [0, 41]
     undiscounted:
-      0: [0, 100] # actual [-2, 84]
-      1: [-15, 0] # actual [-11.3, 0]
-      2: [0, 20] # actual [0, 16]
-      3: [0, 400] # actual [0, 379]
+      0: [0, 85] # actual [-2, 84]
+      1: [-12, 0] # actual [-11.3, 0]
+      2: [0, 16] # actual [0, 16]
+      3: [0, 380] # actual [0, 379]
   recover_single_objective: True
 
 MOSuperMarioBrosDayDR-v2:
