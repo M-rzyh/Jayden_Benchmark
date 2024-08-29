@@ -203,6 +203,7 @@ def main():
     if args.algo == "pgmorl":
         # PGMORL creates its own environments because it requires wrappers
         print(f"Instantiating {args.algo} on {args.env_id}")
+
         algo = ALGOS[args.algo](
             env_id=args.env_id,
             origin=np.array(args.ref_point),
@@ -211,6 +212,7 @@ def main():
             seed=args.seed,
             wandb_entity=args.wandb_entity,
             wandb_group=args.wandb_group,
+            generalization_algo=args.generalization_algo if args.test_generalization else None,
             **args.init_hyperparams,
         )
         print(algo.get_config())

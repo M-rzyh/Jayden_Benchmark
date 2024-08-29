@@ -17,7 +17,7 @@ from torch.distributions import Normal
 from mo_utils.evaluation import log_episode_info
 from mo_utils.morl_algorithm import MOPolicy
 from mo_utils.networks import layer_init, mlp
-from morl_generalization.algos.dr import DRWrapper
+from morl_generalization.utils import get_env_selection_algo_wrapper
 
 
 class PPOReplayBuffer:
@@ -105,7 +105,7 @@ class PPOReplayBuffer:
         )
 
 
-def make_env(env_id, seed, idx, run_name, gamma, is_randomized_env=False):
+def make_env(env_id, seed, idx, run_name, gamma, generalization_algo=None):
     """Returns a function to create environments. This is because PPO works better with vectorized environments. Also, some tricks like clipping and normalizing the environments' features are applied.
 
     Args:
@@ -114,6 +114,7 @@ def make_env(env_id, seed, idx, run_name, gamma, is_randomized_env=False):
         idx: Index of the environment
         run_name: Name of the run
         gamma: Discount factor
+        generalization_algo: Generalization algorithm
 
     Returns:
         A function to create environments
@@ -132,15 +133,17 @@ def make_env(env_id, seed, idx, run_name, gamma, is_randomized_env=False):
                 episode_trigger=lambda e: e % 1000 == 0,
             ) """
         env = gym.wrappers.ClipAction(env)
-        env = gym.wrappers.NormalizeObservation(env)
-        env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
+        if generalization_algo is None: # only allow normalization for static environments
+            env = gym.wrappers.NormalizeObservation(env)
+            env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
         for o in range(reward_dim):
             env = mo_gym.utils.MONormalizeReward(env, idx=o, gamma=gamma)
             env = mo_gym.utils.MOClipReward(env, idx=o, min_r=-10, max_r=10)
         env = MORecordEpisodeStatistics(env, gamma=gamma)
 
-        if is_randomized_env: # randomizes domain every `reset` call
-            env = DRWrapper(env)
+        if generalization_algo is not None:
+            env_selection_algo_wrapper = get_env_selection_algo_wrapper(generalization_algo)
+            env = env_selection_algo_wrapper(env)
 
         env.reset(seed=seed)
         env.action_space.seed(seed)
