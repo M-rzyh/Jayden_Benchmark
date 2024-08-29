@@ -806,6 +806,11 @@ class PGMORL(MOAgent):
             log=(self.log and not test_generalization),
         )
 
+        if self.log and test_generalization and self.global_step >= next_eval_step:
+            next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
+            eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
+            next_eval_step += eval_mo_freq
+
         # Evolution
         max_iterations = max(max_iterations, self.warmup_iterations + self.evolutionary_iterations)
         evolutionary_generation = 1
@@ -830,6 +835,9 @@ class PGMORL(MOAgent):
                     )
                 self.__train_all_agents(iteration=iteration, max_iterations=max_iterations)
                 iteration += 1
+
+            evolutionary_generation += 1
+            self.global_step += self.steps_per_iteration * self.num_envs
             
             self.__eval_all_agents(
                 eval_env=eval_env,
@@ -842,9 +850,6 @@ class PGMORL(MOAgent):
                 next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
                 eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
                 next_eval_step += eval_mo_freq
-
-            evolutionary_generation += 1
-            self.global_step += self.steps_per_iteration * self.num_envs
 
             wandb.log(
                 {
