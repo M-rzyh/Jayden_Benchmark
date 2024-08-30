@@ -17,7 +17,6 @@ from mo_utils.accrued_reward_buffer import AccruedRewardReplayBuffer
 from mo_utils.evaluation import log_episode_info
 from mo_utils.morl_algorithm import MOAgent, MOPolicy
 from mo_utils.networks import (
-    NatureCNN,
     layer_init, 
     mlp
 )
@@ -40,12 +39,7 @@ class PolicyNet(nn.Module):
         self.rew_dim = rew_dim
 
         # Conditioned on accrued reward, so input takes reward
-        if len(obs_shape) == 1:
-            self.feature_extractor = None
-            input_dim = obs_shape[0] + rew_dim
-        elif len(obs_shape) > 1:  # Image observation
-            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
-            input_dim = self.feature_extractor.features_dim + rew_dim
+        input_dim = obs_shape[0] + rew_dim
 
         # |S|+|R| -> ... -> |A|
         self.net = mlp(
@@ -63,11 +57,6 @@ class PolicyNet(nn.Module):
         Returns: Probability of each action
 
         """
-        if self.feature_extractor is not None:
-            obs = self.feature_extractor(obs)
-            if acc_reward.dim() == 1:
-                acc_reward = acc_reward.unsqueeze(0)
-                
         input = th.cat((obs, acc_reward), dim=acc_reward.dim() - 1)
         pi = self.net(input)
         # Normalized sigmoid
