@@ -5,6 +5,7 @@ Some code in this file has been adapted from the original code provided by the a
 (!) The post-processing phase has not been implemented yet.
 """
 import time
+import random
 from copy import deepcopy
 from typing import List, Optional, Tuple, Union
 from typing_extensions import override
@@ -708,7 +709,6 @@ class PGMORL(MOAgent):
                 f"current eval: {best_eval} - estimated next: {best_predicted_eval} - deltas {(best_predicted_eval - best_eval)}"
             )
 
-    # TODO: implement this search more optimally
     def _select_nearest_policy(self, given_weight) -> MOPPO:
         """
         Selects the policy with weights nearest to the given weight vector.
@@ -716,16 +716,22 @@ class PGMORL(MOAgent):
         # Initialize variables to track the minimum distance and the selected policy
         min_distance = float('inf')
         selected_policy = None
+        nearest_policies = []
 
         # Iterate through each policy in the population
         for policy in self.archive.individuals:
             # Calculate the Euclidean distance between the policy's weights and the given weights
             distance = np.sum(np.square(policy.weights.detach().cpu().numpy() - given_weight))
             
-            # Update the minimum distance and selected policy if the current distance is smaller
+            # Update the minimum distance and reset the list if the current distance is smaller
             if distance < min_distance:
                 min_distance = distance
-                selected_policy = policy
+                nearest_policies = [policy]
+            # Add the policy to the list if the current distance is equal to the minimum distance
+            elif distance == min_distance:
+                nearest_policies.append(policy)
+
+        selected_policy = random.choice(nearest_policies)
 
         return selected_policy
 

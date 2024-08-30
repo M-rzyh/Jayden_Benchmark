@@ -4,6 +4,7 @@ See Felten, Talbi & Danoy (2024): https://arxiv.org/abs/2311.12495.
 """
 import os
 import math
+import random
 import time
 import wandb
 from typing import Callable, List, Optional, Tuple, Union
@@ -427,20 +428,26 @@ class MORLD(MOAgent):
         """
         Selects the policy with weights nearest to the given weight vector.
         """
-        # Initialize variables to track the minimum distance and the selected policy
+        # Initialize variables to track the minimum distance and the selected policies
         min_distance = float('inf')
-        selected_policy = None
-
+        nearest_policies = []
+    
         # Iterate through each policy in the population
         for policy in self.archive.individuals:
             # Calculate the Euclidean distance between the policy's weights and the given weights
             distance = self.dist_metric(policy.weights, given_weight)
             
-            # Update the minimum distance and selected policy if the current distance is smaller
+            # Update the minimum distance and reset the list if the current distance is smaller
             if distance < min_distance:
                 min_distance = distance
-                selected_policy = policy
-
+                nearest_policies = [policy]
+            # Add the policy to the list if the current distance is equal to the minimum distance
+            elif distance == min_distance:
+                nearest_policies.append(policy)
+    
+        # Randomly select one policy from the list of nearest policies (if there are m)
+        selected_policy = random.choice(nearest_policies)
+    
         return selected_policy
 
     @th.no_grad()
