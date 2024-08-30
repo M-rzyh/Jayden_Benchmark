@@ -19,10 +19,11 @@ import requests
 from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.record_video import RecordVideo
 
-from mo_utils.wrappers import MORecordEpisodeStatistics
+from mo_utils.wrappers import MORecordEpisodeStatistics, Multi2SingleObjectiveWrapper
 from mo_utils.evaluation import seed_everything
 from mo_utils.experiments import (
     ALGOS,
+    SINGLE_OBJECTIVE_ALGOS,
     ENVS_WITH_KNOWN_PARETO_FRONT,
     StoreDict,
 )
@@ -162,6 +163,11 @@ def make_envs(args):
     elif "mario" in args.env_id.lower():
         env = wrap_mario(env)
         eval_env = wrap_mario(eval_env)
+
+    if args.algo in SINGLE_OBJECTIVE_ALGOS:
+        print("Training single-objective agent... Converting multi-objective environment to single-objective environment")
+        env = Multi2SingleObjectiveWrapper(env)
+        eval_env = Multi2SingleObjectiveWrapper(eval_env)
 
     if args.test_generalization:
         env_selection_algo_wrapper = get_env_selection_algo_wrapper(args.generalization_algo)
