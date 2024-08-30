@@ -291,11 +291,9 @@ class PerformanceBuffer2d:
 
 class PerformanceBuffer3d:
     """Stores the population. Divides the objective space in to n bins of size max_size.
-
-    (!) restricted to 2D objective space (!)
     """
 
-    def __init__(self, delta_weight: float, max_size: int, origin: np.ndarray):
+    def __init__(self, num_bins: int, max_size: int, origin: np.ndarray):
         """Initializes the buffer.
 
         Args:
@@ -305,7 +303,7 @@ class PerformanceBuffer3d:
         """
         self.max_size = max_size
         self.origin = -origin
-        self.pbuffer_vec = generate_weights(delta_weight, 3)
+        self.pbuffer_vec = generate_weights(1.0 / (num_bins - 1), 3)
         for i in range(len(self.pbuffer_vec)):
             self.pbuffer_vec[i] = self.pbuffer_vec[i] / np.linalg.norm(self.pbuffer_vec[i])
         self.num_bins = len(self.pbuffer_vec)
@@ -382,6 +380,7 @@ class PGMORL(MOAgent):
         min_weight: float = 0.0,
         max_weight: float = 1.0,
         delta_weight: float = 0.2,
+        sparsity_coef: float = -1.0,
         env=None,
         gamma: float = 0.995,
         project_name: str = "MORL-baselines",
@@ -423,6 +422,7 @@ class PGMORL(MOAgent):
             min_weight: minimum weight
             max_weight: maximum weight
             delta_weight: delta weight for weight generation
+            sparsity_coef: sparsity coefficient (alpha in the paper)
             env: environment
             gamma: discount factor
             project_name: name of the project. Usually MORL-baselines.
@@ -467,6 +467,7 @@ class PGMORL(MOAgent):
         self.min_weight = min_weight
         self.max_weight = max_weight
         self.delta_weight = delta_weight
+        self.sparsity_coef = sparsity_coef
         self.num_performance_buffer = num_performance_buffer
         self.performance_buffer_size = performance_buffer_size
         self.archive = ParetoArchive()
@@ -479,7 +480,7 @@ class PGMORL(MOAgent):
             )
         elif self.reward_dim == 3:
             self.population = PerformanceBuffer3d(
-                delta_weight=self.delta_weight,
+                num_bins=self.num_performance_buffer,
                 max_size=self.performance_buffer_size,
                 origin=origin,
             )
@@ -578,6 +579,7 @@ class PGMORL(MOAgent):
             "min_weight": self.min_weight,
             "max_weight": self.max_weight,
             "delta_weight": self.delta_weight,
+            "sparsity_coef": self.sparsity_coef,
             "gamma": self.gamma,
             "seed": self.seed,
             "net_arch": self.net_arch,
@@ -673,7 +675,7 @@ class PGMORL(MOAgent):
                 )
                 # optimization criterion is a hypervolume - sparsity
                 mixture_metrics = [
-                    hypervolume(ref_point, current_front + [predicted_eval]) - sparsity(current_front + [predicted_eval])
+                    hypervolume(ref_point, current_front + [predicted_eval]) + self.sparsity_coef * sparsity(current_front + [predicted_eval])
                     for predicted_eval in predicted_evals
                 ]
                 # Best among all the weights for the current candidate
@@ -798,6 +800,12 @@ class PGMORL(MOAgent):
             self.__train_all_agents(iteration=iteration, max_iterations=max_iterations)
             iteration += 1
             self.global_step += self.steps_per_iteration * self.num_envs
+
+            if self.log and test_generalization and self.global_step >= next_eval_step:
+                next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
+                eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
+                next_eval_step += eval_mo_freq
+        
         self.__eval_all_agents(
             eval_env=eval_env,
             evaluations_before_train=current_evaluations,
@@ -805,11 +813,6 @@ class PGMORL(MOAgent):
             known_pareto_front=known_pareto_front,
             log=(self.log and not test_generalization),
         )
-
-        if self.log and test_generalization and self.global_step >= next_eval_step:
-            next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
-            eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
-            next_eval_step += eval_mo_freq
 
         # Evolution
         max_iterations = max(max_iterations, self.warmup_iterations + self.evolutionary_iterations)
@@ -837,6 +840,11 @@ class PGMORL(MOAgent):
                 iteration += 1
                 self.global_step += self.steps_per_iteration * self.num_envs
 
+                if self.log and test_generalization and self.global_step >= next_eval_step:
+                    next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
+                    eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
+                    next_eval_step += eval_mo_freq
+
             evolutionary_generation += 1
             
             self.__eval_all_agents(
@@ -846,10 +854,6 @@ class PGMORL(MOAgent):
                 known_pareto_front=known_pareto_front,
                 log=(self.log and not test_generalization),
             )
-            if self.log and test_generalization and self.global_step >= next_eval_step:
-                next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
-                eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
-                next_eval_step += eval_mo_freq
 
             wandb.log(
                 {
