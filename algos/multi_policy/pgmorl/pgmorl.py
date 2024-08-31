@@ -675,10 +675,18 @@ class PGMORL(MOAgent):
                     ),
                 )
                 # optimization criterion is a hypervolume - sparsity
-                mixture_metrics = [
-                    hypervolume(ref_point, current_front + [predicted_eval]) + self.sparsity_coef * sparsity(current_front + [predicted_eval])
-                    for predicted_eval in predicted_evals
-                ]
+                hypervolumes = [hypervolume(ref_point, current_front + [predicted_eval]) for predicted_eval in predicted_evals]
+                sparsity_values = [sparsity(current_front + [predicted_eval]) for predicted_eval in predicted_evals]
+                mixture_metrics = [hv + self.sparsity_coef * sparsity_val for hv, sparsity_val in zip(hypervolumes, sparsity_values)]
+                
+                wandb.log(
+                    {
+                        "metrics/hypervolume_improvement": np.mean(hypervolumes),
+                        "metrics/sparsity_improvement": np.mean(sparsity_values),
+                        "metrics/mixture_improvement": np.mean(mixture_metrics),
+                        "global_step": self.global_step
+                    },
+                )
                 # Best among all the weights for the current candidate
                 current_candidate_weight = np.argmax(np.array(mixture_metrics))
                 current_candidate_improv = np.max(np.array(mixture_metrics))
