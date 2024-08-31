@@ -392,7 +392,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                     columns=self.best_single_objective_weights[i].columns, data=self.best_single_objective_weights[i].data
                 )
                 wandb.log({f"eval/best_single_objective_weights/{self.test_env_names[i]}": new_table})
-                self.best_single_objective_weights[i] = new_table
 
         self._report(
             mean_vec_returns,
