@@ -457,7 +457,7 @@ class MOSAC(MOPolicy):
                 if self.autotune:
                     with th.no_grad():
                         _, log_pi, _ = self.actor.get_action(mb_obs)
-                    alpha_loss = (-self.log_alpha * (log_pi + self.target_entropy)).mean()
+                    alpha_loss = (-self.log_alpha.exp() * (log_pi + self.target_entropy)).mean()
 
                     self.a_optimizer.zero_grad(set_to_none=True)
                     alpha_loss.backward()

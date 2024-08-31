@@ -314,7 +314,6 @@ class SACContinuous(MOAgent):
         copied.q_optimizer = optim.Adam(list(copied.qf1.parameters()) + list(copied.qf2.parameters()), lr=self.q_lr)
         if self.autotune:
             copied.a_optimizer = optim.Adam([copied.log_alpha], lr=self.q_lr)
-        copied.alpha_tensor = th.scalar_tensor(copied.alpha).to(self.device)
         copied.buffer = deepcopy(self.buffer)
         return copied
 
@@ -444,7 +443,7 @@ class SACContinuous(MOAgent):
                 if self.autotune:
                     with th.no_grad():
                         _, log_pi, _ = self.actor.get_action(mb_obs)
-                    alpha_loss = (-self.log_alpha * (log_pi + self.target_entropy)).mean()
+                    alpha_loss = (-self.log_alpha.exp() * (log_pi + self.target_entropy)).mean()
 
                     self.a_optimizer.zero_grad(set_to_none=True)
                     alpha_loss.backward()

@@ -98,6 +98,12 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             if "recover_single_objective" in eval_params:
                 # should only be True if env provides `info['original_scalar_reward']` in `step` function
                 self.recover_single_objective = eval_params["recover_single_objective"]
+                self.best_single_objective_weights = [
+                    wandb.Table(
+                        columns=["global_step"] + [f"objective_{j}" for j in range(1, self.reward_dim + 1)],
+                        data=[],
+                    ) for _ in test_envs
+                ]
 
         # ============ Weights Saving ============
         self.save_weights = save_weights
@@ -360,15 +366,26 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         if self.recover_single_objective:
             original_scalar_returns = np.stack(original_scalar_returns, axis=1)
             disc_original_scalar_returns = np.stack(disc_original_scalar_returns, axis=1)
+            # Calculate the index of the maximum single-objective return for each environment
+            max_original_indices = np.argmax(original_scalar_returns, axis=1)
+            max_disc_original_indices = np.argmax(disc_original_scalar_returns, axis=1)
+            
             max_original_scalar_returns = np.max(original_scalar_returns, axis=1)
             max_disc_original_scalar_returns = np.max(disc_original_scalar_returns, axis=1)
             for i in range(len(max_original_scalar_returns)):
+                best_weight = self.eval_weights[max_original_indices[i]]
+                best_disc_weight = self.eval_weights[max_disc_original_indices[i]]
+
                 metrics = {
                     f"eval/single_objective_return/{self.test_env_names[i]}": max_original_scalar_returns[i],
                     f"eval/single_objective_discounted_return/{self.test_env_names[i]}": max_disc_original_scalar_returns[i],
                     "global_step": global_step
                 }
                 wandb.log(metrics)
+
+                new_best_weight = [global_step] + best_weight.tolist()
+                self.best_single_objective_weights[i].add_data(*new_best_weight)
+                wandb.log({f"eval/best_single_objective_weights/{self.test_env_names[i]}": self.best_single_objective_weights[i]})
 
         self._report(
             mean_vec_returns,
