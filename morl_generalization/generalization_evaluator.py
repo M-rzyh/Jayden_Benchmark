@@ -385,7 +385,14 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
                 new_best_weight = [global_step] + best_weight.tolist()
                 self.best_single_objective_weights[i].add_data(*new_best_weight)
-                wandb.log({f"eval/best_single_objective_weights/{self.test_env_names[i]}": self.best_single_objective_weights[i]})
+
+                # workaround: have to duplicate the table in order to update it on wandb api
+                # see https://github.com/wandb/wandb/issues/2981
+                new_table = wandb.Table(
+                    columns=self.best_single_objective_weights[i].columns, data=self.best_single_objective_weights[i].data
+                )
+                wandb.log({f"eval/best_single_objective_weights/{self.test_env_names[i]}": new_table})
+                self.best_single_objective_weights[i] = new_table
 
         self._report(
             mean_vec_returns,
