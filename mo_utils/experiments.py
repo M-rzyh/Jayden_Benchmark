@@ -18,6 +18,7 @@ from algos.multi_policy.pareto_q_learning.pql import PQL
 from algos.multi_policy.pcn.pcn import PCN
 from algos.multi_policy.pgmorl.pgmorl import PGMORL
 from algos.single_policy.single_objective.sac_continuous import SACContinuous
+from algos.single_policy.single_objective.sac_discrete import SACDiscrete
 
 
 ALGOS = {
@@ -37,9 +38,10 @@ ALGOS = {
     "gpi-ls": MPMOQLearning,
     "morld": MORLD,
     "sac_continuous": SACContinuous,
+    "sac_discrete": SACDiscrete,
 }
 
-SINGLE_OBJECTIVE_ALGOS = ["sac_continuous"]
+SINGLE_OBJECTIVE_ALGOS = ["sac_continuous", "sac_discrete"]
 
 ENVS_WITH_KNOWN_PARETO_FRONT = [
     "deep-sea-treasure-concave-v0",

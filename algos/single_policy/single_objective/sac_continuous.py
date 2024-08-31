@@ -22,7 +22,6 @@ import wandb
 from mo_utils.buffer import ReplayBuffer
 from mo_utils.evaluation import (
     log_all_multi_policy_metrics,
-    log_episode_info,
     policy_evaluation_mo,
 )
 from mo_utils.weights import equally_spaced_weights
@@ -488,9 +487,16 @@ class SACContinuous(MOAgent):
         """Train the agent.
 
         Args:
-            total_timesteps (int): Total number of timesteps (env steps) to train for
-            eval_env (Optional[gym.Env]): Gym environment used for evaluation.
-            start_time (Optional[float]): Starting time for the training procedure. If None, it will be set to the current time.
+            total_timesteps (int): Total number of timesteps to train the agent for.
+            eval_env (gym.Env): Environment to use for evaluation.
+            ref_point (np.ndarray): Reference point for hypervolume calculation.
+            known_pareto_front (Optional[List[np.ndarray]]): Optimal Pareto front, if known.
+            num_eval_weights_for_front (int): Number of weights to evaluate for the Pareto front.
+            num_eval_episodes_for_front (int): number of episodes to run when evaluating the policy.
+            num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
+            start_time (Optional[float]): Start time of the training.
+            eval_mo_freq (int): Number of timesteps between evaluations during an iteration.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         if start_time is None:
             start_time = time.time()
@@ -537,11 +543,11 @@ class SACContinuous(MOAgent):
                 if test_generalization:
                     eval_env.eval(self, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
                 else:
-                    gpi_returns_test_tasks = [
+                    returns_test_tasks = [
                         policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
                     ]
                     log_all_multi_policy_metrics(
-                        current_front=gpi_returns_test_tasks,
+                        current_front=returns_test_tasks,
                         hv_ref_point=ref_point,
                         reward_dim=self.reward_dim,
                         global_step=self.global_step,

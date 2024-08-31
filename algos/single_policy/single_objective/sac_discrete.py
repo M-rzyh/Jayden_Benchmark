@@ -8,7 +8,7 @@ https://github.com/vwxyzjn/cleanrl/blob/28fd178ca182bd83c75ed0d49d52e235ca6cdc88
 import os
 import time
 from copy import deepcopy
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, List
 from typing_extensions import override
 
 import gymnasium as gym
@@ -21,8 +21,12 @@ import torch.optim as optim
 import wandb
 
 from mo_utils.buffer import ReplayBuffer
-from mo_utils.evaluation import log_episode_info
-from mo_utils.morl_algorithm import MOPolicy
+from mo_utils.weights import equally_spaced_weights
+from mo_utils.evaluation import (
+    log_all_multi_policy_metrics,
+    policy_evaluation_mo,
+)
+from mo_utils.morl_algorithm import MOAgent
 from mo_utils.networks import (
     NatureCNN,
     get_grad_norm,
@@ -30,13 +34,14 @@ from mo_utils.networks import (
     mlp,
     polyak_update,
 )
+from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 
 # ALGO LOGIC: initialize agent here:
-class MODiscreteSoftQNetwork(nn.Module):
+class SoftQNetwork(nn.Module):
     """Soft Q-network: S, A -> ... -> |R| (multi-objective)."""
 
-    def __init__(self, obs_shape, action_dim, reward_dim, net_arch):
+    def __init__(self, obs_shape, action_dim, net_arch):
         """"Initialize the Q network.
 
         Args:
@@ -48,7 +53,6 @@ class MODiscreteSoftQNetwork(nn.Module):
         super().__init__()
         self.obs_shape = obs_shape
         self.action_dim = action_dim
-        self.reward_dim = reward_dim
         if len(obs_shape) == 1:
             self.feature_extractor = None
             input_dim = obs_shape[0]
@@ -56,7 +60,7 @@ class MODiscreteSoftQNetwork(nn.Module):
             self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
             input_dim = self.feature_extractor.features_dim
         # S, A -> ... -> |A| * |R|
-        self.net = mlp(input_dim, action_dim * reward_dim, net_arch)
+        self.net = mlp(input_dim, action_dim, net_arch)
         self.apply(layer_init)
 
     def forward(self, obs):
@@ -66,28 +70,23 @@ class MODiscreteSoftQNetwork(nn.Module):
         else:
             input = obs
         q_values = self.net(input)
-        return q_values.view(-1, self.action_dim, self.reward_dim)  # Batch size X Actions X Rewards
+        return q_values
 
 
-LOG_STD_MAX = 2
-LOG_STD_MIN = -5
 
-
-class MOSACDiscreteActor(nn.Module):
+class Actor(nn.Module):
     """Actor network: S -> A. Does not need any multi-objective concept."""
 
     def __init__(
         self,
         obs_shape: Tuple,
         action_dim: int,
-        reward_dim: int,
         net_arch=[256, 256],
     ):
         """Initialize SAC actor."""
         super().__init__()
         self.obs_shape = obs_shape
         self.action_dim = action_dim
-        self.reward_dim = reward_dim
         self.net_arch = net_arch
 
         if len(obs_shape) == 1:
@@ -121,17 +120,12 @@ class MOSACDiscreteActor(nn.Module):
         return action, log_prob, action_probs
 
 
-class MOSACDiscrete(MOPolicy):
-    """Multi-objective Soft Actor-Critic (SAC) algorithm for discrete action spaces.
-
-    It is a multi-objective version of the SAC algorithm, with multi-objective critic and weighted sum scalarization.
-    """
+class SACDiscrete(MOAgent):
+    """Soft Actor-Critic (SAC) algorithm for discrete action spaces."""
 
     def __init__(
         self,
         env: gym.Env,
-        weights: np.ndarray,
-        scalarization=th.matmul,
         buffer_size: int = int(1e6),
         gamma: float = 0.99,
         tau: float = 1.0,
@@ -145,6 +139,10 @@ class MOSACDiscrete(MOPolicy):
         alpha: float = 0.2,
         autotune: bool = True,
         target_entropy_scale: float = 0.89,
+        project_name: str = "MORL-Baselines",
+        experiment_name: str = "SAC Discrete Action",
+        wandb_entity: Optional[str] = None,
+        wandb_group: Optional[str] = None,
         id: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         log: bool = True,
@@ -165,7 +163,7 @@ class MOSACDiscrete(MOPolicy):
             net_arch: number of nodes in the hidden layers
             policy_lr: learning rate of the policy
             q_lr: learning rate of the q networks
-            update_frequency: frequency of training updates
+            policy_freq: the frequency of training policy (delayed)
             target_net_freq: the frequency of updates for the target networks
             alpha: Entropy regularization coefficient
             autotune: automatic tuning of alpha
@@ -177,7 +175,11 @@ class MOSACDiscrete(MOPolicy):
             seed: seed for the random generators
             parent_rng: parent random generator, for multi-policy algos
         """
-        super().__init__(id, device)
+        MOAgent.__init__(self, env, device=device, seed=seed)
+        self.id = id
+        self.device = th.device("cuda" if th.cuda.is_available() else "cpu") if device == "auto" else device
+        self.global_step = 0
+        
         # Seeding
         self.seed = seed
         self.parent_rng = parent_rng
@@ -192,12 +194,7 @@ class MOSACDiscrete(MOPolicy):
         self.obs_shape = self.env.observation_space.shape
         self.action_dim = self.env.action_space.n
         self.reward_dim = self.env.unwrapped.reward_space.shape[0]
-
-        # Scalarization
-        self.weights = weights
-        self.weights_tensor = th.from_numpy(self.weights).float().to(self.device)
         self.batch_size = batch_size
-        self.scalarization = scalarization
 
         # SAC Parameters
         self.buffer_size = buffer_size
@@ -209,29 +206,28 @@ class MOSACDiscrete(MOPolicy):
         self.learning_rate = policy_lr
         self.q_lr = q_lr
         self.update_frequency = update_frequency
-        self.target_net_freq = target_net_freq 
+        self.target_net_freq = target_net_freq
         assert self.target_net_freq % self.update_frequency == 0, "target_net_freq should be divisible by update_frequency"
         self.target_entropy_scale = target_entropy_scale
 
         # Networks
-        self.actor = MOSACDiscreteActor(
+        self.actor = Actor(
             obs_shape=self.obs_shape,
             action_dim=self.action_dim,
-            reward_dim=self.reward_dim,
             net_arch=self.net_arch,
         ).to(self.device)
 
-        self.qf1 = MODiscreteSoftQNetwork(
-            obs_shape=self.obs_shape, action_dim=self.action_dim, reward_dim=self.reward_dim, net_arch=self.net_arch
+        self.qf1 = SoftQNetwork(
+            obs_shape=self.obs_shape, action_dim=self.action_dim, net_arch=self.net_arch
         ).to(self.device)
-        self.qf2 = MODiscreteSoftQNetwork(
-            obs_shape=self.obs_shape, action_dim=self.action_dim, reward_dim=self.reward_dim, net_arch=self.net_arch
+        self.qf2 = SoftQNetwork(
+            obs_shape=self.obs_shape, action_dim=self.action_dim, net_arch=self.net_arch
         ).to(self.device)
-        self.qf1_target = MODiscreteSoftQNetwork(
-            obs_shape=self.obs_shape, action_dim=self.action_dim, reward_dim=self.reward_dim, net_arch=self.net_arch
+        self.qf1_target = SoftQNetwork(
+            obs_shape=self.obs_shape, action_dim=self.action_dim, net_arch=self.net_arch
         ).to(self.device)
-        self.qf2_target = MODiscreteSoftQNetwork(
-            obs_shape=self.obs_shape, action_dim=self.action_dim, reward_dim=self.reward_dim, net_arch=self.net_arch
+        self.qf2_target = SoftQNetwork(
+            obs_shape=self.obs_shape, action_dim=self.action_dim, net_arch=self.net_arch
         ).to(self.device)
         self.qf1_target.requires_grad_(False)
         self.qf2_target.requires_grad_(False)
@@ -256,12 +252,14 @@ class MOSACDiscrete(MOPolicy):
         self.buffer = ReplayBuffer(
             obs_shape=self.obs_shape,
             action_dim=1, # ouput singular index for action
-            rew_dim=self.reward_dim,
+            rew_dim=1,
             max_size=self.buffer_size,
         )
 
         # Logging
         self.log = log
+        if self.log:
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
 
     def get_config(self) -> dict:
         """Returns the configuration of the policy."""
@@ -275,7 +273,7 @@ class MOSACDiscrete(MOPolicy):
             "net_arch": self.net_arch,
             "policy_lr": self.policy_lr,
             "q_lr": self.q_lr,
-            "update_frequency": self.update_frequency,
+            "update_freq": self.update_frequency,
             "target_net_freq": self.target_net_freq,
             "alpha": self.alpha,
             "autotune": self.autotune,
@@ -291,8 +289,6 @@ class MOSACDiscrete(MOPolicy):
         """
         copied = type(self)(
             env=self.env,
-            weights=self.weights,
-            scalarization=self.scalarization,
             buffer_size=self.buffer_size,
             gamma=self.gamma,
             tau=self.tau,
@@ -341,11 +337,6 @@ class MOSACDiscrete(MOPolicy):
     def get_policy_net(self) -> th.nn.Module:
         return self.actor
 
-    @override
-    def set_weights(self, weights: np.ndarray):
-        self.weights = weights
-        self.weights_tensor = th.from_numpy(self.weights).float().to(self.device)
-
     def get_save_dict(self, save_replay_buffer: bool = False) -> dict:
         """Returns a dictionary of all components needed for saving the MOSAC instance."""
         save_dict = {
@@ -356,7 +347,6 @@ class MOSACDiscrete(MOPolicy):
             'qf2_target_state_dict': self.qf2_target.state_dict(),
             'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
             'q_optimizer_state_dict': self.q_optimizer.state_dict(),
-            'weights': self.weights,
             'alpha': self.alpha,
         }
 
@@ -400,7 +390,6 @@ class MOSACDiscrete(MOPolicy):
         if load_replay_buffer:
             self.buffer = save_dict['buffer']
 
-        self.weights = save_dict['weights']
         self.alpha = save_dict['alpha']
 
     @override
@@ -433,35 +422,32 @@ class MOSACDiscrete(MOPolicy):
 
         with th.no_grad():
             _, next_state_log_pi, next_state_action_probs = self.actor.get_action(mb_next_obs)
-            # (!) Q values are scalarized before being compared (min of ensemble networks)
-            qf1_next_target = self.scalarization(self.qf1_target(mb_next_obs), self.weights_tensor) # (B, A, R) -> (B, A)
-            qf2_next_target = self.scalarization(self.qf2_target(mb_next_obs), self.weights_tensor)
+            qf1_next_target = self.qf1_target(mb_next_obs)
+            qf2_next_target = self.qf2_target(mb_next_obs)
             # we can use the action probabilities instead of MC sampling to estimate the expectation
             min_qf_next_target = next_state_action_probs * (
                 th.min(qf1_next_target, qf2_next_target) - self.alpha_tensor * next_state_log_pi
             )
             # adapt Q-target for discrete Q-function
             min_qf_next_target = min_qf_next_target.sum(dim=1)
-            scalarized_rewards = self.scalarization(mb_rewards, self.weights_tensor)
-            next_q_value = scalarized_rewards.flatten() + (1 - mb_dones.flatten()) * self.gamma * (min_qf_next_target)
+            next_q_value = mb_rewards.flatten() + (1 - mb_dones.flatten()) * self.gamma * (min_qf_next_target)
 
-        qf1_values = self.scalarization(self.qf1(mb_obs), self.weights_tensor) # (B, A, R) -> (B, A)
-        qf2_values = self.scalarization(self.qf2(mb_obs), self.weights_tensor)
+        qf1_values = self.qf1(mb_obs)
+        qf2_values = self.qf2(mb_obs)
         qf1_a_values = qf1_values.gather(1, mb_act.long()).view(-1)
         qf2_a_values = qf2_values.gather(1, mb_act.long()).view(-1)
         qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
         qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
         qf_loss = qf1_loss + qf2_loss
 
-        self.q_optimizer.zero_grad(set_to_none=True)
+        self.q_optimizer.zero_grad()
         qf_loss.backward()
         self.q_optimizer.step()
 
         _, log_pi, action_probs = self.actor.get_action(mb_obs)
         with th.no_grad():
-            # (!) Q values are scalarized before being compared (min of ensemble networks)
-            qf1_values = self.scalarization(self.qf1(mb_obs), self.weights_tensor)
-            qf2_values = self.scalarization(self.qf2(mb_obs), self.weights_tensor)
+            qf1_values = self.qf1(mb_obs)
+            qf2_values = self.qf2(mb_obs)
             min_qf_values = th.min(qf1_values, qf2_values)
         actor_loss = (action_probs * ((self.alpha * log_pi) - min_qf_values)).mean()
 
@@ -473,7 +459,7 @@ class MOSACDiscrete(MOPolicy):
             # re-use action probabilities for temperature loss
             alpha_loss = (action_probs.detach() * (-self.log_alpha.exp() * (log_pi + self.target_entropy).detach())).mean()
 
-            self.a_optimizer.zero_grad(set_to_none=True)
+            self.a_optimizer.zero_grad()
             alpha_loss.backward()
             self.a_optimizer.step()
             self.alpha_tensor = self.log_alpha.exp()
@@ -505,24 +491,37 @@ class MOSACDiscrete(MOPolicy):
     def train(
         self, 
         total_timesteps: int, 
-        eval_env: Optional[gym.Env] = None, 
+        eval_env: Union[gym.Env, MORLGeneralizationEvaluator],
+        ref_point: np.ndarray,
+        known_pareto_front: Optional[List[np.ndarray]] = None,
+        num_eval_weights_for_front: int = 100,
+        num_eval_episodes_for_front: int = 5,
         start_time = None,
-        verbose: bool = False 
+        eval_mo_freq: int = 10000,
+        test_generalization: bool = False,
     ):
         """Train the agent.
 
         Args:
-            total_timesteps (int): Total number of timesteps (env steps) to train for
-            eval_env (Optional[gym.Env]): Gym environment used for evaluation.
-            start_time (Optional[float]): Starting time for the training procedure. If None, it will be set to the current time.
-            verbose (bool): whether to print the episode info.
+            total_timesteps (int): Total number of timesteps to train the agent for.
+            eval_env (gym.Env): Environment to use for evaluation.
+            ref_point (np.ndarray): Reference point for hypervolume calculation.
+            known_pareto_front (Optional[List[np.ndarray]]): Optimal Pareto front, if known.
+            num_eval_weights_for_front (int): Number of weights to evaluate for the Pareto front.
+            num_eval_episodes_for_front (int): number of episodes to run when evaluating the policy.
+            num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
+            start_time (Optional[float]): Start time of the training.
+            eval_mo_freq (int): Number of timesteps between evaluations during an iteration.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         if start_time is None:
             start_time = time.time()
 
+        eval_weights = equally_spaced_weights(self.reward_dim, n=num_eval_weights_for_front)
         # TRY NOT TO MODIFY: start the game
         obs, _ = self.env.reset()
         for _ in range(total_timesteps):
+            self.global_step += 1
             # ALGO LOGIC: put action logic here
             if self.global_step < self.learning_starts:
                 actions = self.env.action_space.sample()
@@ -545,8 +544,6 @@ class MOSACDiscrete(MOPolicy):
             obs = next_obs
             if terminated or truncated:
                 obs, _ = self.env.reset()
-                if self.log and "episode" in infos.keys():
-                    log_episode_info(infos["episode"], np.dot, self.weights, self.global_step, self.id, verbose=verbose)
 
             # ALGO LOGIC: training.
             if self.global_step > self.learning_starts:
@@ -557,5 +554,23 @@ class MOSACDiscrete(MOPolicy):
                     wandb.log(
                         {"charts/SPS": int(self.global_step / (time.time() - start_time)), "global_step": self.global_step}
                     )
+                
+                if self.log and self.global_step % eval_mo_freq == 0:
+                    # Evaluation
+                    if test_generalization:
+                        eval_env.eval(self, ref_point=ref_point, reward_dim=self.reward_dim, global_step=self.global_step)
+                    else:
+                        returns_test_tasks = [
+                            policy_evaluation_mo(self, eval_env, ew, rep=num_eval_episodes_for_front)[3] for ew in eval_weights
+                        ]
+                        log_all_multi_policy_metrics(
+                            current_front=returns_test_tasks,
+                            hv_ref_point=ref_point,
+                            reward_dim=self.reward_dim,
+                            global_step=self.global_step,
+                            n_sample_weights=num_eval_weights_for_front,
+                            ref_front=known_pareto_front,
+                        )
 
-            self.global_step += 1
+        if self.log:
+            self.close_wandb()
