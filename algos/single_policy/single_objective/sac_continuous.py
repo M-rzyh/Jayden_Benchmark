@@ -241,7 +241,6 @@ class SACContinuous(MOAgent):
             self.a_optimizer = optim.Adam([self.log_alpha], lr=self.q_lr)
         else:
             self.alpha = alpha
-        self.alpha_tensor = th.scalar_tensor(self.alpha).to(self.device)
 
         # Buffer
         self.env.observation_space.dtype = np.float32
@@ -414,11 +413,10 @@ class SACContinuous(MOAgent):
 
         with th.no_grad():
             next_state_actions, next_state_log_pi, _ = self.actor.get_action(mb_next_obs)
-            # (!) Q values are scalarized before being compared (min of ensemble networks)
             qf1_next_target = self.qf1_target(mb_next_obs, next_state_actions)
             qf2_next_target = self.qf2_target(mb_next_obs, next_state_actions)
-            min_qf_next_target = th.min(qf1_next_target, qf2_next_target) - (self.alpha_tensor * next_state_log_pi).flatten()
-            next_q_value = mb_rewards.flatten() + (1 - mb_dones.flatten()) * self.gamma * min_qf_next_target
+            min_qf_next_target = th.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
+            next_q_value = mb_rewards.flatten() + (1 - mb_dones.flatten()) * self.gamma * (min_qf_next_target).view(-1)
 
         qf1_a_values = self.qf1(mb_obs, mb_act).view(-1)
         qf2_a_values = self.qf2(mb_obs, mb_act).view(-1)
@@ -437,7 +435,7 @@ class SACContinuous(MOAgent):
                 qf1_pi = self.qf1(mb_obs, pi)
                 qf2_pi = self.qf2(mb_obs, pi)
                 min_qf_pi = th.min(qf1_pi, qf2_pi)
-                actor_loss = ((self.alpha_tensor * log_pi) - min_qf_pi).mean()
+                actor_loss = ((self.alpha * log_pi) - min_qf_pi).mean()
 
                 self.actor_optimizer.zero_grad(set_to_none=True)
                 actor_loss.backward()
@@ -451,7 +449,6 @@ class SACContinuous(MOAgent):
                     self.a_optimizer.zero_grad(set_to_none=True)
                     alpha_loss.backward()
                     self.a_optimizer.step()
-                    self.alpha_tensor = self.log_alpha.exp()
                     self.alpha = self.log_alpha.exp().item()
 
         # update the target networks
