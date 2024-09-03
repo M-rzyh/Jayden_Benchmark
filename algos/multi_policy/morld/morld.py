@@ -276,23 +276,17 @@ class MORLD(MOAgent):
              the discounted returns of the policy
         """
         if self.evaluation_mode == "ser":
-            acc = np.zeros(self.reward_dim)
-            for _ in range(num_eval_episodes_for_front):
-                _, _, _, discounted_reward = policy.wrapped.policy_eval(
-                    eval_env, weights=policy.weights, scalarization=self.scalarization, log=self.log
-                )
-                acc += discounted_reward
+            _, _, _, discounted_reward = policy.wrapped.policy_eval(
+                eval_env, weights=policy.weights, scalarization=self.scalarization, num_episodes=num_eval_episodes_for_front, log=self.log
+            )
 
         elif self.evaluation_mode == "esr":
-            acc = np.zeros(self.reward_dim)
-            for _ in range(num_eval_episodes_for_front):
-                _, _, _, discounted_reward = policy.wrapped.policy_eval_esr(
-                    eval_env, weights=policy.weights, scalarization=self.scalarization, log=self.log
-                )
-                acc += discounted_reward
+            _, _, _, discounted_reward = policy.wrapped.policy_eval_esr(
+                eval_env, weights=policy.weights, scalarization=self.scalarization, num_episodes=num_eval_episodes_for_front, log=self.log
+            )
         else:
             raise Exception("Evaluation mode must either be esr or ser.")
-        return acc / num_eval_episodes_for_front
+        return discounted_reward
 
     def __eval_all_policies(
         self,
