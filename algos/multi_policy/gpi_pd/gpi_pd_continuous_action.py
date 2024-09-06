@@ -120,6 +120,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         experiment_name: str = "GPI-PD Continuous Action",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
+        wandb_tags: Optional[List[str]] = None,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -165,6 +166,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             experiment_name (str, optional): The name of the experiment. Defaults to "GPI-PD Continuous Action".
             wandb_entity (Optional[str], optional): The wandb entity. Defaults to None.
             wandb_group: The wandb group to use for logging.
+            wandb_tags: Extra wandb tags to use for experiment versioning.
             log (bool, optional): Whether to log to wandb. Defaults to True.
             seed (Optional[int], optional): The seed to use. Defaults to None.
             device (Union[th.device, str], optional): The device to use for training. Defaults to "auto".
@@ -255,7 +257,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
 
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
 
     def get_config(self):
         """Get the configuration of the agent."""

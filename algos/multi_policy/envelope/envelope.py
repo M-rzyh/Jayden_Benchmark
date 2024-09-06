@@ -112,6 +112,7 @@ class Envelope(MOPolicy, MOAgent):
         experiment_name: str = "Envelope",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
+        wandb_tags: Optional[List[str]] = None,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -145,6 +146,7 @@ class Envelope(MOPolicy, MOAgent):
             experiment_name: The name of the experiment, for wandb logging.
             wandb_entity: The entity of the project, for wandb logging.
             wandb_group: The wandb group to use for logging.
+            wandb_tags: Extra wandb tags to use for experiment versioning.
             log: Whether to log to wandb.
             seed: The seed for the random number generator.
             device: The device to use for training.
@@ -202,7 +204,7 @@ class Envelope(MOPolicy, MOAgent):
 
         self.log = log
         if log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
 
     @override
     def get_config(self):

@@ -100,6 +100,7 @@ class EUPG(MOPolicy, MOAgent):
         experiment_name: str = "EUPG",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
+        wandb_tags: Optional[List[str]] = None,
         log: bool = True,
         log_every: int = 1000,
         device: Union[th.device, str] = "auto",
@@ -121,6 +122,7 @@ class EUPG(MOPolicy, MOAgent):
             experiment_name: Name of the experiment (for logging)
             wandb_entity: Entity to use for wandb
             wandb_group: The wandb group to use for logging.
+            wandb_tags: Extra wandb tags to use for experiment versioning.
             log: Whether to log or not
             log_every: Log every n episodes
             device: Device to use for NN. Can be "cpu", "cuda" or "auto".
@@ -171,7 +173,7 @@ class EUPG(MOPolicy, MOAgent):
         self.log = log
         self.log_every = log_every
         if log and parent_rng is None:
-            self.setup_wandb(self.project_name, self.experiment_name, wandb_entity, wandb_group)
+            self.setup_wandb(self.project_name, self.experiment_name, wandb_entity, wandb_group, wandb_tags)
 
     def __deepcopy__(self, memo):
         """Deep copy the policy."""

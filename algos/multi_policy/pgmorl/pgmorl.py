@@ -388,6 +388,7 @@ class PGMORL(MOAgent):
         experiment_name: str = "PGMORL",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
+        wandb_tags: Optional[List[str]] = None,
         seed: Optional[int] = None,
         log: bool = True,
         net_arch: List = [64, 64],
@@ -430,6 +431,7 @@ class PGMORL(MOAgent):
             experiment_name: name of the experiment. Usually PGMORL.
             wandb_entity: wandb entity, defaults to None.
             wandb_group: The wandb group to use for logging.
+            wandb_tags: Extra wandb tags to use for experiment versioning.
             seed: seed for the random number generator
             log: whether to log the results
             net_arch: number of units per layer
@@ -521,7 +523,7 @@ class PGMORL(MOAgent):
         # Logging
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
 
         self.networks = [
             MOPPONet(

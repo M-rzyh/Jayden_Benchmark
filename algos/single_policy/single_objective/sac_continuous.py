@@ -139,6 +139,7 @@ class SACContinuous(MOAgent):
         experiment_name: str = "SAC Continuous Action",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
+        wandb_tags: Optional[List[str]] = None,
         id: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         log: bool = True,
@@ -163,6 +164,9 @@ class SACContinuous(MOAgent):
             target_net_freq: the frequency of updates for the target networks
             alpha: Entropy regularization coefficient
             autotune: automatic tuning of alpha
+            wandb_entity: The entity to use for logging.
+            wandb_group: The wandb group to use for logging.
+            wandb_tags: Extra wandb tags to use for experiment versioning.
             id: id of the SAC policy, for multi-policy algos
             device: torch device
             torch_deterministic: whether to use deterministic version of pytorch
@@ -253,7 +257,7 @@ class SACContinuous(MOAgent):
         # Logging
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
 
     def get_config(self) -> dict:
         """Returns the configuration of the policy."""

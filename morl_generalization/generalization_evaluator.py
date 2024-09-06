@@ -26,6 +26,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             seed: int,
             generalization_algo: str,
             test_envs: List[str],
+            algo_suffix: str = "",
             record_video: bool = False,
             record_video_w_freq: Optional[int] = None,
             record_video_ep_freq: Optional[int] = None,
@@ -46,6 +47,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             seed: Seed for reproducibility
             generalization_algo: Generalization algorithm used for choosing training environment configurations (currently only 'domain_randomization' is implemented)
             test_envs: List of test environments to evaluate the agent on
+            algo_suffix: Suffix to add to the algorithm name for logging
             record_video: Whether to record videos of the evaluation
             record_video_w_freq: Number of evaluated weights frequency of recording videos. Consider your `((num_timesteps / eval_mo_freq) * num_eval_weights * num_eval_episodes) % record_video_freq`.
             record_video_ep_freq: Episodic frequency of recording videos (preferably high number, if agent keeps dying, vectorised test environments will reset, resulting in more frequent video recordings)
@@ -72,7 +74,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         )
         super().__init__(env)
         self.is_dr = generalization_algo == 'domain_randomization'
-        self.algo_name = algo_name
+        self.algo_name = algo_name + algo_suffix
 
         # ============ Evaluation Parameters ============
         if record_video:

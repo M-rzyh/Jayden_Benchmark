@@ -144,6 +144,7 @@ class PCN(MOAgent, MOPolicy):
         max_return: Optional[Union[np.ndarray, List]] = None,
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
+        wandb_tags: Optional[List[str]] = None,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -164,6 +165,7 @@ class PCN(MOAgent, MOPolicy):
             max_return: maximum return for clipping desired return. When None, this will be set to 100 for all objectives.
             wandb_entity (Optional[str], optional): Entity for wandb. Defaults to None.
             wandb_group: The wandb group to use for logging.
+            wandb_tags: Extra wandb tags to use for experiment versioning.
             log (bool, optional): Whether to log to wandb. Defaults to True.
             seed (Optional[int], optional): Seed for reproducibility. Defaults to None.
             device (Union[th.device, str], optional): Device to use. Defaults to "auto".
@@ -201,7 +203,7 @@ class PCN(MOAgent, MOPolicy):
         self.log = log
         if log:
             experiment_name += " continuous action" if self.continuous_action else ""
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
 
     def get_config(self) -> dict:
         """Get configuration of PCN model."""
