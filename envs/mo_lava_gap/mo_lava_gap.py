@@ -14,7 +14,7 @@ from typing import Optional
 
 from morl_generalization.algos.dr import DREnv
 
-class MOLavaGapDR(MiniGridEnv, DREnv):
+class MOLavaGapDR(MiniGridEnv):
     """
     ## Description
     Multi-objective version of the Minigrid Lava Gap environment. 

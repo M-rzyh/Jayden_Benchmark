@@ -20,15 +20,17 @@ DEFAULT_CAMERA_CONFIG = {
     "distance": 4.0,
 }
 
-class MOHalfCheetahDR(RandomMujocoEnv, DREnv, EzPickle):
+class MOHalfCheetah3dDR(RandomMujocoEnv, DREnv, EzPickle):
     """
     ## Description
     Multi-objective version of Gymansium's Mujoco Cheetah environment with randomizable environment parameters.
+    This version has 3D rewards, forward velocity, behind control cost, and in front control cost.
 
     ## Reward Space
     The reward is 2-dimensional:
     - 0: Reward for running forward
-    - 1: Control cost of the action
+    - 1: Control cost of the back legs
+    - 2: Control cost of the front legs
 
     ## Credits:
     - Domain randomization by https://github.com/gabrieletiboni/random-envs
@@ -128,8 +130,8 @@ class MOHalfCheetahDR(RandomMujocoEnv, DREnv, EzPickle):
 
         self.dyn_ind_to_name = {0: 'torso', 1: 'bthigh', 2: 'bshin', 3: 'bfoot', 4: 'fthigh', 5: 'fshin', 6: 'ffoot', 7: 'friction'}
 
-        self.reward_space = Box(low=-np.inf, high=np.inf, shape=(2,))
-        self.reward_dim = 2
+        self.reward_space = Box(low=-np.inf, high=np.inf, shape=(3,))
+        self.reward_dim = 3
 
         self.set_task_search_bounds() # set the randomization bounds
 
@@ -207,7 +209,9 @@ class MOHalfCheetahDR(RandomMujocoEnv, DREnv, EzPickle):
             **reward_info
         }
         terminated = False
-        vec_reward = np.array([info["reward_forward"], (1/self._ctrl_cost_weight)*info["reward_ctrl"]], dtype=np.float32)
+        back_ctrl_cost = np.sum(np.square(action[0:3]))
+        front_ctrl_cost = np.sum(np.square(action[3:]))
+        vec_reward = np.array([info["reward_forward"], back_ctrl_cost, front_ctrl_cost], dtype=np.float32)
         
         if self.render_mode == "human":
             self.render()

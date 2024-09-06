@@ -10,6 +10,10 @@ class DREnv(ABC):
     def reset_random(self):
         pass
 
+    @abstractmethod
+    def get_task(self):
+        pass
+
 class DRWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
     """Wrapper for DR environment."""
 

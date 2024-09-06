@@ -31,8 +31,24 @@ def mass_center(model, data):
     xpos = data.xipos
     return (np.sum(mass * xpos, axis=0) / np.sum(mass))[0:2].copy()
 
-class MOHumanoidDR(RandomMujocoEnv, EzPickle):
+class MOHumanoidDR(RandomMujocoEnv, DREnv, EzPickle):
+    """
+    ## Description
+    Multi-objective version of Gymnasium's Mujoco Humanoid environment with randomizable environment parameters.
 
+    ## Reward Space
+    The reward is 2-dimensional:
+    - 0: Reward for running forward
+    - 1: Control cost of the action
+
+    ## Important Changes to Note
+    - The original Gymnasium Humanoid environment has healthy_reward = 5.0, but that dominates the control cost and forward reward. 
+      We have set it to 3.0 to balance the rewards.
+    - The original Gymnasium Humanoid environment has contact_cost_weight = 5e-7, which is negligible. We have set it to 0.0.
+
+    ## Credits:
+    - Domain randomization by https://github.com/gabrieletiboni/random-envs
+    """
     metadata = {
         "render_modes": [
             "human",
@@ -47,9 +63,9 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
         default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
         forward_reward_weight: float = 1.25,
         ctrl_cost_weight: float = 0.1,
-        contact_cost_weight: float = 5e-7,
+        contact_cost_weight: float = 0.0,
         contact_cost_range: Tuple[float, float] = (-np.inf, 10.0),
-        healthy_reward: float = 5.0,
+        healthy_reward: float = 3.0, 
         terminate_when_unhealthy: bool = True,
         healthy_z_range: Tuple[float, float] = (1.0, 2.0),
         reset_noise_scale: float = 1e-2,
@@ -62,7 +78,7 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
         noisy: bool = False,
         **kwargs,
     ):
-        # DREnv.__init__(self)
+        DREnv.__init__(self)
         EzPickle.__init__(self,
             forward_reward_weight,
             ctrl_cost_weight,
@@ -330,7 +346,7 @@ class MOHumanoidDR(RandomMujocoEnv, EzPickle):
             **reward_info
         }
 
-        vec_reward = np.array([info["x_velocity"], 10 * info["reward_ctrl_contact"]], dtype=np.float32)
+        vec_reward = np.array([info["x_velocity"], (1/self._ctrl_cost_weight)*info["reward_ctrl"]], dtype=np.float32)
         vec_reward += self.healthy_reward
 
         if self.render_mode == "human":

@@ -19,17 +19,12 @@ DEFAULT_CAMERA_CONFIG = {
     "elevation": -20.0,
 }
 
-class MOHopperDR(RandomMujocoEnv, EzPickle):
+class MOHopperDR(RandomMujocoEnv, DREnv, EzPickle):
     """
     ## Description
-    Multi-objective version of the HopperEnv environment.
+    Multi-objective version of Gymnasium's Mujoco Hopper environment with randomizable environment parameters.
 
     See [Gymnasium's env](https://gymnasium.farama.org/environments/mujoco/hopper/) for more information.
-
-    The original Gymnasium's 'Hopper-v4' is recovered by the following linear scalarization:
-
-    env = mo_gym.make('mo-hopper-v4', cost_objective=False)
-    LinearReward(env, weight=np.array([1.0, 0.0]))
 
     ## Episode End
     ### Termination
@@ -79,8 +74,7 @@ class MOHopperDR(RandomMujocoEnv, EzPickle):
         task: Optional[List[float]] = None,
         **kwargs,
     ):
-        # DREnv.__init__(self)
-
+        DREnv.__init__(self)
         EzPickle.__init__(
             self,
             xml_file,

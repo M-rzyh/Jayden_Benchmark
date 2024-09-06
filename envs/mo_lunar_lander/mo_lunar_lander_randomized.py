@@ -33,16 +33,11 @@ class MOLunarLanderDR(MOLunarLander, DREnv, EzPickle):
             np.random.uniform(params_min[2], params_max[2]),
         ]
         self._update_params(*new_params)
+    
+    def get_task(self):
+        return np.array([self.gravity, self.wind_power, self.turbulence_power])
 
     def _update_params(self, gravity, wind_power, turbulence_power):
         self.wind_power = wind_power
         self.gravity = gravity
         self.turbulence_power = turbulence_power
-
-    def get_complexity_info(self):
-        info = {
-            'gravity': self.gravity,
-            'wind_power': self.wind_power,
-            'turbulence_power': self.turbulence_power
-        }
-        return info

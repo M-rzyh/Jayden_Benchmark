@@ -13,18 +13,30 @@ MOHopperDR-v5:
 MOHalfCheetahDR-v5:
   normalization:
     discounted:
-      0: [0, 700] # actual [-19, 709]
-      1: [-400, 0] # actual [-411, 0]
+      0: [0, 860] # actual [11.6, 859]
+      1: [-350, -4.4] # actual [-35, -0.44] but there is a 0.1 coefficient in original MO-Gymnasium
     undiscounted:
-      0: [0, 10200] # actual [-975, 10253]
-      1: [-560, 0] # actual [-567, 0] 
+      0: [0, 12300] # actual [0, 12335]
+      1: [-4000, -40] # actual [-405, 0] but there is a 0.1 coefficient in original MO-Gymnasium
+  recover_single_objective: True
+
+MOHalfCheetah3dDR-v0:
+  normalization:
+    discounted:
+      0: [0, 860] 
+      1: [-175, -2.2] 
+      2: [-175, -2.2]
+    undiscounted:
+      0: [0, 12300]
+      1: [-2000, -20]
+      2: [-2000, -20]
   recover_single_objective: True
 
 MOHumanoidDR-v5:
   normalization:
     discounted:
-      0: [0, 600] # actual [74, 563]
-      1: [0, 250] # actual [33, 229]
+      0: [0, 560] # actual [74, 553]
+      1: [0, 230] # actual [33, 229]
     undiscounted:
       0: [0, 5300] # actual [79, 5275]
       1: [0, 2300] # actual [36, 2286]

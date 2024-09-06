@@ -8,6 +8,7 @@ pymoo>=0.6.0
 wandb>=0.14.0
 minigrid==2.3.1
 imageio
+ipywidgets==8.1.5
 moviepy
 seaborn
 cvxpy
@@ -16,5 +17,6 @@ gym_super_mario_bros
 pycddlib
 mujoco==3.1.6
 requests
+rliable==1.2.0
 moviepy
 opencv-python

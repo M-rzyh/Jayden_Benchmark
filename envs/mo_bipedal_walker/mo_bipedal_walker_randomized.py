@@ -216,6 +216,9 @@ class MOBipedalWalkerDR(MOBipedalWalker, DREnv):
 
         return complexity_info
 
+    def get_task(self):
+        return np.array(self.level_params_vec)
+
     def get_config(self):
         """
         Gets the config to use to create the level.
@@ -354,39 +357,6 @@ class MOBipedalWalkerDR(MOBipedalWalker, DREnv):
             self._reset_env_config()
 
         return super().reset(seed=self.level_seed)
-
-    def step_adversary(self, action):
-        # action will be between [-1,1]
-        # this maps to a range, depending on the index
-        param_ranges = self.param_ranges
-        val_range = param_ranges[self.adversary_step_count+1]
-
-        if torch.is_tensor(action):
-            action = action.item()
-
-        # get unnormalized value from the action
-        value = ((action + 1)/2) * (val_range[1]-val_range[0]) + val_range[0]
-
-        # update the level vec
-        self.level_params_vec[self.adversary_step_count] = value
-
-        self.adversary_step_count += 1
-
-        if self.adversary_step_count >= self.adversary_max_steps:
-            self.level_seed = rand_int_seed()
-            self._update_params(self.level_params_vec)
-            self._reset_env_config()
-            done=True
-        else:
-            done=False
-
-        obs = {
-            'image': self.level_params_vec,
-            'time_step': [self.adversary_step_count],
-            'random_z': self.generate_random_z()
-        }
-
-        return obs, 0, done, {}
 
 
 class BipedalWalkerFull(MOBipedalWalkerDR):
