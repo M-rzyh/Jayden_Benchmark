@@ -209,10 +209,9 @@ class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.episode_id = 0
 
         # Custom multi-objective attributes
-        if self.weight_trigger:
-            self.weight_id = -1
-            self.current_weight = None
-            self.current_step = 0
+        self.weight_id = -1
+        self.current_weight = None
+        self.current_step = 0
 
         try:
             self.is_vector_env = self.get_wrapper_attr("is_vector_env")
