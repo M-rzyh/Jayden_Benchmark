@@ -78,15 +78,13 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.algo_name = algo_name + algo_suffix
 
         # ============ Evaluation Parameters ============
-        if record_video:
-            assert sum(x is not None for x in [record_video_w_freq, record_video_ep_freq]) == 1, "Must specify exactly one video recording trigger"
-            print("Recording video every", record_video_w_freq, "weights evaluated" if record_video_w_freq else "episodes")
         self.test_env_names = test_envs
         make_fn = [
             lambda env_name=env_name: make_test_envs(
                 env_name, 
                 self.algo_name, 
                 seed, 
+                record_video=record_video,
                 record_video_w_freq=record_video_w_freq,
                 record_video_ep_freq=record_video_ep_freq,
                 **kwargs

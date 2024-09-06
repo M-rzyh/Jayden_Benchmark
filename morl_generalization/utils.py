@@ -12,9 +12,11 @@ def get_env_selection_algo_wrapper(env_selection_algo) -> gym.Wrapper:
     else:
         raise NotImplementedError
 
-def make_test_envs(gym_id, algo_name, seed, record_video_w_freq=None, record_video_ep_freq=None, **kwargs):
+def make_test_envs(gym_id, algo_name, seed, record_video=False, record_video_w_freq=None, record_video_ep_freq=None, **kwargs):
     is_mario = "mario" in gym_id.lower()
-    record_video = record_video_w_freq is not None or record_video_ep_freq is not None
+    if record_video:
+        assert sum(x is not None for x in [record_video_w_freq, record_video_ep_freq]) == 1, "Must specify exactly one video recording trigger"
+        print("Recording video every", record_video_w_freq, "weights evaluated" if record_video_w_freq else "episodes")
 
     if is_mario:
         env = gym.make(
@@ -23,7 +25,7 @@ def make_test_envs(gym_id, algo_name, seed, record_video_w_freq=None, record_vid
                 death_as_penalty=True,
                 **kwargs
             )
-        env = wrap_mario(env, gym_id, algo_name, seed, record_video_ep_freq=record_video_ep_freq, record_video_w_freq=record_video_w_freq)
+        env = wrap_mario(env, gym_id, algo_name, seed, record_video=record_video, record_video_ep_freq=record_video_ep_freq, record_video_w_freq=record_video_w_freq)
     else:
         env = gym.make(
                 gym_id, 
