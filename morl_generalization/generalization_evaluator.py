@@ -27,7 +27,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             generalization_algo: str,
             test_envs: List[str],
             record_video: bool = False,
-            record_video_freq: int = 1000,
+            record_video_w_freq: Optional[int] = None,
+            record_video_ep_freq: Optional[int] = None,
             num_eval_weights: int = 100,
             num_eval_episodes: int = 5,
             fixed_weights: List[List[float]] = None,
@@ -46,7 +47,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             generalization_algo: Generalization algorithm used for choosing training environment configurations (currently only 'domain_randomization' is implemented)
             test_envs: List of test environments to evaluate the agent on
             record_video: Whether to record videos of the evaluation
-            record_video_freq: Episodic frequency of recording videos (preferably high number, if agent keeps dying, vectorised test environments will reset, resulting in more frequent video recordings)
+            record_video_w_freq: Number of evaluated weights frequency of recording videos. Consider your `((num_timesteps / eval_mo_freq) * num_eval_weights * num_eval_episodes) % record_video_freq`.
+            record_video_ep_freq: Episodic frequency of recording videos (preferably high number, if agent keeps dying, vectorised test environments will reset, resulting in more frequent video recordings)
             num_eval_weights: Number of weights to evaluate the agent on (for LS methods to condition on and for EUM calculation)
             num_eval_episodes: Number of episodes to average over for policy evaluation for each weight (total episodes = num_eval_weights * num_eval_episodes)
             eval_params: Evaluation parameters (for normalisation, recovering single-objective rewards, etc.)
@@ -61,7 +63,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             generalization_algo=generalization_algo, 
             test_envs=test_envs, 
             record_video=record_video, 
-            record_video_freq=record_video_freq, 
+            record_video_w_freq=record_video_w_freq,
+            record_video_ep_freq=record_video_ep_freq, 
             eval_params=eval_params, 
             normalization_type=normalization_type, 
             save_metrics=save_metrics, 
@@ -72,9 +75,19 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.algo_name = algo_name
 
         # ============ Evaluation Parameters ============
+        if record_video:
+            assert sum(x is not None for x in [record_video_w_freq, record_video_ep_freq]) == 1, "Must specify exactly one video recording trigger"
+            print("Recording video every", record_video_w_freq, "weights evaluated" if record_video_w_freq else "episodes")
         self.test_env_names = test_envs
         make_fn = [
-            lambda env_name=env_name: make_test_envs(env_name, algo_name, seed, record_video, record_video_freq, **kwargs) for env_name in test_envs
+            lambda env_name=env_name: make_test_envs(
+                env_name, 
+                algo_name, 
+                seed, 
+                record_video_w_freq=record_video_w_freq,
+                record_video_ep_freq=record_video_ep_freq,
+                **kwargs
+            ) for env_name in test_envs
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
 
@@ -120,7 +133,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def eval_mo(
         self,
         agent,
-        w: Optional[np.ndarray] = None,
+        w: np.ndarray,
         return_original_scalar=False # when `recover_single_objective` is set to True in the evaluation parameters and the environment's `step` function provides `info['original_scalar_reward']`.
     ) -> Tuple[np.ndarray, np.ndarray, Union[np.ndarray, None], Union[np.ndarray, None]]:
         """Evaluates one episode of the agent in the vectorised test environments.
@@ -134,7 +147,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             (np.ndarray, np.ndarray, np.ndarray, np.ndarray): Scalarized return, scalarized discounted return, vectorized return, vectorized discounted return. 
             Each is an array where each element corresponds to a sub-environment in the vectorized environment.
         """
-        obs, _ = self.test_envs.reset()
+        obs, _ = self.test_envs.reset(options={"weights": w, "step":agent.global_step}) # pass in the weight as an option in case video recording is enabled
         done = np.array([False] * self.test_envs.num_envs)
         vec_return = np.zeros((self.test_envs.num_envs, len(w)))
         disc_vec_return = np.zeros_like(vec_return)

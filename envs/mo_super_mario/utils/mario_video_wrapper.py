@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from typing import Callable, Optional
 import gymnasium as gym
 from gymnasium import logger
@@ -22,12 +23,18 @@ def capped_cubic_video_schedule(episode_id: int) -> bool:
 
 
 class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
-    """This wrapper records rollouts as videos."""
+    """This wrapper records rollouts as videos.
+    Allows intermittent recording of videos based on number of weights evaluted by specifying ``weight_trigger``.
+    To increased weight_number, call `env.reset(options={"weights": w, "step":s})` at the beginning of each evaluation. 
+    If weight trigger is activated, the video recorded file name will include the  current step `s` and evaluated weight `w` as a suffix. 
+    `w` must be a numpy array and `s` must be an integer.
+    """
 
     def __init__(
         self,
         env: gym.Env,
         video_folder: str,
+        weight_trigger: Callable[[int], bool] = None,
         episode_trigger: Callable[[int], bool] = None,
         step_trigger: Callable[[int], bool] = None,
         video_length: int = 0,
@@ -40,6 +47,7 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         Args:
             env: The environment that will be wrapped
             video_folder (str): The folder where the videos will be stored
+            weight_trigger: Function that accepts an integer and returns ``True`` iff a recording should be started at this weight evaluation
             episode_trigger: Function that accepts an integer and returns ``True`` iff a recording should be started at this episode
             step_trigger: Function that accepts an integer and returns ``True`` iff a recording should be started at this step
             video_length (int): The length of recorded episodes. If 0, entire episodes are recorded.
@@ -66,12 +74,13 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 f" that returns an image, such as rgb_array."
             )
 
-        if episode_trigger is None and step_trigger is None:
+        if episode_trigger is None and step_trigger is None and weight_trigger is None:
             episode_trigger = capped_cubic_video_schedule
 
-        trigger_count = sum(x is not None for x in [episode_trigger, step_trigger])
+        trigger_count = sum(x is not None for x in [episode_trigger, step_trigger, weight_trigger])
         assert trigger_count == 1, "Must specify exactly one trigger"
 
+        self.weight_trigger = weight_trigger
         self.episode_trigger = episode_trigger
         self.step_trigger = step_trigger
         self.disable_logger = disable_logger
@@ -90,13 +99,28 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.video_writer = None
         self.episode_id = 0
 
+        # Custom multi-objective attributes
+        if self.weight_trigger:
+            self.weight_id = -1
+            self.current_weight = None
+            self.current_step = 0
+
         try:
             self.is_vector_env = self.get_wrapper_attr("is_vector_env")
         except AttributeError:
             self.is_vector_env = False
 
     def reset(self, **kwargs):
-        """Reset the environment and start recording if enabled."""
+        """Reset the environment, set multi-objective weights if provided, and start video recording if enabled."""
+        # Check for multi-objective weights in kwargs
+        options = kwargs.get("options", {})
+        if "weights" in options and "step" in options:
+            assert isinstance(options["weights"], np.ndarray)
+            assert isinstance(options["step"], int)
+            self.current_weight = np.array2string(options["weights"], precision=2, separator=',')
+            self.weight_id += 1
+            self.current_step = options["step"]
+        
         observations = super().reset(**kwargs)
         self.terminated = False
         self.truncated = False
@@ -113,6 +137,8 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         video_name = f"{self.name_prefix}-step-{self.step_id}.mp4"
         if self.episode_trigger:
             video_name = f"{self.name_prefix}-episode-{self.episode_id}.mp4"
+        elif self.weight_trigger:
+            video_name = f"{self.name_prefix}-step{self.current_step}-weight-{self.current_weight}.mp4"
         video_path = os.path.join(self.video_folder, video_name)
 
         self.video_writer = imageio.get_writer(video_path, fps=self.fps, format='mp4')
@@ -122,8 +148,10 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def _video_enabled(self):
         if self.step_trigger:
             return self.step_trigger(self.step_id)
-        else:
+        elif self.episode_trigger:
             return self.episode_trigger(self.episode_id)
+        elif self.weight_trigger:
+            return self.weight_trigger(self.weight_id)
 
     def step(self, action):
         """Steps through the environment using action, recording observations if :attr:`self.recording`."""
