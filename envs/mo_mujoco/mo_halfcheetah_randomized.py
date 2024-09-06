@@ -161,7 +161,7 @@ class MOHalfCheetahDR(RandomMujocoEnv, DREnv, EzPickle):
                     'fthigh': 0.1,
                     'fshin': 0.1,
                     'ffoot': 0.1,
-                    'friction': 0.02,
+                    'friction': 0.1,
         }
 
         return lowest_value[self.dyn_ind_to_name[index]]

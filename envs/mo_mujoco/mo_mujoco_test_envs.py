@@ -40,6 +40,7 @@ class MOHopperLowDamping(MOHopperDR):
 
 class MOHopperHard(MOHopperDR):
     def __init__(self, **kwargs):
+        # light torso, heavy (thigh, shin), light foot
         masses = np.array([0.1, 9.0, 9.0, 0.1])
         damping = np.array([0.1, 0.1, 0.1])
         friction = np.array([0.1])
@@ -64,7 +65,7 @@ class MOHalfCheetahHeavy(MOHalfCheetahDR):
 class MOHalfCheetahSlippery(MOHalfCheetahDR):
     def __init__(self, **kwargs):
         masses = np.array([6.25020921, 1.54351464, 1.5874477, 1.09539749, 1.43807531, 1.20083682, 0.88451883])
-        friction = np.array([0.05])
+        friction = np.array([0.1])
         task = np.concatenate([masses, friction])
         super().__init__(task=task, **kwargs)
 
@@ -94,7 +95,7 @@ class MOHalfCheetah3dHeavy(MOHalfCheetah3dDR):
 class MOHalfCheetah3dSlippery(MOHalfCheetah3dDR):
     def __init__(self, **kwargs):
         masses = np.array([6.25020921, 1.54351464, 1.5874477, 1.09539749, 1.43807531, 1.20083682, 0.88451883])
-        friction = np.array([0.05])
+        friction = np.array([0.1])
         task = np.concatenate([masses, friction])
         super().__init__(task=task, **kwargs)
 

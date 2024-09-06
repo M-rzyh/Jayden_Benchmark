@@ -104,6 +104,12 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                         data=[],
                     ) for _ in test_envs
                 ]
+                self.best_disc_single_objective_weights = [
+                    wandb.Table(
+                        columns=["global_step"] + [f"objective_{j}" for j in range(1, self.reward_dim + 1)],
+                        data=[],
+                    ) for _ in test_envs
+                ]
 
         # ============ Weights Saving ============
         self.save_weights = save_weights
@@ -384,14 +390,20 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 wandb.log(metrics)
 
                 new_best_weight = [global_step] + best_weight.tolist()
+                new_best_disc_weight = [global_step] + best_disc_weight.tolist()
                 self.best_single_objective_weights[i].add_data(*new_best_weight)
+                self.best_disc_single_objective_weights[i].add_data(*new_best_disc_weight)
 
                 # workaround: have to duplicate the table in order to update it on wandb api
                 # see https://github.com/wandb/wandb/issues/2981
                 new_table = wandb.Table(
                     columns=self.best_single_objective_weights[i].columns, data=self.best_single_objective_weights[i].data
                 )
+                new_disc_table = wandb.Table(
+                    columns=self.best_disc_single_objective_weights[i].columns, data=self.best_disc_single_objective_weights[i].data
+                )
                 wandb.log({f"eval/best_single_objective_weights/{self.test_env_names[i]}": new_table})
+                wandb.log({f"eval/best_discounted_single_objective_weights/{self.test_env_names[i]}": new_disc_table})
 
         self._report(
             mean_vec_returns,
