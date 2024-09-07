@@ -65,7 +65,7 @@ class MOHumanoidDR(RandomMujocoEnv, DREnv, EzPickle):
         ctrl_cost_weight: float = 0.1,
         contact_cost_weight: float = 0.0,
         contact_cost_range: Tuple[float, float] = (-np.inf, 10.0),
-        healthy_reward: float = 3.0, 
+        healthy_reward: float = 2.0, 
         terminate_when_unhealthy: bool = True,
         healthy_z_range: Tuple[float, float] = (1.0, 2.0),
         reset_noise_scale: float = 1e-2,
