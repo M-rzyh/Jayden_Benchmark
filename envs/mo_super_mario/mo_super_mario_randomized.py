@@ -39,6 +39,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
         target=None,
         objectives=["x_pos", "time", "death", "coin", "enemy"],
         death_as_penalty=False,
+        combine_coin_enemy=False,
         render_mode: Optional[str] = None,
         stages=None,
         **kwargs,
@@ -51,6 +52,10 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
         self.death_as_penalty = death_as_penalty
         if self.death_as_penalty:  # death is not a separate objective
             self.objectives.discard("death")
+        if combine_coin_enemy:  # combine coin and enemy into a single objective
+            self.objectives.discard("coin")
+            self.objectives.discard("enemy")
+            self.objectives.add("coin_enemy")
         self.reward_dim = len(self.objectives)
 
         low = np.empty(self.reward_dim, dtype=np.float32)
@@ -153,7 +158,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
 
         # 3. death
         if self.lives > info["life"]:
-            death_r = -500.0
+            death_r = -25.0
         else:
             death_r = 0.0
         if "death" in self.objectives:
@@ -162,19 +167,27 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
 
         # 4. coin
         coin_r = 0.0
+        coin_r = (info["coins"] - self.coin) * 100
+        self.coin = info["coins"]
+        vec_reward[obj_idx] = coin_r
+        obj_idx += 1
         if "coin" in self.objectives:
-            coin_r = (info["coins"] - self.coin) * 100
-            self.coin = info["coins"]
             vec_reward[obj_idx] = coin_r
             obj_idx += 1
 
         # 5. enemy
+        enemy_r = info["score"] - self.score
+        if coin_r > 0 or done:
+            enemy_r = 0
+        self.score = info["score"]
+        vec_reward[obj_idx] = enemy_r
+        obj_idx += 1
         if "enemy" in self.objectives:
-            enemy_r = info["score"] - self.score
-            if coin_r > 0 or done:
-                enemy_r = 0
-            self.score = info["score"]
             vec_reward[obj_idx] = enemy_r
+            obj_idx += 1
+
+        if "coin_enemy" in self.objectives:
+            vec_reward[obj_idx] = coin_r + enemy_r
             obj_idx += 1
 
         if self.death_as_penalty:

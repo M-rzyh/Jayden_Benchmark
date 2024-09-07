@@ -150,8 +150,8 @@ def parse_generalization_args(args):
 
 def make_envs(args):
     if "mario" in args.env_id.lower():
-        env = mo_gym.make(args.env_id, death_as_penalty=True)
-        eval_env = mo_gym.make(args.env_id, death_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
+        env = mo_gym.make(args.env_id, death_as_penalty=True, combine_coin_enemy=True)
+        eval_env = mo_gym.make(args.env_id, death_as_penalty=True, combine_coin_enemy=True, render_mode="rgb_array" if args.record_video else None)
     else:
         env = mo_gym.make(args.env_id)
         eval_env = mo_gym.make(args.env_id, render_mode="rgb_array" if args.record_video else None)

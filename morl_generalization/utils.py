@@ -23,6 +23,7 @@ def make_test_envs(gym_id, algo_name, seed, record_video=False, record_video_w_f
                 gym_id, 
                 render_mode="rgb_array" if record_video else None, 
                 death_as_penalty=True,
+                combine_coin_enemy=True,
                 **kwargs
             )
         env = wrap_mario(env, gym_id, algo_name, seed, record_video=record_video, record_video_ep_freq=record_video_ep_freq, record_video_w_freq=record_video_w_freq)
