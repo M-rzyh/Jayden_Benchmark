@@ -59,15 +59,13 @@ MOSuperMarioBrosDR-v2:
 MOSuperMarioBrosDayDR-v2:
   normalization:
     discounted:
-      0: [0, 29] # actual [0, 28.7]
-      1: [-0.7, 0] # actual [-0.63, -0.49]
-      2: [0, 6] # actual [0, 6]
-      3: [0, 41] # actual [0, 41]
+      0: [0, 28.7] # actual [0, 28.7]
+      1: [-0.63, -0.49] # actual [-0.63, -0.49] time penalty
+      2: [0, 47] # actual [0, 41] + coin actual [0, 5.35]
     undiscounted:
       0: [0, 84] # actual [-2, 84]
       1: [-12, 0] # actual [-11.3, 0]
-      2: [0, 16] # actual [0, 16]
-      3: [0, 380] # actual [0, 379]
+      2: [0, 400] # actual enemy [0, 379] + coins actual [0, 16]
   recover_single_objective: True
 
 MOLunarLanderDR-v0:
