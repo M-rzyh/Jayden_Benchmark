@@ -242,10 +242,11 @@ class LunarLander(gym.Env, EzPickle):
             )
         self.wind_power = wind_power
 
-        if 0.0 > turbulence_power or turbulence_power > 2.0:
-            gym.logger.warn(
-                f"turbulence_power value is recommended to be between 0.0 and 2.0, (current value: {turbulence_power})"
-            )
+        # disable turbulence assertion
+        # if 0.0 > turbulence_power or turbulence_power > 2.0:
+        #     gym.logger.warn(
+        #         f"turbulence_power value is recommended to be between 0.0 and 2.0, (current value: {turbulence_power})"
+        #     )
         self.turbulence_power = turbulence_power
 
         self.enable_wind = enable_wind
