@@ -761,7 +761,8 @@ class GPIPD(MOPolicy, MOAgent):
         eval_env: Optional[gym.Env] = None,
         eval_freq: int = 1000,
         reset_learning_starts: bool = False,
-        verbose: bool = False
+        verbose: bool = False,
+        test_generalization: bool = False,
     ):
         """Train the agent for one iteration.
 
@@ -775,6 +776,7 @@ class GPIPD(MOPolicy, MOAgent):
             eval_freq (int): Number of timesteps between evaluations
             reset_learning_starts (bool): Whether to reset the learning starts
             verbose (bool): whether to print the episode info.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         weight_support = unique_tol(weight_support)  # remove duplicates
         self.set_weight_support(weight_support)
@@ -822,7 +824,8 @@ class GPIPD(MOPolicy, MOAgent):
                 self.update(tensor_w)
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
-                self.policy_eval(eval_env, weights=weight, log=self.log)
+                if not test_generalization:
+                    self.policy_eval(eval_env, weights=weight, log=self.log)
 
                 if self.dyna and self.global_step >= self.dynamics_rollout_starts:
                     plot = visualize_eval(self, eval_env, self.dynamics, weight, compound=False, horizon=1000)
@@ -857,7 +860,6 @@ class GPIPD(MOPolicy, MOAgent):
         num_eval_weights_for_eval: int = 50,
         timesteps_per_iter: int = 10000,
         weight_selection_algo: str = "gpi-ls",
-        eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
         checkpoints: bool = False,
         verbose: bool = False,
@@ -892,7 +894,6 @@ class GPIPD(MOPolicy, MOAgent):
                     "num_eval_weights_for_eval": num_eval_weights_for_eval,
                     "timesteps_per_iter": timesteps_per_iter,
                     "weight_selection_algo": weight_selection_algo,
-                    "eval_freq": eval_freq,
                     "eval_mo_freq": eval_mo_freq,
                 }
             )
@@ -933,10 +934,11 @@ class GPIPD(MOPolicy, MOAgent):
                 weight_support=M,
                 change_w_every_episode=weight_selection_algo == "gpi-ls",
                 eval_env=eval_env,
-                eval_freq=eval_freq,
+                eval_freq=eval_mo_freq,
                 reset_num_timesteps=False,
                 reset_learning_starts=False,
                 verbose=verbose,
+                test_generalization=test_generalization,
             )
 
             if weight_selection_algo == "ols":
