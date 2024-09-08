@@ -54,6 +54,7 @@ class MOLunarLanderDR(LunarLander, DREnv):
     ):
         DREnv.__init__(self)
         LunarLander.__init__(
+            self,
             continuous=continuous,
             gravity=gravity, 
             wind_power=wind_power, 
