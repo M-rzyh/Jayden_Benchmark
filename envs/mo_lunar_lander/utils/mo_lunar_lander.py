@@ -206,11 +206,11 @@ class MOLunarLander(LunarLander):  # no need for EzPickle, it's already in Lunar
         if self.game_over or abs(state[0]) >= 1.0:
             terminated = True
             reward = -100
-            vector_reward -= 100
+            vector_reward -= (100.0 / 3)
         if not self.lander.awake:
             terminated = True
             reward = +100
-            vector_reward += 100
+            vector_reward += (100.0 / 3)
 
         if self.render_mode == "human":
             self.render()
