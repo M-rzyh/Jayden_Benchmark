@@ -494,6 +494,13 @@ class PCN(MOAgent, MOPolicy):
                 self.global_step += 1
             # add episode in-place
             self._add_episode(transitions, max_size=max_buffer_size, step=self.global_step)
+            
+            # log just to get values in the chart even though training hasn't started
+            if self.log and self.global_step >= next_eval_step:
+                next_eval_step = (self.global_step // eval_mo_freq) * eval_mo_freq
+                if test_generalization:
+                    eval_env.eval(self, ref_point=ref_point, global_step=next_eval_step)
+                next_eval_step += eval_mo_freq
 
         while self.global_step < total_timesteps:
             loss = []
