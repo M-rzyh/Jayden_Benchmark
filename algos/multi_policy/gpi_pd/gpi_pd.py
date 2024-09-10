@@ -877,7 +877,6 @@ class GPIPD(MOPolicy, MOAgent):
             num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
             timesteps_per_iter (int): Number of timesteps to train for per iteration.
             weight_selection_algo (str): Weight selection algorithm to use.
-            eval_freq (int): Number of timesteps between evaluations.
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
             verbose (bool): whether to print the episode info.

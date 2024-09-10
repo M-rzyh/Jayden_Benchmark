@@ -12,7 +12,8 @@ ALGORITHMS = [
     'GPI-LS Continuous Action', 
     'PGMORL', 
     'CAPQL', 
-    'PCN continuous action'
+    'PCN continuous action',
+    'SAC Continuous Action',
 ]
 
 ALGORITHMS_NAME_MAP = {
@@ -23,4 +24,5 @@ ALGORITHMS_NAME_MAP = {
     'GPI-PD Continuous Action': 'GPI-PD',
     'MORL-D(MOSAC)-SB': 'MORL-D(SB)',
     'MORL-D(MOSAC)-SB+PSA': 'MORL-D(SB+PSA)',
+    'SAC Continuous Action': 'SAC',
 }

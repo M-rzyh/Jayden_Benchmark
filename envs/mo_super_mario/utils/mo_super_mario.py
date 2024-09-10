@@ -41,6 +41,7 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
         target=None,
         objectives=["x_pos", "time", "death", "coin", "enemy"],
         death_as_penalty=False,
+        time_as_penalty=False,
         render_mode: Optional[str] = None,
         **kwargs,
     ):
@@ -50,8 +51,11 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
 
         self.objectives = set(objectives)
         self.death_as_penalty = death_as_penalty
+        self.time_as_penalty = time_as_penalty
         if self.death_as_penalty:  # death is not a separate objective
             self.objectives.discard("death")
+        if time_as_penalty:  # time is not a separate objective
+            self.objectives.discard("time")
         self.reward_dim = len(self.objectives)
 
         low = np.empty(self.reward_dim, dtype=np.float32)
@@ -124,7 +128,7 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
         obs, reward, done, info = super().step(action)
 
         if self.single_stage and info["flag_get"]:
-            self.stage_bonus = 5000
+            self.stage_bonus = 10000 # most likely impossible if steps < 2000
             done = True
 
         """ Construct Multi-Objective Reward"""
@@ -143,18 +147,18 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
             obj_idx += 1
 
         # 2. time penalty
+        time_r = info["time"] - self.time
+        self.time = info["time"]
+        # time is always decreasing
+        if time_r > 0:
+            time_r = 0.0
         if "time" in self.objectives:
-            time_r = info["time"] - self.time
-            self.time = info["time"]
-            # time is always decreasing
-            if time_r > 0:
-                time_r = 0.0
             vec_reward[obj_idx] = time_r
             obj_idx += 1
 
         # 3. death
         if self.lives > info["life"]:
-            death_r = -500.0
+            death_r = -25.0
         else:
             death_r = 0.0
         if "death" in self.objectives:
@@ -178,8 +182,13 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
             vec_reward[obj_idx] = enemy_r
             obj_idx += 1
 
+        # scale the reward, especially the coin and enemy reward
+        vec_reward *= self.reward_space.shape[0] / 150
+
         if self.death_as_penalty:
-            vec_reward += death_r  # add death reward to all objectives
+            vec_reward += death_r # add death penalty to all objectives
+        if self.time_as_penalty:
+            vec_reward += time_r # add time penalty to all objectives
         ############################################################################
 
         if self.done_when_dead:
@@ -189,12 +198,10 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
 
         self.lives = info["life"]
 
-        vec_reward *= self.reward_space.shape[0] / 150
-
         info["score"] = info["score"] + self.stage_bonus
 
-        # original reward in gym_super_mario_bros technically does not include the coin and enemy reward
-        info["original_scalar_reward"] = xpos_r + time_r + death_r + (coin_r + enemy_r) * 0.1
+        # original reward in gym_super_mario_bros does not include the coin and enemy reward
+        info["original_scalar_reward"] = xpos_r + time_r + death_r + (coin_r + enemy_r) * 0.0
 
         if self.render_mode == "human":
             self.render()
