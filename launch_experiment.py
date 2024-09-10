@@ -170,7 +170,8 @@ def make_envs(args):
         eval_env = wrap_mario(
             eval_env, 
             gym_id=args.env_id, 
-            algo_name=args.algo, 
+            algo_name=args.algo,
+            seed=args.seed,
             record_video=args.record_video, 
             record_video_ep_freq=args.record_video_ep_freq,
             record_video_w_freq=args.record_video_w_freq,
