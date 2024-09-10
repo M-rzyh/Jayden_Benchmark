@@ -696,7 +696,7 @@ class LunarLander(gym.Env, EzPickle):
         self.surf = pygame.Surface((VIEWPORT_W, VIEWPORT_H))
 
         pygame.transform.scale(self.surf, (SCALE, SCALE))
-        pygame.draw.rect(self.surf, (255, 255, 255), self.surf.get_rect())
+        pygame.draw.rect(self.surf, (195, 194, 190), self.surf.get_rect())
 
         for obj in self.particles:
             obj.ttl -= 0.15
@@ -883,5 +883,11 @@ class LunarLanderContinuous:
 
 
 if __name__ == "__main__":
-    env = gym.make("LunarLander-v3", render_mode="rgb_array")
+    from gymnasium.envs.registration import register
+    import matplotlib.pyplot as plt
+    register(
+        id="LunarLander-v0",
+        entry_point="envs.mo_lunar_lander.utils.lunar_lander_custom:LunarLander",
+    )
+    env = gym.make("LunarLander-v0", render_mode="human")
     demo_heuristic_lander(env, render=True)
