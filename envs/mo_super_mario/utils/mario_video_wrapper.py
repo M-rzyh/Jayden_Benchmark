@@ -91,12 +91,13 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.name_prefix = name_prefix
         self.step_id = 0
         self.video_length = video_length
-        self.fps = env.metadata.get("render_fps", 30)
+        self.fps = env.metadata.get("render_fps", fps)
 
         self.recording = False
         self.terminated = False
         self.truncated = False
         self.video_writer = None
+        self.recorded_frames = 0
         self.episode_id = 0
 
         # Custom multi-objective attributes
@@ -123,7 +124,12 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         observations = super().reset(**kwargs)
         self.terminated = False
         self.truncated = False
-
+        if self.recording:
+            assert self.video_writer is not None
+            self._capture_frame()
+            if self.video_length > 0:
+                if self.recorded_frames > self.video_length:
+                    self.close_video_writer()
         if self._video_enabled():
             self.start_video_recording()
 
@@ -142,7 +148,14 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
         self.video_writer = imageio.get_writer(video_path, fps=self.fps, format='mp4')
 
+        self._capture_frame()
         self.recording = True
+    
+    def _capture_frame(self):
+        """Capture a frame from the environment and add it to the video."""
+        frame = self.env.render()
+        self.video_writer.append_data(frame)
+        self.recorded_frames += 1
 
     def _video_enabled(self):
         if self.step_trigger:
@@ -175,34 +188,32 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 self.truncated = truncateds[0]
 
             if self.recording:
-                frame = self.env.render()
-                self.video_writer.append_data(frame)
+                assert self.video_writer is not None
+                self._capture_frame()
                 if self.video_length > 0:
-                    if self.step_id >= self.video_length:
-                        self.save_video()
+                    if self.recorded_frames >= self.video_length:
+                        self.close_video_writer()
                 else:
                     if not self.is_vector_env:
                         if terminateds or truncateds:
-                            self.save_video()
+                            self.close_video_writer()
                     elif terminateds[0] or truncateds[0]:
-                        self.save_video()
+                        self.close_video_writer()
+            elif self._video_enabled():
+                self.start_video_recording()
 
         return observations, rewards, terminateds, truncateds, infos
 
-    def save_video(self):
-        """Save the video and close the writer."""
-        if self.recording and self.video_writer is not None:
-            self.video_writer.close()
-            self.recording = False
-
     def close_video_writer(self):
         """Close the video writer if it is open."""
-        if self.video_writer is not None:
+        if self.recording:
+            assert self.video_writer is not None
             self.video_writer.close()
-            self.video_writer = None
+            self.recording = False
+        self.recording = False
+        self.recorded_frames = 1
 
     def close(self):
         """Closes the wrapper and saves any ongoing video recording."""
         super().close()
-        if self.recording:
-            self.save_video()
+        self.close_video_writer()
