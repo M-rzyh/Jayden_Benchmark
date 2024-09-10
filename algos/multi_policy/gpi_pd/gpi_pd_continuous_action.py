@@ -564,6 +564,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         eval_freq: int = 1000,
         reset_num_timesteps: bool = False,
         verbose: bool = False,
+        test_generalization: bool = False,
     ):
         """Train the agent.
 
@@ -576,6 +577,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             eval_freq (int): Number of timesteps between evaluations.
             reset_num_timesteps (bool): Whether to reset the number of timesteps.
             verbose (bool): whether to print the episode info.
+            test_generalization (bool): Whether to test generalizability of the model.
         """
         weight_support = unique_tol(weight_support)
         self.set_weight_support(weight_support)
@@ -628,7 +630,8 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 self.update(tensor_w)
 
             if eval_env is not None and self.log and self.global_step % eval_freq == 0:
-                self.policy_eval(eval_env, weights=weight, log=self.log)
+                if not test_generalization:
+                    self.policy_eval(eval_env, weights=weight, log=self.log)
 
                 if self.dyna and self.global_step >= self.dynamics_rollout_starts:
                     plot = visualize_eval(self, eval_env, self.dynamics, w=weight, compound=False, horizon=1000)
@@ -659,7 +662,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         num_eval_weights_for_eval: int = 50,
         weight_selection_algo: str = "gpi-ls",
         timesteps_per_iter: int = 10000,
-        eval_freq: int = 1000,
         eval_mo_freq: int = 10000,
         checkpoints: bool = False,
         verbose: bool = False,
@@ -677,7 +679,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
             num_eval_weights_for_eval (int): Number of weights use when evaluating the Pareto front, e.g., for computing expected utility.
             weight_selection_algo (str): Weight selection algorithm to use.
             timesteps_per_iter (int): Number of timesteps to train the agent for each iteration.
-            eval_freq (int): Number of timesteps between evaluations during an iteration.
             eval_mo_freq (int): Number of timesteps between multi-objective evaluations.
             checkpoints (bool): Whether to save checkpoints.
             verbose (bool): whether to print the episode info.
@@ -694,7 +695,6 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                     "num_eval_weights_for_eval": num_eval_weights_for_eval,
                     "weight_selection_algo": weight_selection_algo,
                     "timesteps_per_iter": timesteps_per_iter,
-                    "eval_freq": eval_freq,
                     "eval_mo_freq": eval_mo_freq,
                 }
             )
@@ -732,8 +732,9 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
                 weight_support=M,
                 change_weight_every_episode=weight_selection_algo == "gpi-ls",
                 eval_env=eval_env,
-                eval_freq=eval_freq,
+                eval_freq=eval_mo_freq,
                 verbose=verbose,
+                test_generalization=test_generalization,
             )
 
             if weight_selection_algo == "ols":
