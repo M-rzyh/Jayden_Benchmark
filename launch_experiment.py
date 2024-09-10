@@ -163,7 +163,7 @@ def make_envs(args):
         eval_env = FlattenObservation(eval_env)
     elif "mario" in args.env_id.lower():
         env = wrap_mario(env)
-        eval_env = wrap_mario(eval_env)
+        eval_env = wrap_mario(eval_env, gym_id=args.env_id, algo_name=args.algo, record_video=args.record_video, record_video_ep_freq=args.record_video_ep_freq)
 
     if args.algo in SINGLE_OBJECTIVE_ALGOS:
         print("Training single-objective agent... Converting multi-objective environment to single-objective environment")
@@ -177,7 +177,7 @@ def make_envs(args):
         
         # allow for comprehensize evaluation of generalization
         eval_env = make_generalization_evaluator(eval_env, args)
-    elif args.record_video:
+    elif args.record_video and "mario" not in args.env_id.lower(): # wrap_mario already has record_video
         eval_env = RecordVideo(
             eval_env,
             video_folder=f"videos/{args.algo}-{args.env_id}",
