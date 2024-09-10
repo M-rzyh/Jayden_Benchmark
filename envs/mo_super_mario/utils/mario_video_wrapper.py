@@ -113,7 +113,7 @@ class RecordMarioVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         """Reset the environment, set multi-objective weights if provided, and start video recording if enabled."""
         # Check for multi-objective weights in kwargs
         options = kwargs.get("options", {})
-        if "weights" in options and "step" in options:
+        if options and "weights" in options and "step" in options:
             assert isinstance(options["weights"], np.ndarray)
             assert isinstance(options["step"], int)
             self.current_weight = np.array2string(options["weights"], precision=2, separator=',')
