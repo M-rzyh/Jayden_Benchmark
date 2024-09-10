@@ -39,7 +39,7 @@ def eval_mo(
     Returns:
         (float, float, np.ndarray, np.ndarray): Scalarized return, scalarized discounted return, vectorized return, vectorized discounted return
     """
-    obs, _ = env.reset()
+    obs, _ = env.reset(options={"weights": w, "step": agent.global_step}) # include options with weights in case of using MORecordVideo
     done = False
     vec_return, disc_vec_return = np.zeros_like(w), np.zeros_like(w)
     gamma = 1.0
@@ -90,7 +90,7 @@ def eval_mo_reward_conditioned(
     Returns:
         (float, float, np.ndarray, np.ndarray): Scalarized return, scalarized discounted return, vectorized return, vectorized discounted return
     """
-    obs, _ = env.reset()
+    obs, _ = env.reset(options={"weights": w, "step": agent.global_step}) # include options with weights in case of using MORecordVideo
     done = False
     vec_return, disc_vec_return = np.zeros(env.unwrapped.reward_space.shape[0]), np.zeros(env.unwrapped.reward_space.shape[0])
     gamma = 1.0

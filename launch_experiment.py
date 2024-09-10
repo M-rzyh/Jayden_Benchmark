@@ -17,7 +17,6 @@ import mo_gymnasium as mo_gym
 import numpy as np
 import requests
 from gymnasium.wrappers import FlattenObservation
-from gymnasium.wrappers.record_video import RecordVideo
 
 from mo_utils.wrappers import MORecordEpisodeStatistics, Multi2SingleObjectiveWrapper
 from mo_utils.evaluation import seed_everything
@@ -27,7 +26,7 @@ from mo_utils.experiments import (
     ENVS_WITH_KNOWN_PARETO_FRONT,
     StoreDict,
 )
-from morl_generalization.utils import get_env_selection_algo_wrapper
+from morl_generalization.utils import get_env_selection_algo_wrapper, MORecordVideo
 from morl_generalization.generalization_evaluator import make_generalization_evaluator
 from envs.register_envs import register_envs
 from envs.mo_super_mario.utils import wrap_mario
@@ -63,7 +62,8 @@ def parse_args():
         const=True,
         help="if toggled, the runs will be recorded with RecordVideo wrapper.",
     )
-    parser.add_argument("--record-video-ep-freq", type=int, default=5, help="Record video frequency (in episodes).")
+    parser.add_argument("--record-video-ep-freq", type=int, required=False, help="Record video frequency (in episodes).")
+    parser.add_argument("--record-video-w-freq", type=int, required=False, help="Record video frequency (in number of weight evaluated).")
     parser.add_argument(
         "--init-hyperparams",
         type=str,
@@ -97,7 +97,7 @@ def parse_args():
         nargs="+",
         action=StoreDict,
         help="Override hyperparameters to use for the generalizability evaluation. \
-            Example: --generalization-hyperparams num_eval_weights:100 num_eval_episodes:5 record_video_freq:1000",
+            Example: --generalization-hyperparams num_eval_weights:100 num_eval_episodes:5",
         default={},
     )
 
@@ -149,6 +149,10 @@ def parse_generalization_args(args):
     return args
 
 def make_envs(args):
+    if args.record_video:
+        assert sum(x is not None for x in [args.record_video_ep_freq, args.record_video_w_freq]) == 1, \
+            "Must specify exactly one video recording trigger: record_video_ep_freq or record_video_w_freq"
+
     if "mario" in args.env_id.lower():
         env = mo_gym.make(args.env_id, death_as_penalty=True, time_as_penalty=True)
         eval_env = mo_gym.make(args.env_id, death_as_penalty=True, time_as_penalty=True, render_mode="rgb_array" if args.record_video else None)
@@ -163,7 +167,14 @@ def make_envs(args):
         eval_env = FlattenObservation(eval_env)
     elif "mario" in args.env_id.lower():
         env = wrap_mario(env)
-        eval_env = wrap_mario(eval_env, gym_id=args.env_id, algo_name=args.algo, record_video=args.record_video, record_video_ep_freq=args.record_video_ep_freq)
+        eval_env = wrap_mario(
+            eval_env, 
+            gym_id=args.env_id, 
+            algo_name=args.algo, 
+            record_video=args.record_video, 
+            record_video_ep_freq=args.record_video_ep_freq,
+            record_video_w_freq=args.record_video_w_freq,
+        )
 
     if args.algo in SINGLE_OBJECTIVE_ALGOS:
         print("Training single-objective agent... Converting multi-objective environment to single-objective environment")
@@ -178,11 +189,20 @@ def make_envs(args):
         # allow for comprehensize evaluation of generalization
         eval_env = make_generalization_evaluator(eval_env, args)
     elif args.record_video and "mario" not in args.env_id.lower(): # wrap_mario already has record_video
-        eval_env = RecordVideo(
-            eval_env,
-            video_folder=f"videos/{args.algo}-{args.env_id}",
-            episode_trigger=lambda ep: ep % args.record_video_ep_freq == 0,
-        )
+        if args.record_video_ep_freq:
+            eval_env = MORecordVideo(
+                eval_env,
+                video_folder=f"videos/{args.algo}/seed{args.seed}/{args.env_id}",
+                episode_trigger=lambda ep: ep % args.record_video_ep_freq == 0,
+                disable_logger=True
+            )
+        elif args.record_video_w_freq:
+            eval_env = MORecordVideo(
+                eval_env, 
+                video_folder=f"videos/{args.algo}/seed{args.seed}/{args.env_id}/", 
+                episode_trigger=lambda t: t % args.record_video_w_freq == 0,
+                disable_logger=True
+            )
 
     env.unwrapped.action_space.seed(args.seed)
     env.unwrapped.observation_space.seed(args.seed)

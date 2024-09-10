@@ -477,6 +477,8 @@ def make_generalization_evaluator(env, args) -> MORLGeneralizationEvaluator:
         test_envs=args.test_envs, 
         generalization_algo=args.generalization_algo, 
         record_video=args.record_video,
+        record_video_ep_freq=args.record_video_ep_freq,
+        record_video_w_freq=args.record_video_w_freq,
         eval_params=eval_params,
         **args.generalization_hyperparams
     )
