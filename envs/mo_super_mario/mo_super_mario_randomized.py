@@ -181,9 +181,6 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
             vec_reward[obj_idx] = enemy_r
             obj_idx += 1
 
-        # scale the reward, especially the coin and enemy reward
-        vec_reward *= self.reward_space.shape[0] / 150
-
         if self.death_as_penalty:
             vec_reward += death_r # add death penalty to all objectives
         if self.time_as_penalty:
@@ -196,6 +193,9 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
                 done = True
 
         self.lives = info["life"]
+
+        # scale the reward, especially the coin and enemy reward
+        vec_reward *= self.reward_space.shape[0] / 100
 
         info["score"] = info["score"] + self.stage_bonus
 
