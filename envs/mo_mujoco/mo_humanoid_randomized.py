@@ -43,7 +43,7 @@ class MOHumanoidDR(RandomMujocoEnv, DREnv, EzPickle):
 
     ## Important Changes to Note
     - The original Gymnasium Humanoid environment has healthy_reward = 5.0, but that dominates the control cost and forward reward. 
-      We have set it to 3.0 to balance the rewards.
+      We have set it to 0.5 to balance the rewards.
     - The original Gymnasium Humanoid environment has contact_cost_weight = 5e-7, which is negligible. We have set it to 0.0.
 
     ## Credits:
@@ -61,11 +61,11 @@ class MOHumanoidDR(RandomMujocoEnv, DREnv, EzPickle):
         xml_file: str = "humanoid.xml",
         frame_skip: int = 5,
         default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
-        forward_reward_weight: float = 1.25,
+        forward_reward_weight: float = 2.0,
         ctrl_cost_weight: float = 0.1,
         contact_cost_weight: float = 0.0,
         contact_cost_range: Tuple[float, float] = (-np.inf, 10.0),
-        healthy_reward: float = 2.0, 
+        healthy_reward: float = 0.5,
         terminate_when_unhealthy: bool = True,
         healthy_z_range: Tuple[float, float] = (1.0, 2.0),
         reset_noise_scale: float = 1e-2,
