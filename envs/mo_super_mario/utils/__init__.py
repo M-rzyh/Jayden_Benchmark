@@ -12,7 +12,7 @@ def wrap_mario(env, gym_id="", algo_name="", seed=0, record_video=False, record_
     from mo_gymnasium.utils import MOMaxAndSkipObservation
 
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
-    env = TimeLimit(env, max_episode_steps=1000) # this must come before video recording else truncation will not be captured
+    env = TimeLimit(env, max_episode_steps=2000) # this must come before video recording else truncation will not be captured
     if record_video:
         if record_video_w_freq:
             env = RecordMarioVideo(
