@@ -236,10 +236,11 @@ class LunarLander(gym.Env, EzPickle):
         # ), f"gravity (current value: {gravity}) must be between -12 and 0"
         self.gravity = gravity
 
-        if 0.0 > wind_power or wind_power > 20.0:
-            gym.logger.warn(
-                f"wind_power value is recommended to be between 0.0 and 20.0, (current value: {wind_power})"
-            )
+        # disable wind power assertion
+        # if 0.0 > wind_power or wind_power > 20.0:
+        #     gym.logger.warn(
+        #         f"wind_power value is recommended to be between 0.0 and 20.0, (current value: {wind_power})"
+        #     )
         self.wind_power = wind_power
 
         # disable turbulence assertion

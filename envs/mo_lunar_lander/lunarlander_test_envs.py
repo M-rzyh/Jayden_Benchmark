@@ -5,13 +5,18 @@ class MOLunarLanderHighGravity(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         gravity = -15.0
         super().__init__(gravity=gravity, continuous=continuous, **kwargs)
+
+class MOLunarLanderLowGravity(MOLunarLanderDR):
+    def __init__(self, continuous=False, **kwargs):
+        gravity = -3.0
+        super().__init__(gravity=gravity, continuous=continuous, **kwargs)
 class MOLunarLanderWindy(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         wind_power = 20.0
         super().__init__(wind_power=wind_power, continuous=continuous, **kwargs)
 class MOLunarLanderTurbulent(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
-        turbulence_power = 2.0
+        turbulence_power = 4.0
         super().__init__(turbulence_power=turbulence_power, continuous=continuous, **kwargs)
 
 class MOLunarLanderLowMainEngine(MOLunarLanderDR):
@@ -27,9 +32,9 @@ class MOLunarLanderHard(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         gravity = -15.0
         wind_power = 20.0
-        turbulence_power = 2.0
-        main_engine_power = 7.0
-        side_engine_power = 0.1
+        turbulence_power = 4.0
+        main_engine_power = 8.0
+        side_engine_power = 0.3
         super().__init__(
             gravity=gravity, 
             wind_power=wind_power, 
@@ -93,6 +98,25 @@ def register_lunar_lander():
         gym.envs.register(
             id="MOLunarLanderContinuousHighGravity-v0",
             entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderHighGravity",
+            max_episode_steps=1000,
+            kwargs={"continuous": True},
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLunarLanderLowGravity-v0",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderLowGravity",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLunarLanderContinuousLowGravity-v0",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderLowGravity",
             max_episode_steps=1000,
             kwargs={"continuous": True},
         )
