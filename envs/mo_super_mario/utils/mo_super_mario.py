@@ -1,4 +1,5 @@
 from typing import Optional
+import warnings
 
 import gymnasium as gym
 import numpy as np
@@ -168,7 +169,7 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
         # 4. coin
         coin_r = 0.0
         if "coin" in self.objectives:
-            coin_r = (info["coins"] - self.coin) * 100
+            coin_r = (info["coins"] - self.coin) * 100 
             self.coin = info["coins"]
             vec_reward[obj_idx] = coin_r
             obj_idx += 1
@@ -176,8 +177,15 @@ class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
         # 5. enemy
         if "enemy" in self.objectives:
             enemy_r = info["score"] - self.score
-            if coin_r > 0 or done:
-                enemy_r = 0
+            if coin_r > 0:
+                # coins are worth 200 points
+                # can knock a coin block and kill an enemy on top simultaneously
+                enemy_r -= 2 * coin_r
+                if enemy_r < 0:
+                    enemy_r = max(0, enemy_r) # enemy reward cannot be negative
+                    warnings.warn("Enemy reward is negative. Setting it to 0.")
+            if done:
+                enemy_r = 0 # flag_get
             self.score = info["score"]
             vec_reward[obj_idx] = enemy_r
             obj_idx += 1
