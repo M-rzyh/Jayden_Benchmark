@@ -20,3 +20,5 @@ requests
 rliable==1.2.0
 moviepy
 opencv-python
+swig
+box2d-py==2.3.5
