@@ -35,8 +35,8 @@ class MOLunarLanderDR(LunarLander, DREnv):
 
     param_info = {
         'names': ['gravity', 'wind_power', 'turbulence_power', 'main_engine_power', 'side_engine_power'],
-        'param_max': [0.0, 20.0, 4.0, 16.0, 0.8],
-        'param_min': [-15.0, 0.0, 0.0, 8.0, 0.2]
+        'param_max': [0.0, 20.0, 4.0, 15.0, 0.9],
+        'param_min': [-15.0, 0.0, 0.0, 7.0, 0.1]
     }
     DEFAULT_PARAMS = [-10.0, 15.0, 1.5, 13.0, 0.6]
 
@@ -263,11 +263,11 @@ class MOLunarLanderDR(LunarLander, DREnv):
         if self.game_over or abs(state[0]) >= 1.0:
             terminated = True
             reward = -100
-            vector_reward -= (100.0 / 3.0)
+            vector_reward -= 100.0
         if not self.lander.awake:
             terminated = True
             reward = +100
-            vector_reward += (100.0 / 3.0)
+            vector_reward += 100.0
 
         if self.render_mode == "human":
             self.render()
