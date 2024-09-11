@@ -72,7 +72,7 @@ def register_mario():
         "5-2", "5-3",
         "6-2",
         "7-3", 
-        "8-1", "8-2", 
+        "8-1", 
 
     ]
     _register_mario_env('MOSuperMarioBrosWithCoinsEnemy-v0', is_random=True, rom_mode='vanilla', stages=stages)
