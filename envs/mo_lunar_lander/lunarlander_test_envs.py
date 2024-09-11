@@ -10,10 +10,12 @@ class MOLunarLanderLowGravity(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         gravity = -3.0
         super().__init__(gravity=gravity, continuous=continuous, **kwargs)
+
 class MOLunarLanderWindy(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         wind_power = 20.0
         super().__init__(wind_power=wind_power, continuous=continuous, **kwargs)
+
 class MOLunarLanderTurbulent(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         turbulence_power = 4.0
@@ -28,6 +30,7 @@ class MOLunarLanderLowSideEngine(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         side_engine_power = 0.1
         super().__init__(side_engine_power=side_engine_power, continuous=continuous, **kwargs)
+
 class MOLunarLanderHard(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
         gravity = -15.0

@@ -69,12 +69,12 @@ class MOLunarLanderDR(LunarLander, DREnv):
 
         # shaping reward, main engine cost, side engine cost
         self.reward_space = spaces.Box(
-            low=np.array([-np.inf, -101, -101]),
-            high=np.array([np.inf, 100, 100]),
-            shape=(3,),
+            low=np.array([-100, -np.inf, -1, -1]),
+            high=np.array([100, np.inf, 0, 0]),
+            shape=(4,),
             dtype=np.float32,
         )
-        self.reward_dim = 3
+        self.reward_dim = 4
 
     def reset_random(self):
         """
@@ -240,7 +240,7 @@ class MOLunarLanderDR(LunarLander, DREnv):
         assert len(state) == 8
 
         reward = 0
-        vector_reward = np.zeros(3, dtype=np.float32)
+        vector_reward = np.zeros(4, dtype=np.float32)
         shaping = (
             -100 * np.sqrt(state[0] * state[0] + state[1] * state[1])
             - 100 * np.sqrt(state[2] * state[2] + state[3] * state[3])
@@ -251,23 +251,23 @@ class MOLunarLanderDR(LunarLander, DREnv):
         # lose contact again after landing, you get negative reward
         if self.prev_shaping is not None:
             reward = shaping - self.prev_shaping
-            vector_reward[0] = shaping - self.prev_shaping
+            vector_reward[1] = shaping - self.prev_shaping
         self.prev_shaping = shaping
 
         reward -= m_power * 0.30  # less fuel spent is better, about -30 for heuristic landing
-        vector_reward[1] = -m_power
+        vector_reward[2] = -m_power
         reward -= s_power * 0.03
-        vector_reward[2] = -s_power
+        vector_reward[3] = -s_power
 
         terminated = False
         if self.game_over or abs(state[0]) >= 1.0:
             terminated = True
             reward = -100
-            vector_reward -= 100.0
+            vector_reward[0] -= 100
         if not self.lander.awake:
             terminated = True
             reward = +100
-            vector_reward += 100.0
+            vector_reward[0] += 100
 
         if self.render_mode == "human":
             self.render()
