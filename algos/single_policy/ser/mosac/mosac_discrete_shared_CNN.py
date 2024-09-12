@@ -408,7 +408,8 @@ class MOSACDiscreteSharedCNN(MOPolicy):
         obs = th.as_tensor(obs).float().to(self.device)
         obs = obs.unsqueeze(0)
         with th.no_grad():
-            action, _, _ = self.actor.get_action(obs)
+            processed_obs = self.feature_extractor(obs)
+            action, _, _ = self.actor.get_action(processed_obs)
 
         return action[0].detach().cpu().numpy()
 
@@ -419,11 +420,11 @@ class MOSACDiscreteSharedCNN(MOPolicy):
         )
 
         with th.no_grad():
-            _, next_state_log_pi, next_state_action_probs = self.actor.get_action(mb_next_obs)
+            processed_next_obs = self.feature_extractor(mb_next_obs)
+            _, next_state_log_pi, next_state_action_probs = self.actor.get_action(processed_next_obs)
             # (!) Q values are scalarized before being compared (min of ensemble networks)
-            processed_target_next_obs = self.feature_extractor(mb_next_obs)
-            qf1_next_target = self.scalarization(self.qf1_target(processed_target_next_obs), self.weights_tensor) # (B, A, R) -> (B, A)
-            qf2_next_target = self.scalarization(self.qf2_target(processed_target_next_obs), self.weights_tensor)
+            qf1_next_target = self.scalarization(self.qf1_target(processed_next_obs), self.weights_tensor) # (B, A, R) -> (B, A)
+            qf2_next_target = self.scalarization(self.qf2_target(processed_next_obs), self.weights_tensor)
             # we can use the action probabilities instead of MC sampling to estimate the expectation
             min_qf_next_target = next_state_action_probs * (
                 th.min(qf1_next_target, qf2_next_target) - self.alpha_tensor * next_state_log_pi
@@ -519,6 +520,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
                 actions = self.env.action_space.sample()
             else:
                 th_obs = th.as_tensor(obs).float().to(self.device)
+                th_obs = self.feature_extractor(th_obs)
                 th_obs = th_obs.unsqueeze(0)
                 actions, _, _ = self.actor.get_action(th_obs)
                 actions = actions[0].detach().cpu().numpy()
