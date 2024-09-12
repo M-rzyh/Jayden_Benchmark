@@ -84,10 +84,7 @@ class MOSACDiscreteActor(nn.Module):
         self.reward_dim = reward_dim
         self.net_arch = net_arch
 
-        self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
-        input_dim = self.feature_extractor.features_dim
-
-        self.net = mlp(input_dim, action_dim, net_arch)
+        self.net = mlp(net_arch[0], action_dim, net_arch)
         self.apply(layer_init)
 
     def forward(self, x):
@@ -208,7 +205,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
             net_arch=self.net_arch,
         ).to(self.device)
 
-        self.qf_feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
+        self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
         self.qf1 = MODiscreteSoftQNetwork(
             obs_shape=self.obs_shape, action_dim=self.action_dim, reward_dim=self.reward_dim, net_arch=self.net_arch
         ).to(self.device)
@@ -225,7 +222,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
         self.qf2_target.requires_grad_(False)
         self.qf1_target.load_state_dict(self.qf1.state_dict())
         self.qf2_target.load_state_dict(self.qf2.state_dict())
-        self.q_optimizer = optim.Adam(list(self.qf_feature_extractor.parameters()) + list(self.qf1.parameters()) + list(self.qf2.parameters()), lr=self.q_lr, eps=1e-4)
+        self.q_optimizer = optim.Adam(list(self.feature_extractor.parameters()) + list(self.qf1.parameters()) + list(self.qf2.parameters()), lr=self.q_lr, eps=1e-4)
         self.actor_optimizer = optim.Adam(list(self.actor.parameters()), lr=self.policy_lr, eps=1e-4)
 
         # Automatic entropy tuning
@@ -303,7 +300,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
 
         # Copying networks
         copied.actor = deepcopy(self.actor)
-        copied.qf_feature_extractor = deepcopy(self.qf_feature_extractor)
+        copied.feature_extractor = deepcopy(self.feature_extractor)
         copied.qf1 = deepcopy(self.qf1)
         copied.qf2 = deepcopy(self.qf2)
         copied.qf1_target = deepcopy(self.qf1_target)
@@ -311,7 +308,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
 
         copied.global_step = self.global_step
         copied.actor_optimizer = optim.Adam(copied.actor.parameters(), lr=self.policy_lr, eps=1e-4)
-        copied.q_optimizer = optim.Adam(list(copied.qf_feature_extractor.parameters()) + list(copied.qf1.parameters()) + list(copied.qf2.parameters()), lr=self.q_lr, eps=1e-4)
+        copied.q_optimizer = optim.Adam(list(copied.feature_extractor.parameters()) + list(copied.qf1.parameters()) + list(copied.qf2.parameters()), lr=self.q_lr, eps=1e-4)
         if self.autotune:
             copied.a_optimizer = optim.Adam([copied.log_alpha], lr=self.q_lr, eps=1e-4)
         copied.alpha_tensor = th.scalar_tensor(copied.alpha).to(self.device)
@@ -339,7 +336,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
         """Returns a dictionary of all components needed for saving the MOSAC instance."""
         save_dict = {
             'actor_state_dict': self.actor.state_dict(),
-            'qf_feature_extractor_state_dict': self.qf_feature_extractor.state_dict(),
+            'feature_extractor_state_dict': self.feature_extractor.state_dict(),
             'qf1_state_dict': self.qf1.state_dict(),
             'qf2_state_dict': self.qf2.state_dict(),
             'qf1_target_state_dict': self.qf1_target.state_dict(),
@@ -375,7 +372,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
             save_dict = th.load(path, map_location=self.device)
 
         self.actor.load_state_dict(save_dict['actor_state_dict'])
-        self.qf_feature_extractor.load_state_dict(save_dict['qf_feature_extractor_state_dict'])
+        self.feature_extractor.load_state_dict(save_dict['feature_extractor_state_dict'])
         self.qf1.load_state_dict(save_dict['qf1_state_dict'])
         self.qf2.load_state_dict(save_dict['qf2_state_dict'])
         self.qf1_target.load_state_dict(save_dict['qf1_target_state_dict'])
@@ -425,7 +422,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
         with th.no_grad():
             _, next_state_log_pi, next_state_action_probs = self.actor.get_action(mb_next_obs)
             # (!) Q values are scalarized before being compared (min of ensemble networks)
-            processed_target_next_obs = self.qf_feature_extractor(mb_next_obs)
+            processed_target_next_obs = self.feature_extractor(mb_next_obs)
             qf1_next_target = self.scalarization(self.qf1_target(processed_target_next_obs), self.weights_tensor) # (B, A, R) -> (B, A)
             qf2_next_target = self.scalarization(self.qf2_target(processed_target_next_obs), self.weights_tensor)
             # we can use the action probabilities instead of MC sampling to estimate the expectation
@@ -437,7 +434,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
             scalarized_rewards = self.scalarization(mb_rewards, self.weights_tensor)
             next_q_value = scalarized_rewards.flatten() + (1 - mb_dones.flatten()) * self.gamma * (min_qf_next_target)
 
-        processed_obs = self.qf_feature_extractor(mb_obs)
+        processed_obs = self.feature_extractor(mb_obs)
         qf1_values = self.scalarization(self.qf1(processed_obs), self.weights_tensor) # (B, A, R) -> (B, A)
         qf2_values = self.scalarization(self.qf2(processed_obs), self.weights_tensor)
         qf1_a_values = qf1_values.gather(1, mb_act.long()).view(-1)
@@ -450,10 +447,11 @@ class MOSACDiscreteSharedCNN(MOPolicy):
         qf_loss.backward()
         self.q_optimizer.step()
 
-        _, log_pi, action_probs = self.actor.get_action(mb_obs)
+        actor_processed_obs = self.feature_extractor(mb_obs)
+        _, log_pi, action_probs = self.actor.get_action(actor_processed_obs)
         with th.no_grad():
             # (!) Q values are scalarized before being compared (min of ensemble networks)
-            processed_obs = self.qf_feature_extractor(mb_obs)
+            processed_obs = self.feature_extractor(mb_obs)
             qf1_values = self.scalarization(self.qf1(processed_obs), self.weights_tensor)
             qf2_values = self.scalarization(self.qf2(processed_obs), self.weights_tensor)
             min_qf_values = th.min(qf1_values, qf2_values)
