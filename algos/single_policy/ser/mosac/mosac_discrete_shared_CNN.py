@@ -89,8 +89,7 @@ class MOSACDiscreteActor(nn.Module):
 
     def forward(self, x):
         """Forward pass of the actor network."""
-        input = self.feature_extractor(x)
-        logits = self.net(input)
+        logits = self.net(x)
 
         return logits
 
