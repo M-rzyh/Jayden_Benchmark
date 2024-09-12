@@ -1,2 +1,3 @@
 from .mosac_discrete_action import MOSACDiscrete
+from .mosac_discrete_shared_CNN import MOSACDiscreteSharedCNN
 from .mosac_continuous_action import MOSAC

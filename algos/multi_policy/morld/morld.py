@@ -25,12 +25,13 @@ from mo_utils.utils import nearest_neighbors
 from mo_utils.weights import equally_spaced_weights, random_weights
 from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 from algos.single_policy.esr.eupg import EUPG
-from algos.single_policy.ser.mosac import MOSAC, MOSACDiscrete
+from algos.single_policy.ser.mosac import MOSAC, MOSACDiscrete, MOSACDiscreteSharedCNN
 
 
 POLICIES = {
     "MOSAC": MOSAC,
     "MOSACDiscrete": MOSACDiscrete,
+    "MOSACDiscreteSharedCNN": MOSACDiscreteSharedCNN,
     "EUPG": EUPG,
 }
 
@@ -463,7 +464,7 @@ class MORLD(MOAgent):
             obs = th.tensor(obs).float().to(self.device)
 
         policy = self._select_nearest_policy(w) # Select the policy with weights nearest to the given weight vector
-        if self.policy_name == "MOSAC" or self.policy_name == "MOSACDiscrete":
+        if self.policy_name == "MOSAC" or self.policy_name.startswith("MOSACDiscrete"):
             action, _, _ = policy.wrapped.actor.get_action(obs) # MOSAC Policy
         elif self.policy_name == "EUPG":
             action = policy.wrapped.eval(obs, disc_vec_return)
