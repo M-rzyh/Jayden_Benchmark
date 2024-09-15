@@ -63,7 +63,7 @@ def register_mario():
     _register_mario_env('MOSuperMarioBrosDR-v2', is_random=True, rom_mode='pixel')
     _register_mario_env('MOSuperMarioBrosDR-v3', is_random=True, rom_mode='rectangle')
 
-    # Super Mario Bros. Random Levels (8 stages)
+    # Super Mario Bros. Dense Reward Levels (8 stages)
     stages = [
         "1-1", "1-2", "1-3",
         "2-1", "2-3",
@@ -72,7 +72,6 @@ def register_mario():
         "5-2", "5-3",
         "7-3", 
         "8-1", 
-
     ]
     _register_mario_env('MOSuperMarioBrosWithCoinsEnemy-v0', is_random=True, rom_mode='vanilla', stages=stages)
     _register_mario_env('MOSuperMarioBrosWithCoinsEnemy-v1', is_random=True, rom_mode='downsample', stages=stages)

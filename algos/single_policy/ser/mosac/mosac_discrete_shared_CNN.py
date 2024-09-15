@@ -45,13 +45,11 @@ class CustomCNN(nn.Module):
 
         # Adjusted CNN with fewer filters, reduced dimensionality, and more aggressive downsampling
         self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
+            nn.Conv2d(n_input_channels, 16, kernel_size=8, stride=4, padding=0),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),  # added pooling
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=0),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),  # added pooling
-            nn.Conv2d(64, 64, kernel_size=2, stride=1, padding=0),
+            nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
