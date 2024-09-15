@@ -257,6 +257,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
         self.qf2_target.load_state_dict(self.qf2.state_dict())
         self.q_optimizer = optim.Adam(list(self.feature_extractor.parameters()) + list(self.qf1.parameters()) + list(self.qf2.parameters()), lr=self.q_lr, eps=1e-4)
         self.actor_optimizer = optim.Adam(list(self.actor.parameters()), lr=self.policy_lr, eps=1e-4)
+        self.scaler = GradScaler()
 
         # Automatic entropy tuning
         self.autotune = autotune
@@ -555,7 +556,6 @@ class MOSACDiscreteSharedCNN(MOPolicy):
 
         # TRY NOT TO MODIFY: start the game
         obs, _ = self.env.reset()
-        self.scaler = GradScaler() # use mixed precision training
         for _ in range(total_timesteps):
             # ALGO LOGIC: put action logic here
             if self.global_step < self.learning_starts:
