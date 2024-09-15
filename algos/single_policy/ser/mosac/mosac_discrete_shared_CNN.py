@@ -238,7 +238,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
             net_arch=self.net_arch,
         ).to(self.device)
 
-        self.feature_extractor = CustomCNN(self.obs_shape, features_dim=net_arch[0])
+        self.feature_extractor = CustomCNN(self.obs_shape, features_dim=net_arch[0]).to(self.device)
         self.qf1 = MODiscreteSoftQNetwork(
             obs_shape=self.obs_shape, action_dim=self.action_dim, reward_dim=self.reward_dim, net_arch=self.net_arch
         ).to(self.device)
