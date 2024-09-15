@@ -14,6 +14,7 @@ from typing_extensions import override
 import gymnasium as gym
 import numpy as np
 import torch as th
+from torch.cuda.amp import autocast, GradScaler
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
@@ -24,12 +25,45 @@ from mo_utils.buffer import ReplayBuffer
 from mo_utils.evaluation import log_episode_info
 from mo_utils.morl_algorithm import MOPolicy
 from mo_utils.networks import (
-    NatureCNN,
     get_grad_norm,
     layer_init,
     mlp,
     polyak_update,
 )
+
+class CustomCNN(nn.Module):
+    def __init__(self, observation_shape: np.ndarray, features_dim: int = 256):
+        """CNN from DQN Nature.
+
+        Args:
+            observation_shape: Shape of the observation.
+            features_dim: Number of features extracted. This corresponds to the number of unit for the last layer.
+        """
+        super().__init__()
+        self.features_dim = features_dim
+        n_input_channels = 1 if len(observation_shape) == 2 else observation_shape[0]
+
+        # Adjusted CNN with fewer filters, reduced dimensionality, and more aggressive downsampling
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 16, kernel_size=8, stride=4, padding=0),  # Fewer filters
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=0),  # Reduced filters
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=0),  # More aggressive downsampling
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+
+        # Compute the flattened size
+        with th.no_grad():
+            n_flatten = self.cnn(th.as_tensor(np.zeros(observation_shape)[np.newaxis]).float()).shape[1]
+
+        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())  # Reduced feature dimensionality
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        if observations.dim() == 3:
+            observations = observations.unsqueeze(0)
+        return self.linear(self.cnn(observations / 255.0))  # Normalize inputs as float
 
 
 # ALGO LOGIC: initialize agent here:
@@ -204,7 +238,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
             net_arch=self.net_arch,
         ).to(self.device)
 
-        self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
+        self.feature_extractor = CustomCNN(self.obs_shape, features_dim=net_arch[0])
         self.qf1 = MODiscreteSoftQNetwork(
             obs_shape=self.obs_shape, action_dim=self.action_dim, reward_dim=self.reward_dim, net_arch=self.net_arch
         ).to(self.device)
@@ -434,40 +468,45 @@ class MOSACDiscreteSharedCNN(MOPolicy):
             scalarized_rewards = self.scalarization(mb_rewards, self.weights_tensor)
             next_q_value = scalarized_rewards.flatten() + (1 - mb_dones.flatten()) * self.gamma * (min_qf_next_target)
 
-        processed_obs = self.feature_extractor(mb_obs)
-        qf1_values = self.scalarization(self.qf1(processed_obs), self.weights_tensor) # (B, A, R) -> (B, A)
-        qf2_values = self.scalarization(self.qf2(processed_obs), self.weights_tensor)
-        qf1_a_values = qf1_values.gather(1, mb_act.long()).view(-1)
-        qf2_a_values = qf2_values.gather(1, mb_act.long()).view(-1)
-        qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
-        qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
-        qf_loss = qf1_loss + qf2_loss
+        with autocast():
+            processed_obs = self.feature_extractor(mb_obs)
+            qf1_values = self.scalarization(self.qf1(processed_obs), self.weights_tensor) # (B, A, R) -> (B, A)
+            qf2_values = self.scalarization(self.qf2(processed_obs), self.weights_tensor)
+            qf1_a_values = qf1_values.gather(1, mb_act.long()).view(-1)
+            qf2_a_values = qf2_values.gather(1, mb_act.long()).view(-1)
+            qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+            qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
+            qf_loss = qf1_loss + qf2_loss
 
         self.q_optimizer.zero_grad(set_to_none=True)
-        qf_loss.backward()
-        self.q_optimizer.step()
+        self.scaler.scale(qf_loss).backward()
+        self.scaler.step(self.q_optimizer)
 
-        actor_processed_obs = self.feature_extractor(mb_obs)
-        _, log_pi, action_probs = self.actor.get_action(actor_processed_obs)
+        with autocast():
+            actor_processed_obs = self.feature_extractor(mb_obs)
+            _, log_pi, action_probs = self.actor.get_action(actor_processed_obs)
         with th.no_grad():
             # (!) Q values are scalarized before being compared (min of ensemble networks)
             processed_obs = self.feature_extractor(mb_obs)
             qf1_values = self.scalarization(self.qf1(processed_obs), self.weights_tensor)
             qf2_values = self.scalarization(self.qf2(processed_obs), self.weights_tensor)
             min_qf_values = th.min(qf1_values, qf2_values)
-        actor_loss = (action_probs * ((self.alpha * log_pi) - min_qf_values)).mean()
+        
+        with autocast():
+            actor_loss = (action_probs * ((self.alpha * log_pi) - min_qf_values)).mean()
 
         self.actor_optimizer.zero_grad(set_to_none=True)
-        actor_loss.backward()
-        self.actor_optimizer.step()
+        self.scaler.scale(actor_loss).backward()
+        self.scaler.step(self.actor_optimizer)
 
         if self.autotune:
             # re-use action probabilities for temperature loss
-            alpha_loss = (action_probs.detach() * (-self.log_alpha.exp() * (log_pi + self.target_entropy).detach())).mean()
+            with autocast():
+                alpha_loss = (action_probs.detach() * (-self.log_alpha.exp() * (log_pi + self.target_entropy).detach())).mean()
 
             self.a_optimizer.zero_grad(set_to_none=True)
-            alpha_loss.backward()
-            self.a_optimizer.step()
+            self.scaler.scale(alpha_loss).backward()
+            self.scaler.step(self.a_optimizer)
             self.alpha_tensor = self.log_alpha.exp()
             self.alpha = self.log_alpha.exp().item()
 
@@ -477,6 +516,8 @@ class MOSACDiscreteSharedCNN(MOPolicy):
             polyak_update(params=self.qf2.parameters(), target_params=self.qf2_target.parameters(), tau=self.tau)
             self.qf1_target.requires_grad_(False)
             self.qf2_target.requires_grad_(False)
+        
+        self.scaler.update() # only called once per global step
 
         if self.global_step % 100 == 0 and self.log:
             log_str = f"_{self.id}" if self.id is not None else ""
@@ -514,6 +555,7 @@ class MOSACDiscreteSharedCNN(MOPolicy):
 
         # TRY NOT TO MODIFY: start the game
         obs, _ = self.env.reset()
+        self.scaler = GradScaler() # use mixed precision training
         for _ in range(total_timesteps):
             # ALGO LOGIC: put action logic here
             if self.global_step < self.learning_starts:
