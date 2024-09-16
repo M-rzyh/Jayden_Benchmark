@@ -46,6 +46,7 @@ class MOQLearning(MOPolicy, MOAgent):
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         wandb_tags: Optional[List[str]] = None,
+        offline_mode: bool = False,
         log: bool = True,
         seed: Optional[int] = None,
         parent_rng: Optional[np.random.Generator] = None,
@@ -76,6 +77,7 @@ class MOQLearning(MOPolicy, MOAgent):
             wandb_entity: The entity to use for logging.
             wandb_group: The wandb group to use for logging.
             wandb_tags: Extra wandb tags to use for experiment versioning.
+            offline_mode: Whether to use wandb offline mode or not.
             log: Whether to log or not.
             seed: The seed to use for the experiment.
             parent_rng: The random number generator to use. If None, a new one is created.
@@ -120,7 +122,7 @@ class MOQLearning(MOPolicy, MOAgent):
 
         self.log = log
         if self.log and parent_rng is None:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags, offline_mode)
 
     def __act(self, obs: np.array) -> int:
         # epsilon-greedy

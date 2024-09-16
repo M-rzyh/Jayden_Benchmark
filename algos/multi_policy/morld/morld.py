@@ -81,6 +81,7 @@ class MORLD(MOAgent):
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         wandb_tags: Optional[List[str]] = None,
+        offline_mode: bool = False,
         log: bool = True,
         device: Union[th.device, str] = "auto",
     ):
@@ -109,6 +110,7 @@ class MORLD(MOAgent):
             wandb_entity: For wandb logging
             wandb_group: The wandb group to use for logging.
             wandb_tags: Extra wandb tags to use for experiment versioning.
+            offline_mode: Whether to run wandb in offline mode.
             log: For wandb logging
             device: torch device
         """
@@ -211,7 +213,7 @@ class MORLD(MOAgent):
         ]
         self.archive = ParetoArchive()
         if self.log:
-            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group, tags=wandb_tags)
+            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group, tags=wandb_tags, offline=offline_mode)
 
         if self.shared_buffer:
             self.__share_buffers()

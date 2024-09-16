@@ -129,6 +129,7 @@ class GPIPD(MOPolicy, MOAgent):
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         wandb_tags: Optional[List[str]] = None,
+        offline_mode: bool = False,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -178,6 +179,7 @@ class GPIPD(MOPolicy, MOAgent):
             wandb_entity: The name of the wandb entity.
             wandb_group: The wandb group to use for logging.
             wandb_tags: Extra wandb tags to use for experiment versioning.
+            offline_mode: Whether to use wandb in offline mode.
             log: Whether to log.
             seed: The seed for random number generators.
             device: The device to use.
@@ -281,7 +283,7 @@ class GPIPD(MOPolicy, MOAgent):
         # logging
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags, offline_mode)
 
     def get_config(self):
         """Return the configuration of the agent."""

@@ -45,6 +45,7 @@ class MPMOQLearning(MOAgent):
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         wandb_tags: Optional[List[str]] = None,
+        offline_mode: bool = False,
         seed: Optional[int] = None,
         log: bool = True,
     ):
@@ -70,6 +71,7 @@ class MPMOQLearning(MOAgent):
             wandb_entity: The entity to use for logging.
             wandb_group: The wandb group to use for logging.
             wandb_tags: Extra wandb tags to use for experiment versioning.
+            offline_mode: Whether to use wandb in offline mode or not.
             seed: The seed to use for reproducibility.
             log: Whether to log or not.
         """
@@ -103,7 +105,7 @@ class MPMOQLearning(MOAgent):
         self.log = log
 
         if self.log:
-            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group, tags=wandb_tags)
+            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group, tags=wandb_tags, offline=offline_mode)
 
     @override
     def get_config(self) -> dict:

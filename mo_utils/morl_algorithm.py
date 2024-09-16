@@ -274,6 +274,7 @@ class MOAgent(ABC):
         entity: Optional[str] = None, 
         group: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        offline: bool = False
     ) -> None:
         """Initializes the wandb writer.
 
@@ -304,6 +305,7 @@ class MOAgent(ABC):
             save_code=True,
             group=group,
             tags=[experiment_name, env_id] + (tags if tags is not None else []),
+            mode="offline" if offline else "online",
         )
         # The default "step" of wandb is not the actual time step (gloabl_step) of the MDP
         wandb.define_metric("*", step_metric="global_step")

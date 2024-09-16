@@ -46,6 +46,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, help="Wandb entity to use", required=False)
     parser.add_argument("--wandb-group", type=str, help="Wandb group to use for logging", required=False)
     parser.add_argument("--wandb-tags", type=str, nargs="+", help="Extra wandb tags for experiment versioning", required=False)
+    parser.add_argument("--wandb-offline", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True, help="Whether to run wandb offline")
     parser.add_argument(
         "--auto-tag",
         type=lambda x: bool(strtobool(x)),
@@ -241,6 +242,7 @@ def main():
             wandb_entity=args.wandb_entity,
             wandb_group=args.wandb_group,
             wandb_tags=args.wandb_tags,
+            offline_mode=args.wandb_offline,
             generalization_algo=args.generalization_algo if args.test_generalization else None,
             **args.init_hyperparams,
         )

@@ -34,6 +34,7 @@ class PQL(MOAgent):
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         wandb_tags: Optional[List[str]] = None,
+        offline_mode: bool = False,
         log: bool = True,
     ):
         """Initialize the Pareto Q-learning algorithm.
@@ -51,6 +52,7 @@ class PQL(MOAgent):
             wandb_entity: The wandb entity used for logging.
             wandb_group: The wandb group to use for logging.
             wandb_tags: Extra wandb tags to use for experiment versioning.
+            offline_mode: Whether to run wandb in offline mode.
             log: Whether to log or not.
         """
         super().__init__(env, seed=seed)
@@ -100,7 +102,7 @@ class PQL(MOAgent):
         self.log = log
 
         if self.log:
-            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group, tags=wandb_tags)
+            self.setup_wandb(project_name=self.project_name, experiment_name=self.experiment_name, entity=wandb_entity, group=wandb_group, tags=wandb_tags, offline=offline_mode)
 
     def get_config(self) -> dict:
         """Get the configuration dictionary.

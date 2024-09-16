@@ -140,6 +140,7 @@ class SACContinuous(MOAgent):
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         wandb_tags: Optional[List[str]] = None,
+        offline_mode: bool = False,
         id: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         log: bool = True,
@@ -167,6 +168,7 @@ class SACContinuous(MOAgent):
             wandb_entity: The entity to use for logging.
             wandb_group: The wandb group to use for logging.
             wandb_tags: Extra wandb tags to use for experiment versioning.
+            offline_mode: Whether to run wandb in offline mode.
             id: id of the SAC policy, for multi-policy algos
             device: torch device
             torch_deterministic: whether to use deterministic version of pytorch
@@ -257,7 +259,7 @@ class SACContinuous(MOAgent):
         # Logging
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags)
+            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags, offline_mode)
 
     def get_config(self) -> dict:
         """Returns the configuration of the policy."""
