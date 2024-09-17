@@ -127,7 +127,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         # ============ Weights Saving ============
         self.save_weights = save_weights
         self.save_metric = save_metric
-        self.best_metrics = -np.inf * np.ones((len(save_metric), len(test_envs)))
+        self.best_metrics = -np.inf * np.ones(len(test_envs))
         self.seed = seed 
 
     def eval_mo(
