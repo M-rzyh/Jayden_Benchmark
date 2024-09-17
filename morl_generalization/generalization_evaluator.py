@@ -36,7 +36,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             eval_params: Optional[dict] = None,
             normalization_type: str = "discounted",
             save_weights: bool = False,
-            save_metrics: List[str] = ['hypervolume', 'eum'],
+            save_metric: str = 'hypervolume',
             **kwargs
         ):
         """Wrapper records generalization evaluation metrics for multi-objective reinforcement learning algorithms.
@@ -56,7 +56,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             eval_params: Evaluation parameters (for normalisation, recovering single-objective rewards, etc.)
             normalization_type: Type of cumulative reward normalisation to use (either 'discounted' or 'undiscounted')
             save_weights: Whether to save the best weights for each test environment
-            save_metrics: List of metrics to save the best weights for
+            save_metric: Metrics to save the best front (and weights if `save_weights` is set) for
         """
         gym.utils.RecordConstructorArgs.__init__(
             self, 
@@ -69,8 +69,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             record_video_w_freq=record_video_w_freq,
             record_video_ep_freq=record_video_ep_freq, 
             eval_params=eval_params, 
-            normalization_type=normalization_type, 
-            save_metrics=save_metrics, 
+            save_metrics=save_metric, 
             **kwargs
         )
         super().__init__(env)
@@ -127,8 +126,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
         # ============ Weights Saving ============
         self.save_weights = save_weights
-        self.save_metrics = save_metrics
-        self.best_metrics = [[-np.inf for _ in range(len(test_envs))] for _ in save_metrics]
+        self.save_metric = save_metric
+        self.best_metrics = -np.inf * np.ones((len(save_metric), len(test_envs)))
         self.seed = seed 
 
     def eval_mo(
@@ -285,16 +284,19 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             )
             wandb.log({f"eval/{idstr}front/{self.test_env_names[i]}": front})
 
-            if self.save_weights:
-                for j, save_metric in enumerate(self.save_metrics):
-                    if save_metric in metrics.keys():
-                        if metrics[save_metric] > self.best_metrics[j][i]:
-                            self.best_metrics[j][i] = hv
-                            agent.save(
-                                save_dir=f"weights/{self.algo_name}/best_{save_metric}/seed{self.seed}/{self.test_env_names[i]}",
-                                filename=f"{self.test_env_names[i]}", 
-                                save_replay_buffer=False
-                            )
+            if metrics[self.save_metric] > self.best_metrics[i]:
+                self.best_metrics[i] = metrics[self.save_metric]
+                best_front = wandb.Table(
+                    columns=[f"objective_{j}" for j in range(1, reward_dim + 1)],
+                    data=[p.tolist() for p in filtered_front],
+                )
+                wandb.log({f"eval/best_{self.save_metric}_front/{self.test_env_names[i]}": best_front})
+                if self.save_weights:
+                    agent.save(
+                        save_dir=f"weights/{self.algo_name}/best_{self.save_metric}/seed{self.seed}/{self.test_env_names[i]}",
+                        filename=f"{self.test_env_names[i]}", 
+                        save_replay_buffer=False
+                    )
 
 
     def _report(
