@@ -290,8 +290,13 @@ class MOLavaGridDR(MiniGridEnv):
 
         # if self.is_rgb:
         #     return self.rgb_observation(), vec_reward, terminated, truncated, {}
+        info = {
+            "time": self.step_count,
+            "goal": self.collected_goals,
+        }
+        info["original_scalar_reward"] = vec_reward[0] + 0.1 * vec_reward[1]
         
-        return self.observation(), vec_reward, terminated, truncated, {}
+        return self.observation(), vec_reward, terminated, truncated, info
 
     def reset(
         self,
