@@ -78,13 +78,14 @@ class MOLavaGridDR(MiniGridEnv):
     - agent_start_pos: agent starting position
     - agent_start_dir: agent starting direction
     - n_goals: number of goals
+    - weightages: weightages of goals
     - goal_pos: position to place goals, must be a list of (y, x) tuples
     - n_lava: max number of lava tiles to add
     - bit_map: (size-1)*(size-1) list to indicate maze configuration (0 for empty, 1 for lava)
 
     ## Reward Space
     The reward is 2-dimensional:
-    - 0: Lava Damage (-1 if agent falls into lava)
+    - 0: Lava Damage (-5 if agent falls into lava)
     - 1: Time Penalty (-1 for every step the agent has taken)
 
     ## Termination
@@ -136,7 +137,6 @@ class MOLavaGridDR(MiniGridEnv):
             assert all([0 < x < size-1 and 0 < y < size-1 for x, y in goal_pos]), "goal positions must be within the grid"
         self.collected_goals = []
         self.goal_weightages = weightages
-        print("weightages", self.goal_weightages)
         self.goal_to_weightage = {}
 
         self._gen_grid(self.width, self.height, goal_pos=goal_pos)
