@@ -6,13 +6,64 @@ import random
 from minigrid.core.constants import COLOR_TO_IDX, OBJECT_TO_IDX
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
-from minigrid.core.world_object import Goal, Lava
+from minigrid.core.world_object import Lava, WorldObj
 from minigrid.minigrid_env import MiniGridEnv
+from minigrid.core.constants import (
+    COLOR_TO_IDX,
+    COLORS,
+    IDX_TO_COLOR,
+    IDX_TO_OBJECT,
+    OBJECT_TO_IDX,
+)
+from minigrid.utils.rendering import (
+    fill_coords,
+    point_in_circle,
+    point_in_line,
+    point_in_rect,
+)
 import operator
 from functools import reduce
 from typing import Optional
 
 from morl_generalization.algos.dr import DREnv
+
+class Goal(WorldObj):
+    def __init__(self, color="blue"):
+        super().__init__("goal", color)
+
+    def can_overlap(self):
+        return True
+
+    def render(self, img):
+        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
+class Lava(WorldObj):
+    def __init__(self):
+        super().__init__("lava", "grey")
+
+    def can_overlap(self):
+        return True
+
+    def render(self, img):
+        c = (255, 128, 0)
+
+        # Background color
+        fill_coords(img, point_in_rect(0, 1, 0, 1), c)
+
+        # Little waves
+        for i in range(3):
+            ylo = 0.3 + 0.2 * i
+            yhi = 0.4 + 0.2 * i
+            fill_coords(img, point_in_line(0.1, ylo, 0.3, yhi, r=0.03), (0, 0, 0))
+            fill_coords(img, point_in_line(0.3, yhi, 0.5, ylo, r=0.03), (0, 0, 0))
+            fill_coords(img, point_in_line(0.5, ylo, 0.7, yhi, r=0.03), (0, 0, 0))
+            fill_coords(img, point_in_line(0.7, yhi, 0.9, ylo, r=0.03), (0, 0, 0))
+
+GOAL_IDX_TO_COLOR = {
+    0: "green",
+    1: "yellow",
+    2: "blue",
+}
 
 class MOLavaGapDR(MiniGridEnv):
     """
@@ -26,9 +77,10 @@ class MOLavaGapDR(MiniGridEnv):
     - size: maze is size*size big (including walls)
     - agent_start_pos: agent starting position
     - agent_start_dir: agent starting direction
-    - goal_pos: goal default position. If None, default to bottom right corner.
+    - n_goals: number of goals
+    - goal_pos: position to place goals, must be a list of (y, x) tuples
     - n_lava: max number of lava tiles to add
-    - bit_map: (size-1)*(size-1) list to indicate maze configuration (1 for lava, 0 for empty)
+    - bit_map: (size-1)*(size-1) list to indicate maze configuration (0 for empty, 1 for lava)
 
     ## Reward Space
     The reward is 2-dimensional:
@@ -37,30 +89,33 @@ class MOLavaGapDR(MiniGridEnv):
 
     ## Termination
     The episode ends if any one of the following conditions is met:
-    - 1: The agent reaches the goal. +100 will be added to all dimensions in the vectorial reward.
+    - 1: The agent reaches the goal. +100*n_goals*goal_weightage will be added to all dimensions in the vectorial reward.
     - 2: Timeout (see max_steps).
     """
 
     def __init__(
         self,
-        size=11,
+        size=13,
         max_steps=256,
-        agent_start_pos=(1, 1),
+        agent_start_pos=(2, 2),
         agent_start_dir=0,
-        goal_pos=None,
-        n_lava=1000,
+        n_goals=3, # number of goals
+        weightages=None, # weightages of goals
+        n_lava=40,
         bit_map=None,
+        goal_pos=None,
         is_rgb=False,
         tile_size=8,
         **kwargs,
     ):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
+        self.n_goals = n_goals  # Set the number of goals
 
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
         # Reduce lava if there are too many
-        self.n_lava = min(int(n_lava), (size-2)**2 - 2)
+        self.n_lava = min(int(n_lava), (size-2)**2 - 1 - n_goals) # -1 for agent start position, -n_goals for goal positions
 
         super().__init__(
             mission_space=mission_space,
@@ -71,36 +126,37 @@ class MOLavaGapDR(MiniGridEnv):
             **kwargs,
         )
 
-        self.goal_pos = (self.width - 2, self.height - 2) if goal_pos is None else goal_pos
+        if weightages is None:
+            weightages = [1/n_goals] * n_goals
+        assert self.n_goals <= 3, "maximum number of goals is 3"
+        assert len(weightages) == self.n_goals, "number of weightages must match number of goals"
+        assert sum(weightages) == 1, "weightages must sum to 1"
+        if goal_pos is not None:
+            assert len(goal_pos) == len(set(goal_pos)), "number of unique goal positions must match number of goals"
+            assert all([0 < x < size-1 and 0 < y < size-1 for x, y in goal_pos]), "goal positions must be within the grid"
+        self.collected_goals = []
+        self.goal_weightages = weightages
+        print("weightages", self.goal_weightages)
+        self.goal_to_weightage = {}
 
-        self._gen_grid(self.width, self.height)
+        self._gen_grid(self.width, self.height, goal_pos=goal_pos)
         # Default configuration (if provided)
         if bit_map is not None:
             bit_map = np.array(bit_map)
-            assert bit_map.shape == (size-2, size-2), "invalid bit map configuration"
+            assert bit_map.shape == (size-4, size-4), "invalid bit map configuration"
             indices = np.argwhere(bit_map)
             for y, x in indices:
-                # Add an offset of 1 for the outer walls
-                self.put_obj(Lava(), x + 1, y + 1)
+                assert not self._reject_fn((x+2, y+2)), "position already occupied, cannot place lava"
+                self.put_obj(Lava(), x+2, y+2)
 
         # Observation space
-        self.is_rgb = is_rgb
-        if self.is_rgb:
-            self.observation_space = spaces.Box(
-                low=0,
-                high=255,
-                shape=(self.width * tile_size, self.height * tile_size, 3),
-                dtype='uint8'
-            )
-        else:
-            imgShape = (self.width, self.height, 3)
-            imgSize = reduce(operator.mul, imgShape, 1)
-            self.observation_space = spaces.Box(
-                low=0,
-                high=255,
-                shape=(imgSize,),
-                dtype='float32'
-            )
+        imgShape = (self.width - 2) * (self.height - 2) + 1 + self.n_goals # +n_goals for goal weightages, +1 for agent direction
+        self.observation_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(imgShape,),
+            dtype='float32'
+        )
         # lava damage, time penalty
         self.reward_space = spaces.Box(
             low=np.array([-max_steps, -max_steps]),
@@ -115,17 +171,22 @@ class MOLavaGapDR(MiniGridEnv):
 
     @staticmethod
     def _gen_mission():
-        return "get to goal while avoiding lava, or saving time, or both"
+        return "get to goals while balancing lava damage and time penalty"
 
-    def _gen_grid(self, width, height):
+    def _gen_grid(self, width, height, goal_pos=None):
         # Create an empty grid
         self.grid = Grid(width, height)
 
         # Generate the surrounding walls
         self.grid.wall_rect(0, 0, width, height)
+        # place lava around the inner border
+        for i in range(1, width-1):
+            self.grid.set(i, 1, Lava())
+            self.grid.set(i, height-2, Lava())
 
-        # Place a goal square in the bottom-right corner
-        self.put_obj(Goal(), *self.goal_pos)
+        for j in range(1, height-1):
+            self.grid.set(1, j, Lava())
+            self.grid.set(width-2, j, Lava())
 
         # Place the agent
         if self.agent_start_pos is not None:
@@ -133,6 +194,38 @@ class MOLavaGapDR(MiniGridEnv):
             self.agent_dir = self.agent_start_dir
         else:
             self.place_agent()
+
+        # Place multiple goal squares at random positions
+        if goal_pos is None:
+            self.goal_positions = self._randomly_place_multiple_goals()
+        else:
+            for i, pos in enumerate(goal_pos):
+                self.put_obj(Goal(GOAL_IDX_TO_COLOR[i]), pos[0], pos[1])
+                self.goal_to_weightage[(pos[0], pos[1])] = self.goal_weightages[i]
+            self.goal_positions = goal_pos
+
+    # prevent lava from being place on start and goal positions
+    def _reject_fn(self, pos):
+        if pos == self.agent_start_pos or pos in self.goal_positions:
+            return True
+        return False
+
+    def _randomly_place_multiple_goals(self):
+        """Randomly place the goal objects avoiding the agent start position."""
+        available_positions = [
+            (x, y) for x in range(1, self.width - 1) for y in range(1, self.height - 1)
+            if (x, y) != self.agent_start_pos
+        ]
+
+        # Sample unique goal positions
+        goal_positions = random.sample(available_positions, self.n_goals)
+
+        # Place goal objects in the grid
+        for i, goal_pos in enumerate(goal_positions):
+            self.put_obj(Goal(GOAL_IDX_TO_COLOR[i]), goal_pos[0], goal_pos[1])
+            self.goal_to_weightage[(goal_pos[0], goal_pos[1])] = self.goal_weightages[i]
+
+        return goal_positions
 
     def step(self, action):
         # Invalid action
@@ -177,9 +270,12 @@ class MOLavaGapDR(MiniGridEnv):
             if fwd_cell is None or fwd_cell.can_overlap():
                 self.agent_pos = tuple(fwd_pos)
             if fwd_cell is not None and fwd_cell.type == "goal":
-                terminated = True
-                # +100 to all objectives if reach goal
-                vec_reward += 100
+                goal_idx = fwd_cell.cur_pos # Get the goal's index
+                if goal_idx not in self.collected_goals:
+                    self.collected_goals.append(goal_idx)
+                    vec_reward += self.n_goals * 100 * self.goal_to_weightage[goal_idx]
+                    if len(self.collected_goals) == self.n_goals:
+                        terminated = True
             if fwd_cell is not None and fwd_cell.type == "lava": 
                 # walk into lava
                 vec_reward[0] = -5
@@ -192,8 +288,8 @@ class MOLavaGapDR(MiniGridEnv):
         if self.render_mode == "human":
             self.render()
 
-        if self.is_rgb:
-            return self.rgb_observation(), vec_reward, terminated, truncated, {}
+        # if self.is_rgb:
+        #     return self.rgb_observation(), vec_reward, terminated, truncated, {}
         
         return self.observation(), vec_reward, terminated, truncated, {}
 
@@ -205,6 +301,7 @@ class MOLavaGapDR(MiniGridEnv):
     ):
         # Step count since episode start
         self.step_count = 0
+        self.collected_goals = []
 
         # Place the agent
         if self.agent_start_pos is not None:
@@ -216,8 +313,8 @@ class MOLavaGapDR(MiniGridEnv):
         if self.render_mode == "human":
             self.render()
 
-        if self.is_rgb:
-            return self.rgb_observation(), {}
+        # if self.is_rgb:
+        #     return self.rgb_observation(), {}
         return self.observation(), {}
     
     def _resample_n_lava(self):
@@ -225,50 +322,54 @@ class MOLavaGapDR(MiniGridEnv):
 
         return n_lava
     
+    def _randomize_goal_weightages(self):
+        """Randomly assign weightages to each goal, ensuring they sum to 1."""
+        random_weights = np.random.rand(self.n_goals).astype(np.float32)
+        self.goal_weightages = np.array(random_weights / np.sum(random_weights))
+
+    def _reset_agent_start_pos(self):
+        """Randomly reset the agent's position."""
+        self.agent_start_pos = (random.randint(1, self.width - 1), random.randint(1, self.height - 1))
+        self.agent_start_dir = random.randint(0, 3)
+    
     def reset_random(self):
         """Use domain randomization to create the environment."""
-        # Create an empty grid with goal and agent only
+        # Create an empty grid with goals and agent only
+        self._reset_agent_start_pos()
+        self._randomize_goal_weightages()
         self._gen_grid(self.width, self.height)
-
-        # prevent lava from being place on start and goal positions
-        def reject_fn(self, pos):
-            if pos == self.agent_start_pos or pos == self.goal_pos:
-                return True
-            return False
         
-        grid_width = self.width - 2
-        grid_height = self.height - 2
-
         # Create a list of all possible positions
-        all_positions = [(x, y) for x in range(grid_width) for y in range(grid_height)]
-
-        # Remove the agent and goal positions
-        all_positions.remove((0, 0))
-        all_positions.remove((grid_width - 1, grid_height - 1))
+        available_positions = [
+            (x, y) for x in range(1, self.width-1) for y in range(1, self.height-1)
+            if not self._reject_fn((x, y))
+        ]
 
         # Randomly sample `n_lava` unique positions
         n_lava = self._resample_n_lava()
-        selected_positions = random.sample(all_positions, n_lava)
+        selected_positions = random.sample(available_positions, n_lava)
 
         # Place the Lava objects at the randomly selected positions
         for x, y in selected_positions:
-            self.put_obj(Lava(), x + 1, y + 1)
+            self.put_obj(Lava(), x, y)
         
         # Double check that the agent and goal doesn't overlap with an object
         start_cell = self.grid.get(*self.agent_start_pos)
         assert start_cell is None or start_cell.can_overlap(), "agent's initial position is invalid"
 
+    # use only object color to encode the grid, reduce dimensionality by 3x (original has (obj_type, obj_color, obj_state))
+    # MAKE SURE EACH OBJECT HAS A UNIQUE COLOR: grey used by lava, (green, yellow, blue) used by goals, red used by empty, purple used by agent
     def observation(self):
         env = self.unwrapped
         full_grid = env.grid.encode()
-        full_grid[env.agent_pos[0]][env.agent_pos[1]] = np.array([
-            OBJECT_TO_IDX['agent'],
-            COLOR_TO_IDX['red'],
-            env.agent_dir
-        ])
+        sub_grid = full_grid[1:self.width-1, 1:self.height-1, 1] # ignore the walls
+        sub_grid[env.agent_pos[0]-1][env.agent_pos[1]-1] = COLOR_TO_IDX['purple'] # agent color
 
-        full_grid = full_grid.flatten()
-        return full_grid.astype(np.float32) / 1.
+        sub_grid = np.concatenate(([env.agent_dir], self.goal_weightages, sub_grid.flatten()))
+
+        # full_grid = full_grid.flatten()
+        # full_grid = np.concatenate([full_grid, np.array(self.goal_weightages)])
+        return sub_grid.astype(np.float32) / 1.
     
     def rgb_observation(self):
         env = self.unwrapped
@@ -278,6 +379,25 @@ class MOLavaGapDR(MiniGridEnv):
             env.agent_dir,
         )
         return rgb_img
+    
+class MOLavaGapCheckerBoard(MOLavaGapDR):
+    def __init__(self, **kwargs):
+        bit_map = [
+            [0, 1, 0, 1, 0, 1, 0, 1, 0],
+            [1, 0, 1, 0, 1, 0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0],
+            [1, 0, 1, 0, 1, 0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0],
+            [1, 0, 1, 0, 1, 0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0],
+            [1, 0, 1, 0, 1, 0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0]
+        ]
+        goal_pos = [(9, 3), (9, 9), (3, 9)]
+        weightages = [0.3, 0.1, 0.6]
+        agent_pos = (6, 4) # bottom left
+        agent_dir = 1 # face downwards
+        super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, agent_start_pos=agent_pos, agent_start_dir=agent_dir, **kwargs)
 
 if __name__ == "__main__":
     from gymnasium.envs.registration import register
@@ -288,7 +408,7 @@ if __name__ == "__main__":
 
     register(
         id="MOLavaGapDR",
-        entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGapDR",
+        entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGapCheckerBoard",
     )
     env = gym.make(
         "MOLavaGapDR", 
@@ -297,7 +417,7 @@ if __name__ == "__main__":
     )
 
     terminated = False
-    env.unwrapped.reset_random()
+    # env.unwrapped.reset_random()
     env.reset()
     while True:
         obs, r, terminated, truncated, info = env.step(env.action_space.sample())
