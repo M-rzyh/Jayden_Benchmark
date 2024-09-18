@@ -63,7 +63,7 @@ def register_mario():
     _register_mario_env('MOSuperMarioBrosDR-v2', is_random=True, rom_mode='pixel')
     _register_mario_env('MOSuperMarioBrosDR-v3', is_random=True, rom_mode='rectangle')
 
-    # Super Mario Bros. Zero-Shot Testing (levels not seen are 7-3, 3-2, 3-3, 5-3, 5-2, 8-1)
+    # Super Mario Bros. Zero-Shot Testing (levels not seen are 7-3, 3-2, 3-3, 5-2, 8-1)
     # dense coin-enemy reward levels
     # stages = [
     #     "1-1", "1-2", "1-3",
@@ -79,7 +79,7 @@ def register_mario():
         "2-1", "2-2", "2-3", "2-4",
         "3-1", "3-4",
         "4-1", "4-2", "4-3", "4-4",
-        "5-1", "5-4",
+        "5-1", "5-3", "5-4",
         "6-1", "6-2", "6-3", "6-4",
         "7-1", "7-2", "7-4",
         "8-2", "8-3", "8-4"
