@@ -65,11 +65,11 @@ GOAL_IDX_TO_COLOR = {
     2: "blue",
 }
 
-class MOLavaGapDR(MiniGridEnv):
+class MOLavaGridDR(MiniGridEnv):
     """
     ## Description
     Multi-objective version of the Minigrid Lava Gap environment. 
-    (https://minigrid.farama.org/environments/minigrid/LavaGapEnv/)
+    (https://minigrid.farama.org/environments/minigrid/LavaGridEnv/)
     Unlike the original Lava Gap environment, the episode does not terminate when the agent falls
     into lava.
 
@@ -101,7 +101,7 @@ class MOLavaGapDR(MiniGridEnv):
         agent_start_dir=0,
         n_goals=3, # number of goals
         weightages=None, # weightages of goals
-        n_lava=40,
+        n_lava=60,
         bit_map=None,
         goal_pos=None,
         is_rgb=False,
@@ -171,7 +171,7 @@ class MOLavaGapDR(MiniGridEnv):
 
     @staticmethod
     def _gen_mission():
-        return "get to goals while balancing lava damage and time penalty"
+        return "visit all goals while balancing lava damage and time penalty"
 
     def _gen_grid(self, width, height, goal_pos=None):
         # Create an empty grid
@@ -329,7 +329,12 @@ class MOLavaGapDR(MiniGridEnv):
 
     def _reset_agent_start_pos(self):
         """Randomly reset the agent's position."""
-        self.agent_start_pos = (random.randint(1, self.width - 1), random.randint(1, self.height - 1))
+        self.agent_start_pos = (0,0) # set it to an invalid position first so it is not include in reject_fn
+        available_positions = [
+            (x, y) for x in range(1, self.width-1) for y in range(1, self.height-1)
+            if not self._reject_fn((x, y))
+        ]
+        self.agent_start_pos = random.choice(available_positions)
         self.agent_start_dir = random.randint(0, 3)
     
     def reset_random(self):
@@ -380,24 +385,6 @@ class MOLavaGapDR(MiniGridEnv):
         )
         return rgb_img
     
-class MOLavaGapCheckerBoard(MOLavaGapDR):
-    def __init__(self, **kwargs):
-        bit_map = [
-            [0, 1, 0, 1, 0, 1, 0, 1, 0],
-            [1, 0, 1, 0, 1, 0, 1, 0, 1],
-            [0, 1, 0, 1, 0, 1, 0, 1, 0],
-            [1, 0, 1, 0, 1, 0, 1, 0, 1],
-            [0, 1, 0, 1, 0, 1, 0, 1, 0],
-            [1, 0, 1, 0, 1, 0, 1, 0, 1],
-            [0, 1, 0, 1, 0, 1, 0, 1, 0],
-            [1, 0, 1, 0, 1, 0, 1, 0, 1],
-            [0, 1, 0, 1, 0, 1, 0, 1, 0]
-        ]
-        goal_pos = [(9, 3), (9, 9), (3, 9)]
-        weightages = [0.3, 0.1, 0.6]
-        agent_pos = (6, 4) # bottom left
-        agent_dir = 1 # face downwards
-        super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, agent_start_pos=agent_pos, agent_start_dir=agent_dir, **kwargs)
 
 if __name__ == "__main__":
     from gymnasium.envs.registration import register
@@ -407,17 +394,17 @@ if __name__ == "__main__":
     seed_everything(42)
 
     register(
-        id="MOLavaGapDR",
-        entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGapCheckerBoard",
+        id="MOLavaGridDR",
+        entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGridDR",
     )
     env = gym.make(
-        "MOLavaGapDR", 
+        "MOLavaGridDR", 
         render_mode="human",
         # is_rgb=True,
     )
 
     terminated = False
-    # env.unwrapped.reset_random()
+    env.unwrapped.reset_random()
     env.reset()
     while True:
         obs, r, terminated, truncated, info = env.step(env.action_space.sample())

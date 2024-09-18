@@ -1,7 +1,7 @@
 import gymnasium as gym
-from envs.mo_lava_gap.mo_lava_gap import MOLavaGapDR
+from envs.mo_lava_gap.mo_lava_grid import MOLavaGridDR
 
-class MOLavaGapCorridor(MOLavaGapDR):
+class MOLavaGridCorridor(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -19,24 +19,25 @@ class MOLavaGapCorridor(MOLavaGapDR):
         agent_pos = (2, 6) # middle row left column
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, agent_start_pos=agent_pos, weightages=weightages, **kwargs)
 
-class MOLavaGapIslands(MOLavaGapDR):
+class MOLavaGridIslands(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
-            [0, 1, 1, 1, 1, 0, 0, 0, 0],
+            [1, 1, 1, 1, 1, 1, 0, 0, 1],
             [0, 0, 1, 1, 1, 1, 0, 0, 0],
-            [1, 0, 0, 1, 1, 1, 0, 0, 0],
-            [1, 1, 0, 0, 1, 1, 1, 1, 0],
-            [1, 1, 1, 0, 0, 1, 1, 1, 1],
-            [0, 0, 1, 1, 0, 0, 1, 1, 1],
-            [0, 0, 1, 1, 1, 0, 0, 1, 1],
-            [0, 0, 0, 0, 1, 1, 0, 0, 1],
-            [0, 0, 0, 0, 1, 1, 1, 0, 0]
+            [1, 0, 0, 1, 1, 1, 1, 0, 0],
+            [1, 1, 0, 0, 0, 1, 1, 1, 1],
+            [1, 1, 1, 0, 0, 0, 1, 1, 1],
+            [0, 0, 1, 1, 0, 0, 0, 0, 1],
+            [0, 0, 0, 1, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 0, 0, 0],
+            [1, 0, 0, 0, 1, 1, 1, 0, 0]
         ]
-        goal_pos = [(10, 2), (10, 10), (2, 10)]
-        weightages = [0.02, 0.75, 0.23]
-        super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, **kwargs)
+        goal_pos = [(9, 3), (10, 10), (3, 9)]
+        agent_pos = (2, 3) 
+        # default weightages (equal)
+        super().__init__(bit_map=bit_map, goal_pos=goal_pos, agent_start_pos=agent_pos,  **kwargs)
 
-class MOLavaGapMaze(MOLavaGapDR):
+class MOLavaGridMaze(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
             [0, 1, 0, 0, 0, 1, 0, 0, 0],
@@ -53,7 +54,7 @@ class MOLavaGapMaze(MOLavaGapDR):
         weightages = [0.05, 0.05, 0.9]
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, **kwargs)
 
-class MOLavaGapSnake(MOLavaGapDR):
+class MOLavaGridSnake(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
             [0, 1, 0, 0, 0, 1, 0, 0, 0],
@@ -70,7 +71,7 @@ class MOLavaGapSnake(MOLavaGapDR):
         weightages = [0.2, 0.3, 0.5]
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, **kwargs)
 
-class MOLavaGapRoom(MOLavaGapDR):
+class MOLavaGridRoom(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
             [0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -89,7 +90,7 @@ class MOLavaGapRoom(MOLavaGapDR):
         agent_dir = 3 # face upwards
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, agent_start_dir=agent_dir, agent_start_pos=agent_pos, **kwargs)
 
-class MOLavaGapLabyrinth(MOLavaGapDR):
+class MOLavaGridLabyrinth(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -107,7 +108,7 @@ class MOLavaGapLabyrinth(MOLavaGapDR):
         agent_pos = (2, 10) # bottom left
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, agent_start_pos=agent_pos, **kwargs)
 
-class MOLavaGapSmiley(MOLavaGapDR):
+class MOLavaGridSmiley(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -125,7 +126,7 @@ class MOLavaGapSmiley(MOLavaGapDR):
         agent_pos = (2, 10) # bottom left
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, agent_start_pos=agent_pos, **kwargs)
 
-class MOLavaGapCheckerBoard(MOLavaGapDR):
+class MOLavaGridCheckerBoard(MOLavaGridDR):
     def __init__(self, **kwargs):
         bit_map = [
             [0, 1, 0, 1, 0, 1, 0, 1, 0],
@@ -148,8 +149,8 @@ class MOLavaGapCheckerBoard(MOLavaGapDR):
 def register_lava_gap():
     try:
         gym.envs.register(
-            id="MOLavaGapDR-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGapDR",
+            id="MOLavaGridDR-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGridDR",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -157,8 +158,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapCorridor-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapCorridor",
+            id="MOLavaGridCorridor-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridCorridor",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -166,8 +167,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapIslands-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapIslands",
+            id="MOLavaGridIslands-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridIslands",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -175,8 +176,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapMaze-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapMaze",
+            id="MOLavaGridMaze-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridMaze",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -184,8 +185,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapSnake-v0", 
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapSnake",
+            id="MOLavaGridSnake-v0", 
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridSnake",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -193,8 +194,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapRoom-v0", 
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapRoom",
+            id="MOLavaGridRoom-v0", 
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridRoom",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -202,8 +203,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapLabyrinth-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapLabyrinth",
+            id="MOLavaGridLabyrinth-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridLabyrinth",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -211,8 +212,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapSmiley-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapSmiley",
+            id="MOLavaGridSmiley-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridSmiley",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -220,8 +221,8 @@ def register_lava_gap():
 
     try:
         gym.envs.register(
-            id="MOLavaGapCheckerBoard-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGapCheckerBoard",
+            id="MOLavaGridCheckerBoard-v0",
+            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridCheckerBoard",
             max_episode_steps=256,
         )
     except Exception as e:

@@ -1,4 +1,4 @@
-from envs.mo_lava_gap.mo_lava_gap_test_envs import register_lava_gap
+from envs.mo_lava_gap.mo_lava_grid_test_envs import register_lava_gap
 from envs.mo_lunar_lander.lunarlander_test_envs import register_lunar_lander
 from envs.mo_bipedal_walker.bipedalwalker_test_envs import register_bipedal_walker
 from envs.mo_mujoco.mo_mujoco_test_envs import register_mujoco
