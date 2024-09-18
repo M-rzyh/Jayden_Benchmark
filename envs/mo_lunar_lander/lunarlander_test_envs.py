@@ -31,19 +31,31 @@ class MOLunarLanderLowSideEngine(MOLunarLanderDR):
         side_engine_power = 0.1
         super().__init__(side_engine_power=side_engine_power, continuous=continuous, **kwargs)
 
+class MOLunarLanderStartRight(MOLunarLanderDR):
+    def __init__(self, continuous=False, **kwargs):
+        initial_x_coeff = 0.75
+        super().__init__(initial_x_coeff=initial_x_coeff, continuous=continuous, **kwargs)
+
+class MOLunarLanderStartLow(MOLunarLanderDR):
+    def __init__(self, continuous=False, **kwargs):
+        initial_y_coeff = 0.7
+        super().__init__(initial_y_coeff=initial_y_coeff, continuous=continuous, **kwargs)
+
 class MOLunarLanderHard(MOLunarLanderDR):
     def __init__(self, continuous=False, **kwargs):
-        gravity = -15.0
+        gravity = -13.0
         wind_power = 20.0
-        turbulence_power = 4.0
-        main_engine_power = 8.0
-        side_engine_power = 0.3
+        turbulence_power = 2.5
+        main_engine_power = 10.0
+        side_engine_power = 0.4
+        initial_x_coeff = 0.7
         super().__init__(
             gravity=gravity, 
             wind_power=wind_power, 
             turbulence_power=turbulence_power,
             main_engine_power=main_engine_power,
             side_engine_power=side_engine_power, 
+            initial_x_coeff=initial_x_coeff,
             continuous=continuous, 
             **kwargs
         )
@@ -188,6 +200,54 @@ def register_lunar_lander():
             id="MOLunarLanderLowSideEngine-v0",
             entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderLowSideEngine",
             max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLunarLanderContinuousLowSideEngine-v0",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderLowSideEngine",
+            max_episode_steps=1000,
+            kwargs={"continuous": True},
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLunarLanderStartRight-v0",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderStartRight",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLunarLanderContinuousStartRight-v0",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderStartRight",
+            max_episode_steps=1000,
+            kwargs={"continuous": True},
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLunarLanderStartLow-v0",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderStartLow",
+            max_episode_steps=1000,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLunarLanderContinuousStartLow-v0",
+            entry_point="envs.mo_lunar_lander.lunarlander_test_envs:MOLunarLanderStartLow",
+            max_episode_steps=1000,
+            kwargs={"continuous": True},
         )
     except Exception as e:
         print(f"Unexpected error: {e}, {type(e)}")

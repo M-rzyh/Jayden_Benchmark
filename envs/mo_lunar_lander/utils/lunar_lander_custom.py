@@ -175,6 +175,8 @@ class LunarLander(gym.Env, EzPickle):
     * `turbulence_power` dictates the maximum magnitude of rotational wind applied to the craft.
      The recommended value for `turbulence_power` is between 0.0 and 2.0.
 
+    * `initial_x_coeff` and `initial_y_coeff` are coefficients that determine the initial position of the lander. The default values are 1.0.
+
     ## Version History
     - v3:
         - Reset wind and turbulence offset (`C`) whenever the environment is reset to ensure statistical independence between consecutive episodes (related [GitHub issue](https://github.com/Farama-Foundation/Gymnasium/issues/954)).
@@ -219,6 +221,8 @@ class LunarLander(gym.Env, EzPickle):
         enable_wind: bool = True,
         wind_power: float = 15.0,
         turbulence_power: float = 1.5,
+        initial_x_coeff: float = 0.5,
+        initial_y_coeff: float = 1.0,
     ):
         EzPickle.__init__(
             self,
@@ -251,6 +255,8 @@ class LunarLander(gym.Env, EzPickle):
         self.turbulence_power = turbulence_power
 
         self.enable_wind = enable_wind
+        self.initial_x_coeff = initial_x_coeff
+        self.initial_y_coeff = initial_y_coeff
 
         self.screen: pygame.Surface = None
         self.clock = None
@@ -375,8 +381,8 @@ class LunarLander(gym.Env, EzPickle):
         self.moon.color2 = (0.0, 0.0, 0.0)
 
         # Create Lander body
-        initial_y = VIEWPORT_H / SCALE
-        initial_x = VIEWPORT_W / SCALE / 2
+        initial_y = VIEWPORT_H / SCALE * self.initial_y_coeff
+        initial_x = VIEWPORT_W / SCALE * self.initial_x_coeff
         self.lander: Box2D.b2Body = self.world.CreateDynamicBody(
             position=(initial_x, initial_y),
             angle=0.0,
@@ -872,6 +878,10 @@ def demo_heuristic_lander(env, seed=None, render=False):
         env.close()
     return total_reward
 
+class LunarLanderStartRight(LunarLander):
+    def __init__(self, continuous=False, **kwargs):
+        initial_x_coeff = 0.75
+        super().__init__(initial_x_coeff=initial_x_coeff, continuous=continuous, **kwargs)
 
 class LunarLanderContinuous:
     def __init__(self):
@@ -888,7 +898,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     register(
         id="LunarLander-v0",
-        entry_point="envs.mo_lunar_lander.utils.lunar_lander_custom:LunarLander",
+        entry_point="envs.mo_lunar_lander.utils.lunar_lander_custom:LunarLanderStartRight",
     )
     env = gym.make("LunarLander-v0", render_mode="human")
     demo_heuristic_lander(env, render=True)

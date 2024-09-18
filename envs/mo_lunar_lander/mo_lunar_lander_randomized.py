@@ -34,9 +34,9 @@ class MOLunarLanderDR(LunarLander, DREnv):
     """
 
     param_info = {
-        'names': ['gravity', 'wind_power', 'turbulence_power', 'main_engine_power', 'side_engine_power'],
-        'param_max': [0.0, 20.0, 4.0, 15.0, 0.9],
-        'param_min': [-15.0, 0.0, 0.0, 7.0, 0.1]
+        'names': ['gravity', 'wind_power', 'turbulence_power', 'main_engine_power', 'side_engine_power', 'initial_x_coeff', 'initial_y_coeff'],
+        'param_max': [0.0, 20.0, 4.0, 15.0, 0.9, 0.75, 1.0],
+        'param_min': [-15.0, 0.0, 0.0, 7.0, 0.1, 0.25, 0.7]
     }
     DEFAULT_PARAMS = [-10.0, 15.0, 1.5, 13.0, 0.6]
 
@@ -88,18 +88,30 @@ class MOLunarLanderDR(LunarLander, DREnv):
             np.random.uniform(params_min[2], params_max[2]), # turbulence_power
             np.random.uniform(params_min[3], params_max[3]), # main_engine_power
             np.random.uniform(params_min[4], params_max[4]), # side_engine_power
+            np.random.uniform(params_min[5], params_max[5]), # initial_x_coeff
+            np.random.uniform(params_min[6], params_max[6]), # initial_y_coeff
         ]
         self._update_params(*new_params)
     
     def get_task(self):
-        return np.array([self.gravity, self.wind_power, self.turbulence_power])
+        return np.array([
+            self.gravity, 
+            self.wind_power,
+            self.turbulence_power,
+            self.main_engine_power,
+            self.side_engine_power,
+            self.initial_x_coeff,
+            self.initial_y_coeff
+        ])
 
-    def _update_params(self, gravity, wind_power, turbulence_power, main_engine_power, side_engine_power):
+    def _update_params(self, gravity, wind_power, turbulence_power, main_engine_power, side_engine_power, initial_x_coeff, initial_y_coeff):
         self.wind_power = wind_power
         self.gravity = gravity
         self.turbulence_power = turbulence_power
         self.main_engine_power = main_engine_power
         self.side_engine_power = side_engine_power
+        self.initial_x_coeff = initial_x_coeff
+        self.initial_y_coeff = initial_y_coeff
 
     def step(self, action):
         assert self.lander is not None
