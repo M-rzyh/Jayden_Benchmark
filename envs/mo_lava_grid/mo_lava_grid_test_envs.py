@@ -1,5 +1,5 @@
 import gymnasium as gym
-from envs.mo_lava_gap.mo_lava_grid import MOLavaGridDR
+from envs.mo_lava_grid.mo_lava_grid import MOLavaGridDR
 
 class MOLavaGridCorridor(MOLavaGridDR):
     def __init__(self, **kwargs):
@@ -146,11 +146,11 @@ class MOLavaGridCheckerBoard(MOLavaGridDR):
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, agent_start_pos=agent_pos, agent_start_dir=agent_dir, **kwargs)
 
                          
-def register_lava_gap():
+def register_lava_grid():
     try:
         gym.envs.register(
             id="MOLavaGridDR-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGridDR",
+            entry_point="envs.mo_lava_grid.mo_lava_grid:MOLavaGridDR",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -159,7 +159,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridCorridor-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridCorridor",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridCorridor",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -168,7 +168,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridIslands-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridIslands",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridIslands",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -177,7 +177,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridMaze-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridMaze",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridMaze",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -186,7 +186,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridSnake-v0", 
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridSnake",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridSnake",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -195,7 +195,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridRoom-v0", 
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridRoom",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridRoom",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -204,7 +204,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridLabyrinth-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridLabyrinth",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridLabyrinth",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -213,7 +213,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridSmiley-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridSmiley",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridSmiley",
             max_episode_steps=256,
         )
     except Exception as e:
@@ -222,7 +222,7 @@ def register_lava_gap():
     try:
         gym.envs.register(
             id="MOLavaGridCheckerBoard-v0",
-            entry_point="envs.mo_lava_gap.mo_lava_gap_test_envs:MOLavaGridCheckerBoard",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridCheckerBoard",
             max_episode_steps=256,
         )
     except Exception as e:

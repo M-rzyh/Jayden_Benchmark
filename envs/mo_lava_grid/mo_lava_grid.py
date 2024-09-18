@@ -400,7 +400,7 @@ if __name__ == "__main__":
 
     register(
         id="MOLavaGridDR",
-        entry_point="envs.mo_lava_gap.mo_lava_gap:MOLavaGridDR",
+        entry_point="envs.mo_lava_grid.mo_lava_grid:MOLavaGridDR",
     )
     env = gym.make(
         "MOLavaGridDR", 
