@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np 
 import random
+from copy import deepcopy
 
 from minigrid.core.constants import COLOR_TO_IDX, OBJECT_TO_IDX
 from minigrid.core.grid import Grid
@@ -137,7 +138,7 @@ class MOLavaGridDR(MiniGridEnv):
             assert all([0 < x < size-1 and 0 < y < size-1 for x, y in goal_pos]), "goal positions must be within the grid"
         self.collected_goals = []
         self.goal_weightages = weightages
-        self.immutable_goal_weightages = weightages
+        self.immutable_goal_weightages = deepcopy(weightages)
         self.goal_to_goal_idx = {}
 
         self._gen_grid(self.width, self.height, goal_pos=goal_pos)
@@ -324,7 +325,7 @@ class MOLavaGridDR(MiniGridEnv):
 
         # if self.is_rgb:
         #     return self.rgb_observation(), {}
-        self.goal_weightages = self.immutable_goal_weightages # reset goal weightages back to original
+        self.goal_weightages = deepcopy(self.immutable_goal_weightages) # reset goal weightages back to original
         return self.observation(), {}
     
     def _resample_n_lava(self):
@@ -336,7 +337,7 @@ class MOLavaGridDR(MiniGridEnv):
         """Randomly assign weightages to each goal, ensuring they sum to 1."""
         random_weights = np.random.rand(self.n_goals).astype(np.float32)
         self.goal_weightages = np.array(random_weights / np.sum(random_weights))
-        self.immutable_goal_weightages = self.goal_weightages
+        self.immutable_goal_weightages = deepcopy(self.goal_weightages)
 
     def _reset_agent_start_pos(self):
         """Randomly reset the agent's position."""
@@ -402,7 +403,7 @@ if __name__ == "__main__":
     from mo_utils.evaluation import seed_everything
     import matplotlib.pyplot as plt
 
-    seed_everything(42)
+    seed_everything(101)
 
     register(
         id="MOLavaGridDR",
@@ -417,15 +418,13 @@ if __name__ == "__main__":
     terminated = False
     env.unwrapped.reset_random()
     env.reset()
-    with open("observations.txt", "w") as file:
-        while True:
-            obs, r, terminated, truncated, info = env.step(env.action_space.sample())
-            file.write(f"{obs}\n")
-            print(r, terminated, truncated, obs.shape)
-            # plt.figure()
-            # plt.imshow(obs, vmin=0, vmax=255)
-            # plt.show()
-            env.render()
-            if terminated or truncated:
-                env.unwrapped.reset_random()
-                env.reset()
+    while True:
+        obs, r, terminated, truncated, info = env.step(env.action_space.sample())
+        print(r, terminated, truncated, obs.shape)
+        # plt.figure()
+        # plt.imshow(obs, vmin=0, vmax=255)
+        # plt.show()
+        env.render()
+        if terminated or truncated:
+            env.unwrapped.reset_random()
+            env.reset()
