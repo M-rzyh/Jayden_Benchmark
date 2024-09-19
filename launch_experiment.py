@@ -202,7 +202,7 @@ def make_envs(args):
             eval_env = MORecordVideo(
                 eval_env, 
                 video_folder=f"videos/{args.algo}/seed{args.seed}/{args.env_id}/", 
-                episode_trigger=lambda t: t % args.record_video_w_freq == 0,
+                weight_trigger=lambda t: t % args.record_video_w_freq == 0,
                 disable_logger=True
             )
 
