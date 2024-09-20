@@ -263,23 +263,23 @@ class MOLunarLanderDR(LunarLander, DREnv):
         # lose contact again after landing, you get negative reward
         if self.prev_shaping is not None:
             reward = shaping - self.prev_shaping
-            vector_reward[0] = shaping - self.prev_shaping
+            vector_reward[1] = shaping - self.prev_shaping
         self.prev_shaping = shaping
 
         reward -= m_power * 0.30  # less fuel spent is better, about -30 for heuristic landing
-        vector_reward[1] = -m_power
+        vector_reward[2] = -m_power
         reward -= s_power * 0.03
-        vector_reward[2] = -s_power
+        vector_reward[3] = -s_power
 
         terminated = False
         if self.game_over or abs(state[0]) >= 1.0:
             terminated = True
             reward = -100
-            vector_reward[3] -= 100.0
+            vector_reward[0] -= 100.0
         if not self.lander.awake:
             terminated = True
             reward = +100
-            vector_reward[3] += 100.0
+            vector_reward[0] += 100.0
 
         if self.render_mode == "human":
             self.render()
