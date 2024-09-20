@@ -69,13 +69,13 @@ MOSuperMarioBrosDayDR-v2:
   recover_single_objective: True
 
 MOLunarLanderDR-v0:
-  normalization:
-    discounted:
-      0: [-250, 160] # actual [-647.7, 93.0] the ranges below are when the crash reward is separated in the original MO-Gymnasium
-      1: [-100, 5] # actual [-96.0, 0]
-      2: [-100, 30] # actual [-60.3, 0]
-    undiscounted:
-      0: [-500, 300] # actual [-689, 226]
-      1: [-600, 100] # actual [-589.4, 0]
-      2: [-700, 100] # actual [-669.8, 0]
-  recover_single_objective: True
+  # normalization:
+  #   discounted:
+  #     0: [-250, 160] # actual [-647.7, 93.0] the ranges below are when the crash reward is separated in the original MO-Gymnasium
+  #     1: [-100, 5] # actual [-96.0, 0]
+  #     2: [-100, 30] # actual [-60.3, 0]
+  #   undiscounted:
+  #     0: [-500, 300] # actual [-689, 226]
+  #     1: [-600, 100] # actual [-589.4, 0]
+  #     2: [-700, 100] # actual [-669.8, 0]
+  # recover_single_objective: True

@@ -71,7 +71,7 @@ class MOLunarLanderDR(LunarLander, DREnv):
         self.reward_space = spaces.Box(
             low=np.array([-np.inf, -101, -101]),
             high=np.array([np.inf, 100, 100]),
-            shape=(3,),
+            shape=(4,),
             dtype=np.float32,
         )
         self.reward_dim = 3
@@ -252,7 +252,7 @@ class MOLunarLanderDR(LunarLander, DREnv):
         assert len(state) == 8
 
         reward = 0
-        vector_reward = np.zeros(3, dtype=np.float32)
+        vector_reward = np.zeros(4, dtype=np.float32)
         shaping = (
             -100 * np.sqrt(state[0] * state[0] + state[1] * state[1])
             - 100 * np.sqrt(state[2] * state[2] + state[3] * state[3])
@@ -275,11 +275,11 @@ class MOLunarLanderDR(LunarLander, DREnv):
         if self.game_over or abs(state[0]) >= 1.0:
             terminated = True
             reward = -100
-            vector_reward -= (100.0 / 3.0)
+            vector_reward[3] -= 100.0
         if not self.lander.awake:
             terminated = True
             reward = +100
-            vector_reward += (100.0 / 3.0)
+            vector_reward[3] += 100.0
 
         if self.render_mode == "human":
             self.render()
