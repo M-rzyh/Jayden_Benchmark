@@ -78,4 +78,4 @@ MOLunarLanderDR-v0:
   #     0: [-500, 300] # actual [-689, 226]
   #     1: [-600, 100] # actual [-589.4, 0]
   #     2: [-700, 100] # actual [-669.8, 0]
-  # recover_single_objective: True
+  recover_single_objective: True
