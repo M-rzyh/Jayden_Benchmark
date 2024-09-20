@@ -69,12 +69,12 @@ class MOLunarLanderDR(LunarLander, DREnv):
 
         # shaping reward, main engine cost, side engine cost
         self.reward_space = spaces.Box(
-            low=np.array([-np.inf, -101, -101]),
-            high=np.array([np.inf, 100, 100]),
+            low=np.array([-100, -np.inf, -1, -1]),
+            high=np.array([100, np.inf, 0, 0]),
             shape=(4,),
             dtype=np.float32,
         )
-        self.reward_dim = 3
+        self.reward_dim = 4
 
     def reset_random(self):
         """
