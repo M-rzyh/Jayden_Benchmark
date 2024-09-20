@@ -79,3 +79,6 @@ MOLunarLanderDR-v0:
   #     1: [-600, 100] # actual [-589.4, 0]
   #     2: [-700, 100] # actual [-669.8, 0]
   recover_single_objective: True
+
+MOLavaGridDR-v0:
+  recover_single_objective: True
