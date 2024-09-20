@@ -91,8 +91,8 @@ def termination_fn_lunarlander(obs, act, next_obs, rew):
     # Condition 1: out of screen
     has_exited_screen = abs(next_obs[:, 0]) >= 1.0
 
-    # Condition 2: all legs have landed and reward is non-zero
-    has_crashed_or_landed = (rew[:, 0] != 0) & (next_obs[:, 6] != 0.0) & (next_obs[:, 7] != 0.0)
+    # Condition 2: all legs have landed (supposed to be 1.0 but we allow for some margin of error) and reward is non-zero
+    has_crashed_or_landed = (rew[:, 0] != 0) & (next_obs[:, 6] >= 0.95) & (next_obs[:, 7] >= 0.95)
     
     not_done = ~(has_exited_screen | has_crashed_or_landed)
     done = ~not_done
