@@ -88,13 +88,13 @@ def termination_fn_lunarlander(obs, act, next_obs, rew):
     """Termination function of lunarlander. Use reward prediction to determine termination."""
     assert len(obs.shape) == len(next_obs.shape) == len(act.shape) == len(rew.shape) == 2
 
-    # Condition 1: both reward[:, 1] and reward[:, 2] are <= -(100 / 3.0)
-    has_crashed = (rew[:, 1] <= -(100.0 / 3.0)) & (rew[:, 2] <= -(100.0 / 3.0))
+    # Condition 1: out of screen
+    has_exited_screen = abs(next_obs[:, 0]) >= 1.0
 
-    # Condition 2: all elements in reward[:, :] are > 0
-    has_landed = np.all(rew > 0, axis=1)
+    # Condition 2: all legs have landed and reward is non-zero
+    has_crashed_or_landed = (rew[:, 0] != 0) & (next_obs[:, 6] != 0.0) & (next_obs[:, 7] != 0.0)
     
-    not_done = ~(has_crashed | has_landed)
+    not_done = ~(has_exited_screen | has_crashed_or_landed)
     done = ~not_done
     done = done[:, np.newaxis]
     return done
