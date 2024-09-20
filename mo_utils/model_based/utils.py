@@ -88,13 +88,25 @@ def termination_fn_lunarlander(obs, act, next_obs, rew):
     """Termination function of lunarlander. Use reward prediction to determine termination."""
     assert len(obs.shape) == len(next_obs.shape) == len(act.shape) == len(rew.shape) == 2
 
-    # Condition 1: both reward[:, 1] and reward[:, 2] are <= -100
-    has_crashed = (rew[:, 1] <= -100) & (rew[:, 2] <= -100)
+    # Condition 1: both reward[:, 1] and reward[:, 2] are <= -(100 / 3.0)
+    has_crashed = (rew[:, 1] <= -(100.0 / 3.0)) & (rew[:, 2] <= -(100.0 / 3.0))
 
     # Condition 2: all elements in reward[:, :] are > 0
     has_landed = np.all(rew > 0, axis=1)
     
     not_done = ~(has_crashed | has_landed)
+    done = ~not_done
+    done = done[:, np.newaxis]
+    return done
+
+def termination_fn_lavagrid(obs, act, next_obs, rew):
+    """Termination function of LavaGrid. Assume terminate when all weights = 0."""
+    assert len(obs.shape) == len(next_obs.shape) == len(act.shape) == len(rew.shape) == 2
+
+    # Get reward weights from obs
+    weights = next_obs[:, 1:4]
+    
+    not_done = ~(np.all(weights == 0, axis=1))
     done = ~not_done
     done = done[:, np.newaxis]
     return done
@@ -133,6 +145,8 @@ class ModelEnv:
             self.termination_func = termination_fn_false
         elif env_id == "deep-sea-treasure-v0":
             self.termination_func = termination_fn_dst
+        elif env_id.startswith("MOLavaGrid"):
+            self.termination_func = termination_fn_lavagrid
         else:
             raise NotImplementedError
 
