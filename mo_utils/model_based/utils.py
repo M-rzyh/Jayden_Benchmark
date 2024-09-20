@@ -146,7 +146,7 @@ class ModelEnv:
         elif env_id == "deep-sea-treasure-v0":
             self.termination_func = termination_fn_dst
         elif env_id.startswith("MOLavaGrid"):
-            self.termination_func = termination_fn_lavagrid
+            self.termination_func = termination_fn_false
         else:
             raise NotImplementedError
 
