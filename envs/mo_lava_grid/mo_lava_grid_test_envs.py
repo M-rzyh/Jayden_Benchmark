@@ -145,6 +145,19 @@ class MOLavaGridCheckerBoard(MOLavaGridDR):
         agent_dir = 1 # face downwards
         super().__init__(bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, agent_start_pos=agent_pos, agent_start_dir=agent_dir, **kwargs)
 
+class MOLavaGridCorridor10x10(MOLavaGridDR):
+    def __init__(self, **kwargs):
+        bit_map = [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 1, 0],
+            [0, 0, 1, 0, 1, 0],
+            [0, 0, 1, 0, 1, 0],
+            [0, 0, 1, 0, 1, 0],
+            [0, 0, 1, 0, 1, 0],
+        ]
+        goal_pos = [(3, 7), (5, 7), (7, 7)]
+        weightages = [0.6, 0.1, 0.3]
+        super().__init__(size=10, bit_map=bit_map, goal_pos=goal_pos, weightages=weightages, **kwargs)  
                          
 def register_lava_grid():
     try:
@@ -160,6 +173,15 @@ def register_lava_grid():
         gym.envs.register(
             id="MOLavaGridCorridor-v0",
             entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridCorridor",
+            max_episode_steps=256,
+        )
+    except Exception as e:
+        print(f"Unexpected error: {e}, {type(e)}")
+
+    try:
+        gym.envs.register(
+            id="MOLavaGridCorridor10x10-v0",
+            entry_point="envs.mo_lava_grid.mo_lava_grid_test_envs:MOLavaGridCorridor10x10",
             max_episode_steps=256,
         )
     except Exception as e:
