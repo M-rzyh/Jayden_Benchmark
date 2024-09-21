@@ -113,6 +113,7 @@ class MOLavaGridDR(MiniGridEnv):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.n_goals = n_goals  # Set the number of goals
+        self.is_rgb = is_rgb # use RGB img observations
 
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
@@ -152,13 +153,37 @@ class MOLavaGridDR(MiniGridEnv):
                 self.put_obj(Lava(), x+2, y+2)
 
         # Observation space
-        imgShape = (self.width - 2) * (self.height - 2) + 1 + self.n_goals # +n_goals for goal weightages, +1 for agent direction
-        self.observation_space = spaces.Box(
-            low=0,
-            high=255,
-            shape=(imgShape,),
-            dtype='float32'
-        )
+        if not is_rgb:
+            imgShape = (self.width - 2) * (self.height - 2) + 1 + self.n_goals # +n_goals for goal weightages, +1 for agent direction
+            self.observation_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(imgShape,),
+                dtype='float32'
+            )
+        else:
+            image_space = spaces.Box(
+                low=0,
+                high=255,
+                shape=(
+                    3,
+                    self.width * tile_size,
+                    self.height * tile_size,
+                ),
+                dtype="uint8",
+            )
+            goal_space = spaces.Box(
+                low=0,
+                high=1,
+                shape=(self.n_goals,),
+                dtype="float32",
+            )
+            self.observation_space = spaces.Dict(
+                {
+                    "image": image_space,
+                    "goal": goal_space,
+                }
+            )
         # lava damage, time penalty
         self.reward_space = spaces.Box(
             low=np.array([-max_steps, -max_steps]),
@@ -293,8 +318,8 @@ class MOLavaGridDR(MiniGridEnv):
         if self.render_mode == "human":
             self.render()
 
-        # if self.is_rgb:
-        #     return self.rgb_observation(), vec_reward, terminated, truncated, {}
+        if self.is_rgb:
+            return self.rgb_observation(), vec_reward, terminated, truncated, {}
         info = {
             "time": self.step_count,
             "goal": self.collected_goals,
@@ -323,8 +348,8 @@ class MOLavaGridDR(MiniGridEnv):
         if self.render_mode == "human":
             self.render()
 
-        # if self.is_rgb:
-        #     return self.rgb_observation(), {}
+        if self.is_rgb:
+            return self.rgb_observation(), {}
         self.goal_weightages = deepcopy(self.immutable_goal_weightages) # reset goal weightages back to original
         return self.observation(), {}
     
@@ -395,7 +420,12 @@ class MOLavaGridDR(MiniGridEnv):
             env.agent_pos,
             env.agent_dir,
         )
-        return rgb_img
+        rgb_img = np.moveaxis(rgb_img, -1, 0) # move channel axis to the front
+        obs = {
+            "image": rgb_img,
+            "goal": self.goal_weightages
+        }
+        return obs
     
 
 if __name__ == "__main__":
