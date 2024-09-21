@@ -262,7 +262,7 @@ class MOLavaGridDR(MiniGridEnv):
         self.step_count += 1
 
         vec_reward = np.zeros(2, dtype=np.float32) 
-        vec_reward[1] = -1 # -1 for time penalty
+        vec_reward[1] = -3 # -1 for time penalty
         terminated = False
         truncated = False
         
@@ -283,14 +283,14 @@ class MOLavaGridDR(MiniGridEnv):
                 self.agent_dir += 4
             if in_lava: 
                 # stay in lava
-                vec_reward[0] = -5
+                vec_reward[0] = -20
 
         # Rotate right
         elif action == self.actions.right:
             self.agent_dir = (self.agent_dir + 1) % 4
             if in_lava: 
                 # stay in lava
-                vec_reward[0] = -5
+                vec_reward[0] = -20
 
         # Move forward
         elif action == self.actions.forward:
@@ -308,7 +308,7 @@ class MOLavaGridDR(MiniGridEnv):
                         terminated = True
             if fwd_cell is not None and fwd_cell.type == "lava": 
                 # walk into lava
-                vec_reward[0] = -5
+                vec_reward[0] = -20
         else:
             raise ValueError(f"Unknown action: {action}")
 
@@ -324,7 +324,7 @@ class MOLavaGridDR(MiniGridEnv):
             "time": self.step_count,
             "goal": self.collected_goals,
         }
-        info["original_scalar_reward"] = vec_reward[0] + 0.1 * vec_reward[1]
+        info["original_scalar_reward"] = 0.9 * vec_reward[0] + 0.1 * vec_reward[1]
         
         return self.observation(), vec_reward, terminated, truncated, info
 
