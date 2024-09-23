@@ -56,6 +56,9 @@ MOSuperMarioBrosDR-v2:
       3: [0, 380] # actual [0, 379]
   recover_single_objective: True
 
+MOSuperMarioBrosZeroShot-v2:
+  recover_single_objective: True
+
 MOSuperMarioBrosDayDR-v2:
   normalization:
     discounted:
