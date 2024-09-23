@@ -414,11 +414,11 @@ class SACDiscrete(MOAgent):
             action as a numpy array (discrete actions)
         """
         obs = th.as_tensor(obs).float().to(self.device)
-        obs = obs.unsqueeze(0)
+        # obs = obs.unsqueeze(0)
         with th.no_grad():
             action, _, _ = self.actor.get_action(obs)
 
-        return action[0].detach().cpu().numpy()
+        return action.detach().cpu().numpy()
 
     @override
     def update(self):
