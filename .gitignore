@@ -124,6 +124,7 @@ dmypy.json
 
 # wandb
 wandb/
+*/wandb/*
 
 # Pycharm
 .idea/
