@@ -24,8 +24,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             env: gym.Env,
             algo_name: str,
             seed: int,
-            generalization_algo: str,
             test_envs: List[str],
+            generalization_algo: str = 'domain_randomization',
             algo_suffix: str = "",
             record_video: bool = False,
             record_video_w_freq: Optional[int] = None,
@@ -73,7 +73,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             **kwargs
         )
         super().__init__(env)
-        self.is_dr = generalization_algo == 'domain_randomization'
         self.algo_name = algo_name + algo_suffix
 
         # ============ Evaluation Parameters ============
@@ -477,7 +476,6 @@ def make_generalization_evaluator(env, args) -> MORLGeneralizationEvaluator:
         algo_name=args.algo,
         seed=args.seed, 
         test_envs=args.test_envs, 
-        generalization_algo=args.generalization_algo, 
         record_video=args.record_video,
         record_video_ep_freq=args.record_video_ep_freq,
         record_video_w_freq=args.record_video_w_freq,

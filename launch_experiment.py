@@ -145,7 +145,7 @@ def parse_generalization_args(args):
         assert "test_envs" != '', "test_envs must be provided if test_generalization is True"
         # assert args.record_video == False, "cannot record video when testing generalization because environments are vectorized"
         args.test_envs = args.test_envs.split(",")
-        args.generalization_algo = "domain_randomization" if "generalization_algo" not in args.train_hyperparams else args.train_hyperparams["generalization_algo"]
+        args.generalization_algo = "domain_randomization" if "generalization_algo" not in args.generalization_hyperparams else args.generalization_hyperparams["generalization_algo"]
     
     return args
 
