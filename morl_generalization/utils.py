@@ -3,12 +3,14 @@ from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.record_video import RecordVideo
 
 from envs.mo_super_mario.utils import wrap_mario
-from morl_generalization.algos.dr import DRWrapper
+from morl_generalization.algos.dr import DRWrapper, DynamicsInObs
 from morl_generalization.wrappers import MORecordVideo
 
 def get_env_selection_algo_wrapper(env_selection_algo) -> gym.Wrapper:
     if env_selection_algo == "domain_randomization": # randomizes domain every `reset` call
         return DRWrapper
+    elif env_selection_algo == "asymmetric_domain_randomization": # randomizes domain + asymmetric critic
+        return DynamicsInObs
     else:
         raise NotImplementedError
 

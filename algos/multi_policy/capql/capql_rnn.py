@@ -646,7 +646,10 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
             actor_summary_1_T, # get action for current obs
             batch.w, 
         )
-        q_values = th.stack([q_net(q_summary_1_T[i], actions, batch.w) for i, q_net in enumerate(self.q_nets)])
+        if not self.asymmetric:
+            q_values = th.stack([q_net(q_summary_1_T[i], actions, batch.w) for i, q_net in enumerate(self.q_nets)])
+        else:
+            q_values = th.stack([q_net(q_summary_1_T, actions, batch.w) for q_net in self.q_nets])
         min_Q = th.min(q_values.detach(), dim=0)[0] # detach from the computation graph for critic loss
         min_Q = (min_Q * batch.w).sum(dim=-1, keepdim=True) # weighted sum
         policy_loss_elementwise = -(min_Q + self.alpha * -log_pi_a_given_ns)
@@ -684,6 +687,8 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         # make sure the observation is of shape (1, 1, obs_dim) because training is done with (bs, num_bptt, obs_dim)
         observation = observation.unsqueeze(0).unsqueeze(0)
         w = w.unsqueeze(0).unsqueeze(0)
+        if self.asymmetric:
+            observation = split_obs_from_context(observation, self.context_dim)
         summary, self.hidden = self.actor_summarizer(observation, self.hidden, return_hidden=True)
         if deterministic:
             action = self.actor.get_action(summary, w)
@@ -697,6 +702,7 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         obs: Union[np.ndarray, th.Tensor],
         w: Union[np.ndarray, th.Tensor], 
         torch_action=False,
+        num_envs: int = 1,
         **kwargs
     ) -> Union[np.ndarray, th.Tensor]:
         """Evaluate the policy action for the given observation and weight vector."""
@@ -704,15 +710,19 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
             obs = th.tensor(obs).float().to(self.device)
             w = th.tensor(w).float().to(self.device)
 
-        obs = obs.unsqueeze(0).unsqueeze(0)
-        w = w.unsqueeze(0).unsqueeze(0)
+        if num_envs == 1:
+            obs = obs.unsqueeze(0).unsqueeze(0)
+            w = w.unsqueeze(0).unsqueeze(0)
+        else: # (num_envs, obs_dim) -> (num_envs, 1, obs_dim)
+            obs = obs.unsqueeze(1)
+            w = w.unsqueeze(1)
         summary, self.hidden = self.actor_summarizer(obs, self.hidden, return_hidden=True)
-        action, _ = self.actor.get_action(summary, w)
+        action = self.actor.get_action(summary, w).squeeze(1)
 
         if not torch_action:
             action = action.detach().cpu().numpy()
-
-        return action.view(-1)
+        
+        return action
     
     def copy_networks_from(self, algorithm) -> None:
         self.actor_summarizer.load_state_dict(algorithm.actor_summarizer.state_dict())
@@ -844,6 +854,7 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
             if self.log and self.global_step % eval_mo_freq == 0:
                 # Evaluation
                 test_algo = deepcopy(algorithms_clone)
+                test_algo.zero_start_rnn_hidden()
                 if test_generalization:
                     eval_env.eval(test_algo, ref_point=ref_point, global_step=self.global_step)
                 else:

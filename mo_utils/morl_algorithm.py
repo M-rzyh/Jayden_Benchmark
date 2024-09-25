@@ -237,6 +237,11 @@ class MOAgent(ABC):
             if isinstance(self.env.observation_space, spaces.Discrete):
                 self.observation_shape = (1,)
                 self.observation_dim = self.env.observation_space.n
+            elif isinstance(self.env.observation_space, spaces.Dict) and "context" in self.env.observation_space.spaces:
+                self.observation_shape = self.env.observation_space.spaces["observation"].shape
+                self.observation_dim = self.env.observation_space.spaces["observation"].shape[0]
+                self.context_shape = self.env.observation_space.spaces["context"].shape
+                self.context_dim = self.env.observation_space.spaces["context"].shape[0]
             else:
                 self.observation_shape = self.env.observation_space.shape
                 self.observation_dim = self.env.observation_space.shape[0]
