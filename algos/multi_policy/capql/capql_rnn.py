@@ -940,6 +940,7 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
 
                 self.copy_networks_from(algorithms_clone)
                 self.zero_start_rnn_hidden() # crucial for recurrent policy
+                action = None # crucial for recurrent policy
 
                 if self.log and "episode" in info.keys():
                     log_episode_info(info["episode"], np.dot, w, self.global_step, verbose=verbose)
