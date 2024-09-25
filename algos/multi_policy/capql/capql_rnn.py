@@ -275,11 +275,12 @@ class WeightSamplerAngle:
 class Policy(nn.Module):
     """Policy network."""
 
-    def __init__(self, obs_dim, rew_dim, output_dim, action_space, net_arch=[256, 256]):
+    def __init__(self, obs_dim, rew_dim, obs_embed_dim, rnn_dim, output_dim, action_space, net_arch=[256, 256]):
         """Initialize the policy network."""
         super().__init__()
         self.action_space = action_space
-        self.latent_pi = mlp(obs_dim + rew_dim, -1, net_arch)
+        self.shortcut_state_features = mlp(obs_dim, -1, [obs_embed_dim]) # single layer mlp
+        self.latent_pi = mlp(obs_embed_dim + rnn_dim + rew_dim, -1, net_arch)
         self.mean = nn.Linear(net_arch[-1], output_dim)
         self.log_std_linear = nn.Linear(net_arch[-1], output_dim)
         self.action_dim = output_dim
@@ -290,31 +291,34 @@ class Policy(nn.Module):
 
         self.apply(layer_init)
 
-    def forward(self, obs, w):
+    def forward(self, obs, summary, w):
         """Forward pass of the policy network."""
-        h = self.latent_pi(th.concat((obs, w), dim=obs.dim() - 1))
+        sf = self.shortcut_state_features(obs) # get residual state features
+        joint_embed = th.cat((sf, summary, w), dim=summary.dim() - 1)
+        h = self.latent_pi(joint_embed)
         mean = self.mean(h)
         log_std = self.log_std_linear(h)
         log_std = th.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         return mean, log_std
     
-    def get_action(self, summary, w):
+    def get_action(self, curr_obs, summary, w):
         """Get an action from the policy network."""
         bs, seq_len = summary.shape[0], summary.shape[1]
-        mean, _ = self.forward(summary, w)
+        mean, _ = self.forward(curr_obs, summary, w)
         y_t = th.tanh(mean).view(bs, seq_len, self.action_dim)
         action = y_t * self.action_scale + self.action_bias
         return action
     
     def sample(
         self, 
+        curr_obs,
         summary, 
         w,
     ):
         """Sample an action from the policy network."""
         bs, seq_len = summary.shape[0], summary.shape[1]  # seq_len can be 1 (inference) or num_bptt (training)
         # for each state in the mini-batch, get its mean and std
-        means, log_stds = self.forward(summary, w)
+        means, log_stds = self.forward(curr_obs, summary, w)
         means, stds = means.view(bs * seq_len, self.action_dim), log_stds.exp().view(bs * seq_len, self.action_dim)
 
         # sample actions
@@ -334,39 +338,73 @@ class Policy(nn.Module):
         return action, log_prob.view(bs, seq_len, 1)
 
 class Summarizer(nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_layers=2, recurrent_type='lstm'):
+    def __init__(self, obs_dim, action_dim, obs_embed_dim, action_embed_dim, rnn_hidden_dim, num_layers=1, recurrent_type='lstm'):
         super().__init__()
+        self.state_features = mlp(obs_dim, -1, [obs_embed_dim]) # single layer mlp
+        self.prev_action_features = mlp(action_dim, -1, [action_embed_dim]) # single layer mlp
 
+        rnn_input_dim = obs_embed_dim + action_embed_dim
         if recurrent_type == 'lstm':
-            self.rnn = nn.LSTM(input_dim, hidden_dim, batch_first=True, num_layers=num_layers)
+            self.rnn = nn.LSTM(rnn_input_dim, rnn_hidden_dim, batch_first=True, num_layers=num_layers)
         elif recurrent_type == 'rnn':
-            self.rnn = nn.RNN(input_dim, hidden_dim, batch_first=True, num_layers=num_layers)
+            self.rnn = nn.RNN(rnn_input_dim, rnn_hidden_dim, batch_first=True, num_layers=num_layers)
         elif recurrent_type == 'gru':
-            self.rnn = nn.GRU(input_dim, hidden_dim, batch_first=True, num_layers=num_layers)
+            self.rnn = nn.GRU(rnn_input_dim, rnn_hidden_dim, batch_first=True, num_layers=num_layers)
         else:
             raise ValueError(f"{recurrent_type} not recognized")
-
-    def forward(self, observations, hidden=None, return_hidden=False):
+        
+        self.apply(layer_init)
+        
+        for name, param in self.rnn.named_parameters():
+            if 'bias' in name:
+                nn.init.constant_(param, 0)
+            elif 'weight' in name:
+                nn.init.orthogonal_(param)
+    
+    def _get_rnn_hidden_states(self, obs, prev_actions, hidden=None):
         self.rnn.flatten_parameters()
-        summary, hidden = self.rnn(observations, hidden)
+
+        sf = self.state_features(obs)
+        af = self.prev_action_features(prev_actions)
+        rnn_input = th.cat((sf, af), dim=-1)
+        belief, hidden = self.rnn(rnn_input, hidden)
+
+        return belief, hidden
+
+    def forward(self, observations, prev_actions, hidden=None, return_hidden=False):
+        # 1. get hidden/belief states of the whole/sub trajectories, aligned with states
+        # return the hidden states (B, T+1, dim)
+        belief, hidden = self._get_rnn_hidden_states(observations, prev_actions, hidden)
+
         if return_hidden:
-            return summary, hidden
+            return belief, hidden
         else:
-            return summary
+            return belief
 
 class QNetwork(nn.Module):
     """Q-network S x Ax W -> R^reward_dim."""
 
-    def __init__(self, obs_dim, action_dim, rew_dim, net_arch=[256, 256]):
+    def __init__(self, obs_dim, action_dim, rew_dim, net_arch=[256, 256], shortcut_embed_dim=64, rnn_dim=128, recurrent=False):
         """Initialize the Q-network."""
         super().__init__()
-        self.net = mlp(obs_dim + action_dim + rew_dim, rew_dim, net_arch)
+        self.recurrent = recurrent
+        input_dim = obs_dim + action_dim + rew_dim
+        if recurrent:
+            self.shortcut_state_action_w_features = mlp(obs_dim + action_dim + rew_dim, -1, shortcut_embed_dim)
+            input_dim = shortcut_embed_dim + rnn_dim
+        self.net = mlp(input_dim, rew_dim, net_arch)
         self.apply(layer_init)
 
-    def forward(self, obs, action, w):
+    def forward(self, obs, action, w, summary=None):
         """Forward pass of the Q-network."""
-        q_values = self.net(th.cat((obs, action, w), dim=obs.dim() - 1))
+        if self.recurrent:
+            assert summary is not None, "RNN Summary must be provided for recurrent critic."
+            shortcut_obs_action_w = self.shortcut_state_action_w_features(th.cat((obs, action, w), dim=obs.dim() - 1))
+            q_values = self.net(th.cat((shortcut_obs_action_w, summary), dim=summary.dim() - 1))
+        else:
+            q_values = self.net(th.cat((obs, action, w), dim=obs.dim() - 1))
         return q_values
+    
     
 def split_obs_from_context(obs, context_dim):
     return obs[:, :, :obs.shape[2] - context_dim]
@@ -387,7 +425,11 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         tau: float = 0.005,
         buffer_size: int = 1000000,
         net_arch: List = [256, 256],
-        batch_size: int = 128,
+        batch_size: int = 32,
+        obs_embed_dim: int = 32,
+        action_embed_dim: int = 16,
+        rnn_hidden_dim: int = 128,
+        rnn_layers: int = 1,
         num_q_nets: int = 2,
         alpha: float = 0.2,
         learning_starts: int = 1000,
@@ -443,6 +485,10 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         self.alpha = alpha
         self.sequence_length = self.env.spec.max_episode_steps
         self.asymmetric = asymmetric
+        self.obs_embed_dim = obs_embed_dim
+        self.action_embed_dim = action_embed_dim
+        self.rnn_hidden_dim = rnn_hidden_dim
+        self.rnn_layers = rnn_layers
 
         if asymmetric:
             assert self.context_dim is not None, "Context shape must be provided for asymmetric networks."
@@ -464,23 +510,38 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         input_dim = self.observation_dim
         if not asymmetric: # use recurrent summarizer
             self.q_summarizers = [
-                Summarizer(input_dim, net_arch[0]).to(self.device)
+                Summarizer(input_dim, self.action_dim, obs_embed_dim, action_embed_dim, rnn_hidden_dim, num_layers=rnn_layers).to(self.device)
                 for _ in range(num_q_nets)
             ]
             self.target_q_summarizers = [
-                Summarizer(input_dim, net_arch[0]).to(self.device)
+                Summarizer(input_dim, self.action_dim, obs_embed_dim, action_embed_dim, rnn_hidden_dim, num_layers=rnn_layers).to(self.device)
                 for _ in range(num_q_nets)
             ]
-            input_dim = net_arch[0]
         else:
             input_dim = self.observation_dim + self.context_dim
 
         self.q_nets = [
-            QNetwork(input_dim, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
+            QNetwork(
+                input_dim, 
+                self.action_dim, 
+                self.reward_dim, 
+                net_arch=net_arch, 
+                shortcut_embed_dim=obs_embed_dim+action_embed_dim, 
+                rnn_dim=rnn_hidden_dim,
+                recurrent=(not asymmetric)
+            ).to(self.device)
             for _ in range(num_q_nets)
         ]
         self.target_q_nets = [
-            QNetwork(input_dim, self.action_dim, self.reward_dim, net_arch=net_arch).to(self.device)
+            QNetwork(
+                input_dim, 
+                self.action_dim, 
+                self.reward_dim, 
+                net_arch=net_arch, 
+                shortcut_embed_dim=obs_embed_dim+action_embed_dim, 
+                rnn_dim=rnn_hidden_dim,
+                recurrent=(not asymmetric)
+            ).to(self.device)
             for _ in range(num_q_nets)
         ]
 
@@ -496,9 +557,9 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
                 param.requires_grad = False
 
         # actor always uses recurrent network
-        self.actor_summarizer = Summarizer(self.observation_dim, net_arch[0]).to(self.device)
+        self.actor_summarizer = Summarizer(self.observation_dim, self.action_dim, obs_embed_dim, action_embed_dim, rnn_hidden_dim, rnn_layers).to(self.device)
         self.actor = Policy(
-            net_arch[0], self.reward_dim, self.action_dim, self.env.action_space, net_arch=net_arch
+            self.observation_dim, self.reward_dim, obs_embed_dim, rnn_hidden_dim, self.action_dim, self.env.action_space, net_arch=net_arch # self.observation_dim already excludes context
         ).to(self.device)
 
         self.actor_summarizer_optim = optim.Adam(self.actor_summarizer.parameters(), lr=self.learning_rate)
@@ -528,6 +589,8 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
             "tau": self.tau,
             "gamma": self.gamma,
             "net_arch": self.net_arch,
+            "rnn_hidden_dim": self.rnn_hidden_dim,
+            "rnn_layers": self.rnn_layers,
             "gradient_updates": self.gradient_updates,
             "alpha": self.alpha,
             "buffer_size": self.buffer_size,
@@ -587,13 +650,15 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         bs, num_bptt = batch.m.size(0), batch.m.size(1)
         eps_obs = split_obs_from_context(batch.o, self.context_dim)
 
-        actor_summary = self.actor_summarizer(eps_obs)
+        # shift actions forwards by one and add a zero action at the beginning to get prev actions tensor
+        prev_actions = th.cat((th.zeros(bs, 1, self.action_dim).to(self.device), batch.a), dim=1)
+        actor_summary = self.actor_summarizer(eps_obs, prev_actions)
         actor_summary_1_T, actor_summary_2_Tplus1 = actor_summary[:, :-1, :], actor_summary[:, 1:, :]
-        assert actor_summary.shape == (bs, num_bptt+1, self.net_arch[0])
+        assert actor_summary.shape == (bs, num_bptt+1, self.rnn_hidden_dim)
 
         if not self.asymmetric: # use recurrent critic
-            q_summaries = [summarizer(batch.o) for summarizer in self.q_summarizers]
-            target_q_summaries = [target_summarizer(batch.o) for target_summarizer in self.target_q_summarizers]
+            q_summaries = [summarizer(batch.o, prev_actions) for summarizer in self.q_summarizers]
+            target_q_summaries = [target_summarizer(batch.o, prev_actions) for target_summarizer in self.target_q_summarizers]
             
             q_summary_1_T, q_summary_2_Tplus1 = \
                 [q_summary[:, :-1, :] for q_summary in q_summaries], \
@@ -611,11 +676,19 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
 
         with th.no_grad():
             next_actions, log_pi_na_given_ns = self.actor.sample(
-                actor_summary_2_Tplus1, # get action for next obs
+                eps_obs[:, 1:, :], # next obs for shortcut
+                actor_summary_2_Tplus1, # rnn summary of next obs
                 batch.w,
             )
             if not self.asymmetric:
-                q_targets = th.stack([q_target(q_summary_2_Tplus1[i], next_actions, batch.w) for i, q_target in enumerate(self.target_q_nets)])
+                q_targets = th.stack([
+                    q_target(
+                        batch.o[:, 1:, :], # next obs for shortcut
+                        next_actions, 
+                        batch.w,
+                        q_summary_2_Tplus1[i], # rnn summary of next obs
+                    ) for i, q_target in enumerate(self.target_q_nets)
+                ])
             else:
                 q_targets = th.stack([q_target(q_summary_2_Tplus1, next_actions, batch.w) for q_target in self.target_q_nets])
             
@@ -644,11 +717,19 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
 
         # Policy update
         actions, log_pi_a_given_ns = self.actor.sample(
-            actor_summary_1_T, # get action for current obs
+            eps_obs[:, :-1, :], # curr obs for shortcut
+            actor_summary_1_T, # rnn summary of curr obs
             batch.w, 
         )
         if not self.asymmetric:
-            q_values = th.stack([q_net(q_summary_1_T[i], actions, batch.w) for i, q_net in enumerate(self.q_nets)])
+            q_values = th.stack([
+                q_net(
+                    batch.o[:, :-1, :], # curr obs for shortcut
+                    actions, 
+                    batch.w,
+                    q_summary_1_T[i], # rnn summary of curr obs
+                ) for i, q_net in enumerate(self.q_nets)
+            ])
         else:
             q_values = th.stack([q_net(q_summary_1_T, actions, batch.w) for q_net in self.q_nets])
         min_Q = th.min(q_values.detach(), dim=0)[0] # detach from the computation graph for critic loss
@@ -684,41 +765,58 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
                 },
             )
     @th.no_grad()
-    def act(self, observation: th.Tensor, w: th.Tensor, deterministic: bool) -> np.array:
+    def act(self, observation: th.Tensor, w: th.Tensor, deterministic: bool, prev_action: Optional[th.Tensor] = None) -> np.array:
         # make sure the observation is of shape (1, 1, obs_dim) because training is done with (bs, num_bptt, obs_dim)
         observation = observation.unsqueeze(0).unsqueeze(0)
+        if prev_action is None:
+            prev_action = th.zeros(1, 1, self.action_dim).to(self.device)
+        else:
+            prev_action = prev_action.unsqueeze(0).unsqueeze(0)
         w = w.unsqueeze(0).unsqueeze(0)
         if self.asymmetric:
             observation = split_obs_from_context(observation, self.context_dim)
-        summary, self.hidden = self.actor_summarizer(observation, self.hidden, return_hidden=True)
+        summary, self.hidden = self.actor_summarizer(observation, prev_action, self.hidden, return_hidden=True)
         if deterministic:
-            action = self.actor.get_action(summary, w)
+            action = self.actor.get_action(observation, summary, w)
         else:
-            action = self.actor.sample(summary, w)
+            action = self.actor.sample(observation, summary, w)
         return action.view(-1).cpu().numpy()  # view as 1d -> to cpu -> to numpy
 
     @th.no_grad()
     def eval(
         self, 
         obs: Union[np.ndarray, th.Tensor],
-        w: Union[np.ndarray, th.Tensor], 
+        w: Union[np.ndarray, th.Tensor],
         torch_action=False,
         num_envs: int = 1,
+        prev_actions: Optional[Union[np.ndarray, th.Tensor]] = None,
         **kwargs
     ) -> Union[np.ndarray, th.Tensor]:
         """Evaluate the policy action for the given observation and weight vector."""
+
         if isinstance(obs, np.ndarray):
             obs = th.tensor(obs).float().to(self.device)
             w = th.tensor(w).float().to(self.device)
+        
+        if isinstance(prev_actions, np.ndarray):
+            prev_actions = th.tensor(prev_actions).float().to(self.device)
 
         if num_envs == 1:
             obs = obs.unsqueeze(0).unsqueeze(0)
             w = w.unsqueeze(0).unsqueeze(0)
+            if prev_actions is None:
+                prev_actions = th.zeros(1, 1, self.action_dim).to(self.device)
+            else:
+                prev_actions = prev_actions.unsqueeze(0).unsqueeze(0)
         else: # (num_envs, obs_dim) -> (num_envs, 1, obs_dim)
             obs = obs.unsqueeze(1)
             w = w.unsqueeze(1)
-        summary, self.hidden = self.actor_summarizer(obs, self.hidden, return_hidden=True)
-        action = self.actor.get_action(summary, w).squeeze(1)
+            if prev_actions is None:
+                prev_actions = th.zeros(num_envs, 1, self.action_dim).to(self.device)
+            else:
+                prev_actions = prev_actions.unsqueeze(1)
+        summary, self.hidden = self.actor_summarizer(obs, prev_actions, self.hidden, return_hidden=True)
+        action = self.actor.get_action(obs, summary, w).squeeze(1)
 
         if not torch_action:
             action = action.detach().cpu().numpy()
@@ -812,7 +910,7 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         # while algorithm is not. Once an episode has finished, we do algorithm.copy_networks_from(algorithm_clone) to
         # carry over the changes.
         algorithms_clone = deepcopy(self)  # algorithms_clone is for updates
-
+        action = None
         for _ in range(1, total_timesteps + 1):
             self.global_step += 1
 
@@ -827,6 +925,7 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
                         th.tensor(obs).float().to(self.device),
                         tensor_w,
                         deterministic=True,
+                        prev_action=th.tensor(action).float().to(self.device) if action is not None else None,
                     )
 
             action_env = action
