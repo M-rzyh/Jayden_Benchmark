@@ -164,12 +164,14 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         if self.algo_name == 'pcn':
             orig_desired_return, orig_desired_horizon = agent.desired_return.copy(), agent.desired_horizon.copy()
 
+        actions = None
         while not all(done):
             actions = agent.eval(
                             obs, 
                             np.tile(w, (self.test_envs.num_envs, 1)), 
                             num_envs = self.test_envs.num_envs,
                             disc_vec_return = disc_vec_return, # used for ESR only
+                            prev_actions = actions, # used for recurrent agents only
                         )
             obs, r, terminated, truncated, info = self.test_envs.step(actions)
 

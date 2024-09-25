@@ -47,10 +47,12 @@ def eval_mo(
     if hasattr(agent, 'zero_start_rnn_hidden'):
         agent.zero_start_rnn_hidden()  # reset hidden state for recurrent agents
 
+    action = None
     while not done:
         if render:
             env.render()
-        obs, r, terminated, truncated, info = env.step(agent.eval(obs, w))
+        action = agent.eval(obs, w, prev_action=action) # prev_action is used for recurrent agents
+        obs, r, terminated, truncated, info = env.step(action)
         done = terminated or truncated
         vec_return += r
         disc_vec_return += gamma * r
