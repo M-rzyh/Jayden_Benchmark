@@ -2,6 +2,7 @@
 import argparse
 
 from algos.multi_policy.capql.capql import CAPQL
+from algos.multi_policy.capql.capql_rnn import CAPQLRNN
 from algos.multi_policy.envelope.envelope import Envelope
 from algos.multi_policy.envelope.envelope_rnn import EnvelopeRNN
 from algos.multi_policy.gpi_pd.gpi_pd import GPILS, GPIPD
@@ -31,6 +32,7 @@ ALGOS = {
     "gpi_ls_discrete": GPILS,
     "gpi_ls_discrete_rnn": GPILSRNN,
     "capql": CAPQL,
+    "capql_rnn": CAPQLRNN,
     "mpmoql": MPMOQLearning,
     "pcn": PCN,
     "pql": PQL,
