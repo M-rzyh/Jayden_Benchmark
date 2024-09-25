@@ -513,9 +513,10 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
 
         self.log = log
         if self.log:
-            self.setup_wandb(project_name, experiment_name, wandb_entity, wandb_group, wandb_tags, offline_mode)
+            self.experiment_name = experiment_name
             if asymmetric:
                 self.experiment_name += f"+Asym"
+            self.setup_wandb(project_name, self.experiment_name, wandb_entity, wandb_group, wandb_tags, offline_mode)
 
     def get_config(self):
         """Get the configuration of the agent."""
