@@ -1,87 +1,205 @@
 MOHopperDR-v5:
   normalization:
-    discounted:
-      0: [0, 250] # actual [7, 231]
-      1: [0, 250] # actual [-21, 241]
-      2: [0, 100] # actual [4, 100]
-    undiscounted:
-      0: [0, 2700] # actual [8, 2682]
-      1: [0, 3100] # actual [-233, 3095]
-      2: [0, 1000] # actual [-10, 1000]
+    MOHopperDefault-v5:
+      0: [0, 242] # actual [7, 241.9]
+      1: [0, 321] # actual [-21, 321.2]
+      2: [-62.1, 97] # actual [-62.06, 97.04]
+    MOHopperLight-v5:
+      0: [0, 252.2] # actual [0, 252.1]
+      1: [0, 457.4] # actual [0, 457.4]
+      2: [-41.3, 100] # actual [-41.3, 96.8]
+    MOHopperHeavy-v5:
+      0: [0, 218] # actual [0, 217.97]
+      1: [0, 247] # actual [0, 246.8]
+      2: [-54, 96.5] # actual [-53.3, 96.4]
+    MOHopperSlippery-v5:
+      0: [0, 175.3] # actual [0, 175.3]
+      1: [-21, 324.1] # actual [-20.9, 324.1]
+      2: [-43.1, 96.1] # actual [-43.1, 96.1]
+    MOHopperLowDamping-v5:
+      0: [0, 262.6] # actual [0, 262.6]
+      1: [0, 315] # actual [0, 314.9]
+      2: [-40, 96.5] # actual [-39.6, 96.5]
+    MOHopperHard-v5:
+      0: [0, 174.8] # actual [0, 174.8]
+      1: [0, 334.2] # actual [0, 334.2]
+      2: [-38, 97.3] # actual [-37.4, 97.3]
   recover_single_objective: True
 
 MOHalfCheetahDR-v5:
   normalization:
-    discounted:
-      0: [0, 860] # actual [11.6, 859]
-      1: [-350, -4.4] # actual [-35, -0.44] but there is a 0.1 coefficient in original MO-Gymnasium
-    undiscounted:
-      0: [0, 12300] # actual [0, 12335]
-      1: [-4000, -40] # actual [-405, 0] but there is a 0.1 coefficient in original MO-Gymnasium
-  recover_single_objective: True
-
-MOHalfCheetah3dDR-v0:
-  normalization:
-    discounted:
-      0: [0, 860] 
-      1: [-175, -2.2] 
-      2: [-175, -2.2]
-    undiscounted:
-      0: [0, 12300]
-      1: [-2000, -20]
-      2: [-2000, -20]
+    MOHalfCheetahDefault-v5:
+      0: [0, 836] # actual [0, 836.3]
+      1: [-353, -3.4] # actual [-353.4, -3.4]
+    MOHalfCheetahLight-v5:
+      0: [0, 1061] # actual [0, 1061.3]
+      1: [-345, -4.3] # actual [-345.3, -4.3] -494.5
+    MOHalfCheetahHeavy-v5:
+      0: [0, 227] # actual [0, 227.3]
+      1: [-379, -4.3] # actual [-379.0, -4.26] 430.6
+    MOHalfCheetahSlippery-v5:
+      0: [0, 791] # actual [0, 791.0]
+      1: [-411, -3.6] # actual [-410.6, -3.6]
+    MOHalfCheetahHard-v5:
+      0: [0, 511] # actual [0, 510.5]
+      1: [-417, -3.8] # actual [-417.1, -3.82]
   recover_single_objective: True
 
 MOHumanoidDR-v5:
   normalization:
-    discounted:
-      0: [0, 560] # actual [74, 553]
-      1: [0, 230] # actual [33, 229]
-    undiscounted:
-      0: [0, 5300] # actual [79, 5275]
-      1: [0, 2300] # actual [36, 2286]
+    MOHumanoidDefault-v5:
+      0: [0, 395.4] # actual [0, 395.4]
+      1: [-35, 188] # actual [-34.99, 189.1]
+    MOHumanoidLight-v5:
+      0: [0, 548] # actual [0, 548.3]
+      1: [0, 156.4] # actual [0, 156.4]
+    MOHumanoidHeavy-v5:
+      0: [0, 232] # actual [0, 231.5]
+      1: [0, 135.4] # actual [0, 135.4]
+    MOHumanoidLowDamping-v5:
+      0: [0, 374] # actual [0, 374.2]
+      1: [0, 182.4] # actual [0, 182.4]
+    MOHumanoidHard-v5:
+      0: [0, 330] # actual [0, 329.5]
+      1: [-9, 88.6] # actual [-8.56, 88.6]
   recover_single_objective: True
 
 MOSuperMarioBrosDR-v2:
   normalization:
     discounted:
       0: [0, 28] # actual [0, 28.7]
-      1: [-1, 0] # actual [-0.63, -0.49]
-      2: [0, 6] # actual [0, 6]
-      3: [0, 40] # actual [0, 41]
+      1: [0, 6] # actual [0, 6]
+      2: [0, 40] # actual [0, 41]
     undiscounted:
       0: [0, 85] # actual [-2, 84]
-      1: [-12, 0] # actual [-11.3, 0]
-      2: [0, 16] # actual [0, 16]
-      3: [0, 380] # actual [0, 379]
+      1: [0, 16] # actual [0, 16]
+      2: [0, 380] # actual [0, 379]
+    MOSuperMarioBros-1-2-v2:
+      0: [0, 24.1] # actual [0, 24.1]
+      1: [0, 6.5] # actual [0, 6.52]
+      2: [0, 85.8] # actual [0, 85.8]
+    MOSuperMarioBros-2-1-v2:
+      0: [0, 16.7] # actual [0, 16.7]
+      1: [0, 1.5] # actual [0, 1.5]
+      2: [0, 83.8] # actual [0, 83.8]
   recover_single_objective: True
 
 MOSuperMarioBrosZeroShot-v2:
+  normalization:
+    MOSuperMarioBros-2-3-v2:
+      0: [0, 30.7] # actual [0, 30.7]
+      1: [-0.3, 6] # actual [-0.25, 26.7]
+      2: [-0.6, 40] # actual [-0.54, 41]
+    MOSuperMarioBros-3-2-v2:
+      0: [0, 29.5] # actual [0, 29.48]
+      1: [0, 3.73] # actual [0, 3.726]
+      2: [0, 102.4] # actual [0, 102.4]
+    MOSuperMarioBros-3-3-v2:
+      0: [0, 29.1] # actual [0, 29.1]
+      1: [0, 22.3] # actual [0, 22.3]
+      2: [0, 20.5] # actual [0, 20.5]
+    MOSuperMarioBros-4-3-v2:
+      0: [0, 17.8] # actual [0, 17.78]
+      1: [0, 16.3] # actual [0, 16.3]
+      2: [0, 44.9] # actual [0, 44.93]
+    MOSuperMarioBros-5-2-v2:
+      0: [0, 26.1] # actual [0, 26.1]
+      1: [0, 8.6] # actual [0, 8.6]
+      2: [0, 31.5] # actual [0, 31.5]
+    MOSuperMarioBros-5-3-v2:
+      0: [0, 21.7] # actual [0, 21.7]
+      1: [0, 2.92] # actual [0, 2.92]
+      2: [0, 16.1] # actual [0, 16.1]
+    MOSuperMarioBros-7-3-v2:
+      0: [0, 26.76] # actual [0, 26.76]
+      1: [0, 18.46] # actual [0, 18.46]
+      2: [0, 7.69] # actual [0, 7.69]
+    MOSuperMarioBros-8-1-v2:
+      0: [0, 20.11] # actual [0, 20.11]
+      1: [0, 0.58] # actual [0, 0.58]
+      2: [0, 158.17] # actual [0, 158.17]
   recover_single_objective: True
 
 MOSuperMarioBrosDayDR-v2:
-  normalization:
-    discounted:
-      0: [0, 28.7] # actual [0, 28.7]
-      1: [-0.63, -0.49] # actual [-0.63, -0.49] time penalty
-      2: [0, 47] # actual [0, 41] + coin actual [0, 5.35]
-    undiscounted:
-      0: [0, 84] # actual [-2, 84]
-      1: [-12, 0] # actual [-11.3, 0]
-      2: [0, 400] # actual enemy [0, 379] + coins actual [0, 16]
+  # normalization:
+  #   discounted:
+  #     0: [0, 28] # actual [0, 28.7]
+  #     1: [0, 6] # actual [0, 6]
+  #     2: [0, 40] # actual [0, 41]
+  #   undiscounted:
+  #     0: [0, 85] # actual [-2, 84]
+  #     1: [0, 16] # actual [0, 16]
+  #     2: [0, 380] # actual [0, 379]
   recover_single_objective: True
 
 MOLunarLanderDR-v0:
-  # normalization:
-  #   discounted:
-  #     0: [-250, 160] # actual [-647.7, 93.0] the ranges below are when the crash reward is separated in the original MO-Gymnasium
-  #     1: [-100, 5] # actual [-96.0, 0]
-  #     2: [-100, 30] # actual [-60.3, 0]
-  #   undiscounted:
-  #     0: [-500, 300] # actual [-689, 226]
-  #     1: [-600, 100] # actual [-589.4, 0]
-  #     2: [-700, 100] # actual [-669.8, 0]
+  normalization:
+    MOLunarLanderDefault-v0:
+      0: [-60, 18.7] # actual [-58.4, 18.74] 
+      1: [-175.9, 100] # actual [-175.9, 99]
+      2: [-55.1, 0] # actual [-55.1, 0]
+      3: [-47.4, 0] # actual [-47.4, 0]
+    MOLunarLanderHighGravity-v0:
+      0: [-59.3, 0] # actual [-59.3, 0.0]
+      1: [-174.0, 111.4] # actual [-174.0, 111.4]
+      2: [-57.44, 0] # actual [-57.44, 0]
+      3: [-45.7, 0] # actual [-45.7, 0]
+    MOLunarLanderWindy-v0:
+      0: [-59.3, 5.83] # actual [-59.3, 5.83]
+      1: [-174.0, 111.4] # actual [-174.0, 111.4]
+      2: [-57.44, 0] # actual [-57.44, 0]
+      3: [-45.8, 0] # actual [-45.77, 0]
+    MOLunarLanderTurbulent-v0:
+      0: [-60.2, -7.7] # actual [-60.2, -7.77]
+      1: [-175.4, 86.95] # actual [-411.4, 86.95]
+      2: [-54.4, 0] # actual [-54.4, 0]
+      3: [-60.3, 0] # actual [-60.33, 0]
+    MOLunarLanderHard-v0:
+      0: [-62.7, -9.96] # actual [-60.2, -9.96]
+      1: [-200.2, 99.4] # actual [-321.2, 99.4]
+      2: [-71.6, 0] # actual [-71.58, 0]
+      3: [-43.6, 0] # actual [-43.6, 0]
+    MOLunarLanderStartLow-v0:
+      0: [-67.3, 29.4] # actual [-67.27, 29.37]
+      1: [-218.9, 100] # actual [-218.9, 100]
+      2: [-67.1, 0] # actual [-67.1, 0]
+      3: [-41.6, 0] # actual [-41.59, 0]
+    MOLunarLanderStartRight-v0:
+      0: [-57.1, 17.8] # actual [-57.06, 17.79]
+      1: [-223.1, 123.94] # actual [-223.1, 123.94]
+      2: [-60.4, 0] # actual [-60.36, 0]
+      3: [-47.63, 0] # actual [-47.63, 0]
+    MOLunarLanderLowMainEngine-v0:
+      0: [-56.5, -13.6] # actual [-56.49, -13.6]
+      1: [-196, 120.1] # actual [-195.97, 120.06]
+      2: [-74.9, 0] # actual [-74.93, 0]
+      3: [-39.4, 0] # actual [-39.3, 0]
   recover_single_objective: True
 
 MOLavaGridDR-v0:
+  normalization:
+    MOLavaGridCheckerBoard-v0:
+      0: [0, 107.34] # actual [0, 107.34]
+      1: [0, 218.76] # actual [0, 218.76]
+    MOLavaGridSmiley-v0:
+      0: [0, 270.69] # actual [0, 270.69]
+      1: [0, 225.5] # actual [0, 225.5]
+    MOLavaGridSnake-v0:
+      0: [0, 234.21] # actual [0, 234.21]
+      1: [0, 220.54] # actual [0, 220.54]
+    MOLavaGridIslands-v0:
+      0: [0, 124.23] # actual [0, 124.23]
+      1: [0, 204.70] # actual [0, 204.70]
+    MOLavaGridLabyrinth-v0:
+      0: [0, 250.05] # actual [0, 250.05]
+      1: [0, 226.95] # actual [0, 226.95]
+    MOLavaGridMaze-v0:
+      0: [0, 237.33] # actual [0, 237.33]
+      1: [0, 203.59] # actual [0, 203.59]
+    MOLavaGridCorridor-v0:
+      0: [0, 265.66] # actual [0, 265.66]
+      1: [0, 240.21] # actual [0, 240.21]
+    MOLavaGridRoom-v0:
+      0: [0, 263.86] # actual [0, 263.86]
+      1: [0, 215.75] # actual [0, 215.75]
   recover_single_objective: True

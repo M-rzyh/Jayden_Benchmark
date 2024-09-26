@@ -34,7 +34,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             num_eval_episodes: int = 5,
             fixed_weights: List[List[float]] = None,
             eval_params: Optional[dict] = None,
-            normalization_type: str = "discounted",
             save_weights: bool = False,
             save_metric: str = 'hypervolume',
             **kwargs
@@ -54,7 +53,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             num_eval_weights: Number of weights to evaluate the agent on (for LS methods to condition on and for EUM calculation)
             num_eval_episodes: Number of episodes to average over for policy evaluation for each weight (total episodes = num_eval_weights * num_eval_episodes)
             eval_params: Evaluation parameters (for normalisation, recovering single-objective rewards, etc.)
-            normalization_type: Type of cumulative reward normalisation to use (either 'discounted' or 'undiscounted')
             save_weights: Whether to save the best weights for each test environment
             save_metric: Metrics to save the best front (and weights if `save_weights` is set) for
         """
@@ -104,9 +102,12 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.recover_single_objective = False # whether to log single-objective rewards
         if eval_params:
             print("Using eval params:", eval_params)
-            if "normalization" in eval_params:
-                self.normalsation_type = normalization_type
-                self.normalization = True
+            self.normalization = "normalization" in eval_params
+            if self.normalization:
+                for env in self.test_env_names:
+                    assert env in eval_params["normalization"], \
+                        f"Normalization parameters not provided for {env}. \
+                        Either comment out 'normalization' in eval_params to disable normalisation or provide the minmax ranges."
             if "recover_single_objective" in eval_params:
                 # should only be True if env provides `info['original_scalar_reward']` in `step` function
                 self.recover_single_objective = eval_params["recover_single_objective"]
@@ -452,12 +453,13 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
         # Normalized MOO metrics
         if self.normalization:
-            if self.normalsation_type == "discounted":
-                normalized_returns = self.get_normalized_vec_returns(disc_vec_returns, self.eval_params["normalization"]["discounted"])
-            elif self.normalsation_type == "undiscounted":
-                normalized_returns = self.get_normalized_vec_returns(vec_returns, self.eval_params["normalization"]["undiscounted"])
-            else:
-                raise NotImplementedError
+            # currently only normalizing using discounted vec returns, current minmax ranges cannot be applied to undiscounted returns!
+            normalized_returns = np.empty_like(disc_vec_returns)
+            for env_idx, env in enumerate(self.test_env_names):
+                minmax_range = self.eval_params["normalization"][env]
+                disc_vec_return_for_env = disc_vec_returns[env_idx]
+                normalized_returns_for_env = self.get_normalized_vec_returns(disc_vec_return_for_env, minmax_range)
+                normalized_returns[env_idx] = normalized_returns_for_env
 
             self.log_all_multi_policy_metrics(
                 agent=agent,

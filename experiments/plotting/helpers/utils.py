@@ -33,6 +33,26 @@ ENVIRONMENTS_MAP = {
         "MOLunarLanderStartLow-v0",
         "MOLunarLanderStartRight-v0",
     ],
+    "MOLavaGridDR-v0": [
+        "MOLavaGridCheckerBoard-v0",
+        "MOLavaGridSmiley-v0",
+        "MOLavaGridSnake-v0",
+        "MOLavaGridIslands-v0",
+        "MOLavaGridLabyrinth-v0",
+        "MOLavaGridMaze-v0",
+        "MOLavaGridCorridor-v0",
+        "MOLavaGridRoom-v0",
+    ],
+    "MOSuperMarioBrosZeroShot-v2": [
+        "MOSuperMarioBros-2-3-v2",
+        "MOSuperMarioBros-3-2-v2",
+        "MOSuperMarioBros-3-3-v2",
+        "MOSuperMarioBros-4-3-v2",
+        "MOSuperMarioBros-5-2-v2",
+        "MOSuperMarioBros-5-3-v2",
+        "MOSuperMarioBros-7-3-v2",
+        "MOSuperMarioBros-8-1-v2",
+    ],
 }
 
 CONTINUOUS_ALGORITHMS = [
@@ -68,7 +88,7 @@ ENVIRONMENT_TO_ALGORITHMS_MAP = {
     'MOHalfCheetahDR-v5': CONTINUOUS_ALGORITHMS,
     'MOHumanoidDR-v5': CONTINUOUS_ALGORITHMS,
     'MOLunarLanderDR-v0': DISCRETE_ALGORITHMS,
-    'MOLavaGrid-v0': DISCRETE_ALGORITHMS,
+    'MOLavaGridDR-v0': DISCRETE_ALGORITHMS,
     'MOSuperMarioBrosZeroShot-v2': PIXEL_ALGORITHMS,
 }
 
