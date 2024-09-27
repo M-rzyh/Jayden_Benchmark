@@ -86,6 +86,10 @@ MOSuperMarioBrosDR-v2:
 
 MOSuperMarioBrosZeroShot-v2:
   normalization:
+    MOSuperMarioBros-1-2-v2:
+      0: [0, 24.09] # actual [0, 24.086]
+      1: [0, 6.52] # actual [0, 6.52]
+      2: [0, 85.78] # actual [-0.54, 85.775]
     MOSuperMarioBros-2-3-v2:
       0: [0, 30.7] # actual [0, 30.7]
       1: [-0.3, 26.7] # actual [-0.25, 26.7]
