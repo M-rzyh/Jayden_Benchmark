@@ -5,17 +5,17 @@ from algos.multi_policy.capql.capql import CAPQL
 from algos.multi_policy.capql.capql_rnn import CAPQLRNN
 from algos.multi_policy.envelope.envelope import Envelope
 from algos.multi_policy.envelope.envelope_rnn import EnvelopeRNN
-# from algos.multi_policy.gpi_pd.gpi_pd import GPILS, GPIPD
-# from algos.multi_policy.gpi_pd.gpi_ls_rnn import GPILSRNN
-# from algos.multi_policy.gpi_pd.gpi_pd_continuous_action import (
-#     GPILSContinuousAction,
-#     GPIPDContinuousAction,
-# )
+from algos.multi_policy.gpi_pd.gpi_pd import GPILS, GPIPD
+from algos.multi_policy.gpi_pd.gpi_ls_rnn import GPILSRNN
+from algos.multi_policy.gpi_pd.gpi_pd_continuous_action import (
+    GPILSContinuousAction,
+    GPIPDContinuousAction,
+)
 from algos.multi_policy.morld.morld import MORLD
-# from algos.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import (
-#     MPMOQLearning,
-# )
-# from algos.multi_policy.pareto_q_learning.pql import PQL
+from algos.multi_policy.multi_policy_moqlearning.mp_mo_q_learning import (
+    MPMOQLearning,
+)
+from algos.multi_policy.pareto_q_learning.pql import PQL
 from algos.multi_policy.pcn.pcn import PCN
 from algos.multi_policy.pgmorl.pgmorl import PGMORL
 from algos.single_policy.single_objective.sac_continuous import SACContinuous
@@ -26,18 +26,18 @@ ALGOS = {
     "pgmorl": PGMORL,
     "envelope": Envelope,
     "envelope_rnn": EnvelopeRNN,
-    # "gpi_pd_continuous": GPIPDContinuousAction,
-    # "gpi_pd_discrete": GPIPD,
-    # "gpi_ls_continuous": GPILSContinuousAction,
-    # "gpi_ls_discrete": GPILS,
-    # "gpi_ls_discrete_rnn": GPILSRNN,
+    "gpi_pd_continuous": GPIPDContinuousAction,
+    "gpi_pd_discrete": GPIPD,
+    "gpi_ls_continuous": GPILSContinuousAction,
+    "gpi_ls_discrete": GPILS,
+    "gpi_ls_discrete_rnn": GPILSRNN,
     "capql": CAPQL,
     "capql_rnn": CAPQLRNN,
-    # "mpmoql": MPMOQLearning,
+    "mpmoql": MPMOQLearning,
     "pcn": PCN,
-    # "pql": PQL,
-    # "ols": MPMOQLearning,
-    # "gpi-ls": MPMOQLearning,
+    "pql": PQL,
+    "ols": MPMOQLearning,
+    "gpi-ls": MPMOQLearning,
     "morld": MORLD,
     "sac_continuous": SACContinuous,
     "sac_discrete": SACDiscrete,
