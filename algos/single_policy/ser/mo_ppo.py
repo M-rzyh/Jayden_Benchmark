@@ -142,8 +142,7 @@ def make_env(env_id, seed, idx, run_name, gamma, generalization_algo=None):
         env = MORecordEpisodeStatistics(env, gamma=gamma)
 
         if generalization_algo is not None:
-            env_selection_algo_wrapper = get_env_selection_algo_wrapper(generalization_algo)
-            env = env_selection_algo_wrapper(env)
+            env = get_env_selection_algo_wrapper(env, generalization_algo)
 
         env.reset(seed=seed)
         env.action_space.seed(seed)

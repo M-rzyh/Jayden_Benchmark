@@ -4,51 +4,43 @@ from typing import Callable, Optional
 
 import gymnasium as gym
 from gymnasium import logger
-from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.monitoring import video_recorder
 from gymnasium.wrappers.frame_stack import FrameStack
+from gymnasium.wrappers import FlattenObservation
 
-from morl_generalization.algos.dr import DREnv
+class ObsToNumpy(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
 
-def make_history_informed_environment(env: gym.Env, args):
-    """Wrap env
-        
-        :param args.stack_history: int
-                             number of previous obs and actions 
-        :param args.rand_only: List[int]
-                               dyn param indices mask
-        :param args.dyn_in_obs: bool
-                                condition the policy on the true dyn params
-    """
+    def observation(self, obs):
+        return np.asarray(obs)
+    
+class StateHistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
+    def __init__(self, env: gym.Env, history_len: int = 3):
+        """
+            Augments the observation with
+            a stack of the previous "history_len" states
+            observed.
+        """
+        gym.utils.RecordConstructorArgs.__init__(self, history_len=history_len)
+        gym.Wrapper.__init__(self, env)
 
-    if args.stack_history is not None:
-        env = FrameStack(env, args.stack_history+1)  # FrameStack considers the current obs as 1 stack
-        # env = ObsToNumpy(env)
+        self.history_len = history_len
+        env = FrameStack(env, history_len + 1)  # FrameStack considers the current obs as 1 stack
+        env = ObsToNumpy(env)
         env = FlattenObservation(env)
-        env = ActionHistoryWrapper(env, args.stack_history)
-
-    if args.dyn_in_obs:
-        env = DynamicsInObs(env, dynamics_mask=args.rand_only)
-
-    return env
+        self.env = env
 
 class ActionHistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
-    def __init__(self, env: gym.Env, history_len: int, valid_dim=False):
+    def __init__(self, env: gym.Env, history_len: int = 3):
         """
             Augments the observation with
             a stack of the previous "history_len" actions
             taken.
-
-            valid_dim : bool
-                        if False, at the beginning of the episode, zero-valued actions
-                            are used.
-                        if True, an additional binary valid code is used as input to indicate whether
-                        previous actions are valid or not (beginning of the episode).
         """
-        gym.utils.RecordConstructorArgs.__init__(self, history_len=history_len, valid_dim=valid_dim)
+        gym.utils.RecordConstructorArgs.__init__(self, history_len=history_len)
         gym.Wrapper.__init__(self, env)
         assert env.action_space.sample().ndim == 1, 'Actions are assumed to be flat on one-dim vector'
-        assert valid_dim == False, 'valid encoding has not been implemented yet.'
 
         self.history_len = history_len
         self.actions_buffer = np.zeros((history_len, env.action_space.shape[0]), dtype=np.float32)
@@ -62,54 +54,22 @@ class ActionHistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.observation_space = gym.spaces.Box(low=low, high=high, dtype=obs_space.dtype)
 
     def reset(self, **kwargs):
-        obs = self.env.reset(**kwargs)
+        obs, info = self.env.reset(**kwargs)
         self.actions_buffer.fill(0)
-        return self._stack_actions_to_obs(obs)
+        return self._stack_actions_to_obs(obs), info
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, terminated, truncated, info = self.env.step(action)
         self.actions_buffer[:-1] = self.actions_buffer[1:]
         self.actions_buffer[-1] = action
         obs = self._stack_actions_to_obs(obs)
-        return obs, reward, done, info
+        return obs, reward, terminated, truncated, info
 
     def _stack_actions_to_obs(self, obs):
         obs = np.concatenate([obs.flatten(), self.actions_buffer.flatten()], axis=0)
         return obs
-    
-class DynamicsInObs(gym.ObservationWrapper, gym.utils.RecordConstructorArgs):
-    def __init__(self, env: gym.Env, dynamics_mask=None):
-        """
-            Stack the current env dynamics to the env observation vector
 
-            dynamics_mask: list of int
-                           indices of dynamics to randomize, i.e. to condition the network on
-        """
-        if not isinstance(env, DREnv):
-            raise TypeError("The environment must implement be a DREnv, i.e. implement `get_task()`, before applying DynamicsInObs.")
-        gym.utils.RecordConstructorArgs.__init__(self, dynamics_mask=dynamics_mask)
-        gym.ObservationWrapper.__init__(env)
 
-        if dynamics_mask is not None:
-            self.dynamics_mask = np.array(dynamics_mask)
-            task_dim = env.get_task()[self.dynamics_mask].shape[0]
-        else:  # All dynamics are used
-            task_dim = env.get_task().shape[0]
-            self.dynamics_mask = np.arange(task_dim)
-
-        # self.nominal_values = env.get_task()[self.dynamics_mask].copy()  # used for normalizing dynamics values
-
-        obs_space = env.observation_space
-        low = np.concatenate([obs_space.low.flatten(), np.repeat(-np.inf, task_dim)], axis=0)
-        high = np.concatenate([obs_space.high.flatten(), np.repeat(np.inf, task_dim)], axis=0)
-        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=obs_space.dtype)
-
-    def observation(self, obs):
-        # norm_dynamics = self.env.get_task()[self.dynamics_mask] - self.nominal_values
-        norm_dynamics = self.env.get_task()[self.dynamics_mask]
-        obs = np.concatenate([obs.flatten(), norm_dynamics], axis=0)
-        return obs
-    
 def capped_cubic_video_schedule(episode_id: int) -> bool:
     """The default episode trigger.
 

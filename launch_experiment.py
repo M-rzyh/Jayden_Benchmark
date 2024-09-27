@@ -184,9 +184,8 @@ def make_envs(args):
         eval_env = Multi2SingleObjectiveWrapper(eval_env)
 
     if args.test_generalization:
-        env_selection_algo_wrapper = get_env_selection_algo_wrapper(args.generalization_algo)
-        env = env_selection_algo_wrapper(env)
-        eval_env = env_selection_algo_wrapper(eval_env)
+        env = get_env_selection_algo_wrapper(env, args.generalization_algo)
+        eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_algo, is_eval_env=True)
         
         # allow for comprehensize evaluation of generalization
         eval_env = make_generalization_evaluator(eval_env, args)
@@ -251,8 +250,7 @@ def main():
         eval_env_creator = make_env(args.env_id, seed=args.seed, idx=-1, run_name="PGMORL", gamma=args.gamma)
         eval_env = eval_env_creator()
         if args.test_generalization:
-            env_selection_algo_wrapper = get_env_selection_algo_wrapper(args.generalization_algo)
-            eval_env = env_selection_algo_wrapper(eval_env)
+            eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_algo, is_eval_env=True)
 
             eval_env = make_generalization_evaluator(eval_env, args)
 

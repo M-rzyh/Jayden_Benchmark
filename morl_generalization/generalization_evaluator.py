@@ -79,7 +79,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             lambda env_name=env_name: make_test_envs(
                 env_name, 
                 self.algo_name, 
-                seed, 
+                seed,
+                generalization_algo,
                 record_video=record_video,
                 record_video_w_freq=record_video_w_freq,
                 record_video_ep_freq=record_video_ep_freq,

@@ -76,6 +76,8 @@ class MORLD(MOAgent):
         update_passes: int = 10,
         weight_init_method: str = "uniform",
         weight_adaptation_method: Optional[str] = None,  # "PSA" or None
+        asymmetric: bool = False,
+        history_type: str = None,
         project_name: str = "MORL-Baselines",
         experiment_name: str = "MORL-D",
         wandb_entity: Optional[str] = None,
@@ -105,6 +107,8 @@ class MORLD(MOAgent):
             update_passes: number of times to update all policies after sampling from one policy.
             weight_init_method: weight initialization method. "uniform" or "random"
             weight_adaptation_method: weight adaptation method. "PSA" or None.
+            asymmetric: whether to use asymmetric soft actor-critic or not
+            history_type: whether to use state-action history information or not
             project_name: For wandb logging
             experiment_name: For wandb logging
             wandb_entity: For wandb logging
@@ -184,6 +188,10 @@ class MORLD(MOAgent):
             self.experiment_name += f"+{self.weight_adaptation_method}"
         elif self.weight_adaptation_method is not None:
             self.experiment_name += f"-{self.weight_adaptation_method}"
+        if asymmetric:
+            self.experiment_name += "+Asym"
+        if history_type is not None:
+            self.experiment_name += f"+{history_type}"
         if self.transfer:
             self.experiment_name += "+transfer"
 
@@ -201,6 +209,7 @@ class MORLD(MOAgent):
                     id=i,
                     env=self.env,
                     weights=w,
+                    asymmetric=asymmetric,
                     scalarization=th.matmul if scalarization_method == "ws" else self.scalarization, # policy operates on tensors
                     gamma=gamma,
                     log=self.log,

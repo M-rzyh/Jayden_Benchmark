@@ -128,6 +128,7 @@ class MOSAC(MOPolicy):
         self,
         env: gym.Env,
         weights: np.ndarray,
+        asymmetric: bool = False,
         scalarization=th.matmul,
         buffer_size: int = int(1e6),
         gamma: float = 0.99,
@@ -206,9 +207,17 @@ class MOSAC(MOPolicy):
         self.policy_freq = policy_freq
         self.target_net_freq = target_net_freq
 
+        self.asymmetric = asymmetric
+        if self.asymmetric:
+            self.actor_mask, self.critic_mask = env.get_actor_critic_masks()
+            print(f"Actor mask: 0 - {len(self.actor_mask)}, Critic mask: 0 - {len(self.critic_mask)}")
+            actor_obs_shape = (len(self.actor_mask),) # assuming unidimensional observations
+        else:
+            actor_obs_shape = self.obs_shape
+
         # Networks
         self.actor = MOSACActor(
-            obs_shape=self.obs_shape,
+            obs_shape=actor_obs_shape,
             action_shape=self.action_shape,
             reward_dim=self.reward_dim,
             action_lower_bound=self.env.action_space.low,
@@ -421,9 +430,15 @@ class MOSAC(MOPolicy):
         (mb_obs, mb_act, mb_rewards, mb_next_obs, mb_dones) = self.buffer.sample(
             self.batch_size, to_tensor=True, device=self.device
         )
+        if self.asymmetric:
+            actor_obs = mb_obs[:, self.actor_mask]
+            actor_next_obs = mb_next_obs[:, self.actor_mask]
+        else:
+            actor_obs = mb_obs
+            actor_next_obs = mb_next_obs
 
         with th.no_grad():
-            next_state_actions, next_state_log_pi, _ = self.actor.get_action(mb_next_obs)
+            next_state_actions, next_state_log_pi, _ = self.actor.get_action(actor_next_obs)
             # (!) Q values are scalarized before being compared (min of ensemble networks)
             qf1_next_target = self.scalarization(self.qf1_target(mb_next_obs, next_state_actions), self.weights_tensor)
             qf2_next_target = self.scalarization(self.qf2_target(mb_next_obs, next_state_actions), self.weights_tensor)
@@ -443,7 +458,7 @@ class MOSAC(MOPolicy):
 
         if self.global_step % self.policy_freq == 0:  # TD 3 Delayed update support
             for _ in range(self.policy_freq):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                pi, log_pi, _ = self.actor.get_action(mb_obs)
+                pi, log_pi, _ = self.actor.get_action(actor_obs)
                 # (!) Q values are scalarized before being compared (min of ensemble networks)
                 qf1_pi = self.scalarization(self.qf1(mb_obs, pi), self.weights_tensor)
                 qf2_pi = self.scalarization(self.qf2(mb_obs, pi), self.weights_tensor)
@@ -456,7 +471,7 @@ class MOSAC(MOPolicy):
 
                 if self.autotune:
                     with th.no_grad():
-                        _, log_pi, _ = self.actor.get_action(mb_obs)
+                        _, log_pi, _ = self.actor.get_action(actor_obs)
                     alpha_loss = (-self.log_alpha.exp() * (log_pi + self.target_entropy)).mean()
 
                     self.a_optimizer.zero_grad(set_to_none=True)
@@ -513,7 +528,11 @@ class MOSAC(MOPolicy):
             if self.global_step < self.learning_starts:
                 actions = self.env.action_space.sample()
             else:
-                th_obs = th.as_tensor(obs).float().to(self.device)
+                if self.asymmetric:
+                    actor_obs = obs[self.actor_mask]
+                else:
+                    actor_obs = obs
+                th_obs = th.as_tensor(actor_obs).float().to(self.device)
                 th_obs = th_obs.unsqueeze(0)
                 actions, _, _ = self.actor.get_action(th_obs)
                 actions = actions[0].detach().cpu().numpy()

@@ -2,8 +2,17 @@ from abc import ABC, abstractmethod
 import gymnasium as gym
 from gymnasium.spaces import Dict
 import numpy as np
+import os
+import numpy as np
+from typing import Callable, Optional
 
-# TODO: implement this for all dr envs
+import gymnasium as gym
+from gymnasium import logger
+from gymnasium.wrappers import FlattenObservation
+from gymnasium.wrappers.monitoring import video_recorder
+from gymnasium.wrappers.frame_stack import FrameStack
+from morl_generalization.wrappers import ObsToNumpy, ActionHistoryWrapper, StateHistoryWrapper
+
 class DREnv(ABC):
     def __init__(self):
         pass
@@ -55,14 +64,9 @@ class DynamicsInObs(DRWrapper, gym.utils.RecordConstructorArgs):
             self.dynamics_mask = np.arange(task_dim)
 
         obs_space = env.observation_space
-        # low = np.concatenate([obs_space.low.flatten(), np.repeat(-np.inf, task_dim)], axis=0)
-        # high = np.concatenate([obs_space.high.flatten(), np.repeat(np.inf, task_dim)], axis=0)
-        # self.observation_space = gym.spaces.Box(low=low, high=high, dtype=obs_space.dtype)
-
-        self.observation_space = Dict({
-            "observation": gym.spaces.Box(low=obs_space.low, high=obs_space.high, dtype=obs_space.dtype),
-            "context": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(task_dim,), dtype=obs_space.dtype),
-        })
+        low = np.concatenate([obs_space.low.flatten(), np.repeat(-np.inf, task_dim)], axis=0)
+        high = np.concatenate([obs_space.high.flatten(), np.repeat(np.inf, task_dim)], axis=0)
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=obs_space.dtype)
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
@@ -75,3 +79,18 @@ class DynamicsInObs(DRWrapper, gym.utils.RecordConstructorArgs):
         dynamics = self.env.get_task()[self.dynamics_mask]
         obs = np.concatenate([obs.flatten(), dynamics], axis=0)
         return obs, info
+
+    def get_actor_critic_masks(self):
+        actor_obs_mask = list(range(0, self.observation_space.shape[0] - self.dynamics_mask.shape[0]))
+        critic_obs_mask = list(range(self.observation_space.shape[0]))
+        return actor_obs_mask, critic_obs_mask
+    
+class AsymmetricDRWrapper(gym.Wrapper):
+    def __init__(self, env, history_len=3, state_history=False, action_history=False):
+        super(AsymmetricDRWrapper, self).__init__(env)
+        if state_history:
+            env = StateHistoryWrapper(env, history_len)
+        if action_history:
+            env = ActionHistoryWrapper(env, history_len)
+        env = DynamicsInObs(env)
+        self.env = env
