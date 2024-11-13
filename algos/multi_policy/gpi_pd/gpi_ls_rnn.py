@@ -176,6 +176,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
     def __init__(
         self,
         env,
+        use_assymmetric: bool = False,
         learning_rate: float = 3e-4,
         initial_epsilon: float = 0.01,
         final_epsilon: float = 0.01,
@@ -220,6 +221,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         Args:
             env: The environment to learn from.
             learning_rate: The learning rate.
+            use_assymmetric: Whether to use assymmetric actor-critic networks.
             initial_epsilon: The initial epsilon value.
             final_epsilon: The final epsilon value.
             epsilon_decay_steps: The number of steps to decay epsilon.
@@ -252,6 +254,10 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         """
         MOAgent.__init__(self, env, device=device, seed=seed)
         RecurrentMOPolicy.__init__(self, device=device)
+
+        if use_assymmetric:
+            assert self.context_shape is not None, "Context shape must be provided for assymmetric networks."
+        
         self.learning_rate = learning_rate
         self.initial_epsilon = initial_epsilon
         self.epsilon = initial_epsilon
@@ -276,26 +282,58 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         self.rnn_hidden_dim = rnn_hidden_dim
 
         # Q-Networks
-        self.feat_nets = [
-            FeaturesExtractor(
-                self.observation_shape,
-                self.rnn_hidden_dim,
-                rnn_layers=rnn_layers,
-            ).to(self.device)
-            for _ in range(self.num_nets)
-        ]
-        self.q_nets = [
-            QNet(
-                self.observation_shape,
-                self.action_dim,
-                self.reward_dim,
-                net_arch=net_arch,
-                input_dim=self.rnn_hidden_dim * 2,
-                drop_rate=drop_rate,
-                layer_norm=layer_norm,
-            ).to(self.device)
-            for _ in range(self.num_nets)
-        ]
+        if use_assymmetric:
+            self.feat_nets = [
+                FeaturesExtractor(
+                    self.observation_shape,
+                    self.rnn_hidden_dim,
+                    rnn_layers=rnn_layers,
+                ).to(self.device)
+            ]
+            self.q_nets = [ # actor networks take rnn output of just observations
+                QNet(
+                    self.observation_shape,
+                    self.action_dim,
+                    self.reward_dim,
+                    net_arch=net_arch,
+                    input_dim=self.rnn_hidden_dim * 2,
+                    drop_rate=drop_rate,
+                    layer_norm=layer_norm,
+                ).to(self.device)
+            ]
+            for _ in range(num_nets - 1): # critic networks take raw observations + context
+                self.q_nets.append(
+                    QNet(
+                        self.observation_shape,
+                        self.action_dim,
+                        self.reward_dim,
+                        net_arch=net_arch,
+                        input_dim=self.context_dim,
+                        drop_rate=drop_rate,
+                        layer_norm=layer_norm,
+                    ).to(self.device)
+                )
+        else:
+            self.feat_nets = [
+                FeaturesExtractor(
+                    self.observation_shape,
+                    self.rnn_hidden_dim,
+                    rnn_layers=rnn_layers,
+                ).to(self.device)
+                for _ in range(self.num_nets)
+            ]
+            self.q_nets = [
+                QNet(
+                    self.observation_shape,
+                    self.action_dim,
+                    self.reward_dim,
+                    net_arch=net_arch,
+                    input_dim=self.rnn_hidden_dim * 2,
+                    drop_rate=drop_rate,
+                    layer_norm=layer_norm,
+                ).to(self.device)
+                for _ in range(self.num_nets)
+            ]
 
         self.target_feat_nets = [
             create_target(feature_net) for feature_net in self.feat_nets

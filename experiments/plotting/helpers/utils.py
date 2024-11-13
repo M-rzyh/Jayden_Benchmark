@@ -44,7 +44,7 @@ ENVIRONMENTS_MAP = {
         "MOLavaGridRoom-v0",
     ],
     "MOSuperMarioBrosZeroShot-v2": [
-        "MOSuperMarioBros-2-3-v2",
+        "MOSuperMarioBros-1-2-v2",
         "MOSuperMarioBros-3-2-v2",
         "MOSuperMarioBros-3-3-v2",
         "MOSuperMarioBros-4-3-v2",

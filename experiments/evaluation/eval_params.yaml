@@ -88,40 +88,40 @@ MOSuperMarioBrosZeroShot-v2:
   normalization:
     MOSuperMarioBros-1-2-v2:
       0: [0, 24.09] # actual [0, 24.086]
-      1: [0, 6.52] # actual [0, 6.52]
-      2: [0, 85.78] # actual [-0.54, 85.775]
+      1: [-1, 6.52] # actual [0, 6.52]
+      2: [-1, 85.78] # actual [-0.54, 85.775]
     MOSuperMarioBros-2-3-v2:
       0: [0, 30.7] # actual [0, 30.7]
-      1: [-0.3, 26.7] # actual [-0.25, 26.7]
-      2: [-0.6, 40] # actual [-0.54, 41]
+      1: [-1, 26.7] # actual [-0.25, 26.7]
+      2: [-1, 40] # actual [-0.54, 41]
     MOSuperMarioBros-3-2-v2:
       0: [0, 29.5] # actual [0, 29.48]
-      1: [0, 3.73] # actual [0, 3.726]
-      2: [0, 102.4] # actual [0, 102.4]
+      1: [-1, 3.73] # actual [0, 3.726]
+      2: [-1, 102.4] # actual [0, 102.4]
     MOSuperMarioBros-3-3-v2:
       0: [0, 29.1] # actual [0, 29.1]
-      1: [0, 22.3] # actual [0, 22.3]
-      2: [0, 20.5] # actual [0, 20.5]
+      1: [-1, 22.3] # actual [0, 22.3]
+      2: [-1, 20.5] # actual [0, 20.5]
     MOSuperMarioBros-4-3-v2:
       0: [0, 17.8] # actual [0, 17.78]
-      1: [0, 16.3] # actual [0, 16.3]
-      2: [0, 44.9] # actual [0, 44.93]
+      1: [-1, 16.3] # actual [0, 16.3]
+      2: [-1, 44.9] # actual [0, 44.93]
     MOSuperMarioBros-5-2-v2:
       0: [0, 26.1] # actual [0, 26.1]
-      1: [0, 8.6] # actual [0, 8.6]
-      2: [0, 31.5] # actual [0, 31.5]
+      1: [-1, 8.6] # actual [0, 8.6]
+      2: [-1, 31.5] # actual [0, 31.5]
     MOSuperMarioBros-5-3-v2:
       0: [0, 21.7] # actual [0, 21.7]
-      1: [0, 2.92] # actual [0, 2.92]
-      2: [0, 16.1] # actual [0, 16.1]
+      1: [-1, 2.92] # actual [0, 2.92]
+      2: [-1, 16.1] # actual [0, 16.1]
     MOSuperMarioBros-7-3-v2:
       0: [0, 26.76] # actual [0, 26.76]
-      1: [0, 18.46] # actual [0, 18.46]
-      2: [0, 7.69] # actual [0, 7.69]
+      1: [-1, 18.46] # actual [0, 18.46]
+      2: [-1, 7.69] # actual [0, 7.69]
     MOSuperMarioBros-8-1-v2:
       0: [0, 20.11] # actual [0, 20.11]
-      1: [0, 0.58] # actual [0, 0.58]
-      2: [0, 158.17] # actual [0, 158.17]
+      1: [-1, 0.58] # actual [0, 0.58]
+      2: [-1, 158.17] # actual [0, 158.17]
   recover_single_objective: True
 
 MOSuperMarioBrosDayDR-v2:
