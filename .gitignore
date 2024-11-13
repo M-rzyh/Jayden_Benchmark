@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 
@@ -128,6 +129,7 @@ wandb/
 
 # Pycharm
 .idea/
+.DS_Store
 **/.DS_Store
 
 # Saved weights
