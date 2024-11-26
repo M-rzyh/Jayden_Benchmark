@@ -3,7 +3,7 @@
 Many parameters can be given in the command line, see the help for more infos.
 
 Examples:
-    python benchmark/launch_experiment.py --algo pcn --env-id deep-sea-treasure-v0 --num-timesteps 1000000 --gamma 0.99 --ref-point 0 -25 --auto-tag True --wandb-entity openrlbenchmark --seed 0 --init-hyperparams "scaling_factor:np.array([1, 1, 1])"
+    python benchmark/launch_experiment.py --algo pcn --env-id deep-sea-treasure-v0 --num-timesteps 1000000 --gamma 0.99 --ref-point 0 -25 --wandb-entity openrlbenchmark --seed 0 --init-hyperparams "scaling_factor:np.array([1, 1, 1])"
 """
 
 import argparse
@@ -47,14 +47,6 @@ def parse_args():
     parser.add_argument("--wandb-group", type=str, help="Wandb group to use for logging", required=False)
     parser.add_argument("--wandb-tags", type=str, nargs="+", help="Extra wandb tags for experiment versioning", required=False)
     parser.add_argument("--wandb-offline", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True, help="Whether to run wandb offline")
-    parser.add_argument(
-        "--auto-tag",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        nargs="?",
-        const=True,
-        help="if toggled, the runs will be tagged with git tags, commit, and pull request number if possible",
-    )
     parser.add_argument(
         "--record-video",
         type=lambda x: bool(strtobool(x)),
@@ -112,33 +104,6 @@ def parse_args():
 
     return parser.parse_args()
 
-
-def autotag() -> str:
-    """This adds a tag to the wandb run marking the commit number, allows to versioning of experiments. From CleanRL's benchmark utility."""
-    wandb_tag = ""
-    print("autotag feature is enabled")
-    try:
-        git_tag = subprocess.check_output(["git", "describe", "--tags"]).decode("ascii").strip()
-        wandb_tag = f"{git_tag}"
-        print(f"identified git tag: {git_tag}")
-    except subprocess.CalledProcessError:
-        return wandb_tag
-
-    git_commit = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"]).decode("ascii").strip()
-    try:
-        # try finding the pull request number on github
-        prs = requests.get(f"https://api.github.com/search/issues?q=repo:LucasAlegre/morl-baselines+is:pr+{git_commit}")
-        if prs.status_code == 200:
-            prs = prs.json()
-            if len(prs["items"]) > 0:
-                pr = prs["items"][0]
-                pr_number = pr["number"]
-                wandb_tag += f",pr-{pr_number}"
-        print(f"identified github pull request: {pr_number}")
-    except Exception as e:
-        print(e)
-
-    return wandb_tag
 
 def parse_generalization_args(args):
     if args.test_generalization:
@@ -218,15 +183,6 @@ def main():
     print(args)
 
     seed_everything(args.seed)
-
-    if args.auto_tag:
-        if "WANDB_TAGS" in os.environ:
-            raise ValueError(
-                "WANDB_TAGS is already set. Please unset it before running this script or run the script with --auto-tag False"
-            )
-        wandb_tag = autotag()
-        if len(wandb_tag) > 0:
-            os.environ["WANDB_TAGS"] = wandb_tag
 
     if args.algo == "pgmorl":
         # PGMORL creates its own environments because it requires wrappers

@@ -39,7 +39,7 @@ from morl_generalization.generalization_evaluator import MORLGeneralizationEvalu
 
 # ALGO LOGIC: initialize agent here:
 class SoftQNetwork(nn.Module):
-    """Soft Q-network: S, A -> ... -> |R| (multi-objective)."""
+    """Soft Q-network: S, A -> ... -> R (single-objective)."""
 
     def __init__(self, obs_shape, action_dim, net_arch):
         """"Initialize the Q network.
@@ -54,28 +54,23 @@ class SoftQNetwork(nn.Module):
         self.obs_shape = obs_shape
         self.action_dim = action_dim
         if len(obs_shape) == 1:
-            self.feature_extractor = None
-            input_dim = obs_shape[0]
+            self.feature_extractor = mlp(obs_shape[0], -1, net_arch[:1])
         elif len(obs_shape) > 1:  # Image observation
             self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
-            input_dim = self.feature_extractor.features_dim
-        # S, A -> ... -> |A| * |R|
-        self.net = mlp(input_dim, action_dim, net_arch)
+        # S, A -> ... -> |A| * R
+        self.net = mlp(net_arch[0], action_dim, net_arch[1:])
         self.apply(layer_init)
 
     def forward(self, obs):
         """Predict Q values for all actions."""
-        if self.feature_extractor is not None:
-            input = self.feature_extractor(obs)
-        else:
-            input = obs
+        input = self.feature_extractor(obs)
         q_values = self.net(input)
         return q_values
 
 
 
 class Actor(nn.Module):
-    """Actor network: S -> A. Does not need any multi-objective concept."""
+    """Actor network: S -> A."""
 
     def __init__(
         self,
@@ -90,21 +85,16 @@ class Actor(nn.Module):
         self.net_arch = net_arch
 
         if len(obs_shape) == 1:
-            self.feature_extractor = None
-            input_dim = obs_shape[0]
+            self.feature_extractor = mlp(obs_shape[0], -1, net_arch[:1])
         elif len(obs_shape) > 1:  # Image observation
             self.feature_extractor = NatureCNN(self.obs_shape, features_dim=net_arch[0])
-            input_dim = self.feature_extractor.features_dim
 
-        self.net = mlp(input_dim, action_dim, net_arch)
+        self.net = mlp(net_arch[0], action_dim, net_arch[1:])
         self.apply(layer_init)
 
     def forward(self, x):
         """Forward pass of the actor network."""
-        if self.feature_extractor is not None:
-            input = self.feature_extractor(x)
-        else:
-            input = x
+        input = self.feature_extractor(x)
         logits = self.net(input)
 
         return logits

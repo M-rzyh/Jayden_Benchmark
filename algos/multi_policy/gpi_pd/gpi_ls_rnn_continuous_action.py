@@ -167,6 +167,7 @@ class GPILSRNNContinuousAction(MOAgent, MOPolicy):
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
         wandb_tags: Optional[List[str]] = None,
+        offline_mode: bool = False,
         log: bool = True,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
@@ -199,6 +200,7 @@ class GPILSRNNContinuousAction(MOAgent, MOPolicy):
             wandb_entity (Optional[str], optional): The wandb entity. Defaults to None.
             wandb_group: The wandb group to use for logging.
             wandb_tags: Extra wandb tags to use for experiment versioning.
+            offline_mode (bool, optional): Whether to run wandb in offline mode. Defaults to False.
             log (bool, optional): Whether to log to wandb. Defaults to True.
             seed (Optional[int], optional): The seed to use. Defaults to None.
             device (Union[th.device, str], optional): The device to use for training. Defaults to "auto".

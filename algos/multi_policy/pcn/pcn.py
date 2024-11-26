@@ -16,7 +16,7 @@ from mo_utils.evaluation import log_all_multi_policy_metrics
 from mo_utils.morl_algorithm import MOAgent, MOPolicy
 from mo_utils.pareto import get_non_dominated_inds
 from mo_utils.performance_indicators import hypervolume
-from mo_utils.networks import NatureCNN
+from mo_utils.networks import NatureCNN, mlp, layer_init
 from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 
 
@@ -52,7 +52,7 @@ class Transition:
 class BasePCNModel(nn.Module, ABC):
     """Base Model for the PCN."""
 
-    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, net_arch: List[int]):
         """Initialize the PCN model."""
         super().__init__()
         self.obs_shape = obs_shape
@@ -60,7 +60,7 @@ class BasePCNModel(nn.Module, ABC):
         self.reward_dim = reward_dim
         self.scaling_factor = nn.Parameter(th.tensor(scaling_factor).float(), requires_grad=False)
         self.feature_extractor = None
-        self.hidden_dim = hidden_dim
+        self.net_arch = net_arch
 
     def forward(self, state, desired_return, desired_horizon):
         """Return log-probabilities of actions or return action directly in case of continuous action space."""
@@ -82,38 +82,34 @@ class BasePCNModel(nn.Module, ABC):
 class DiscreteActionsDefaultModel(BasePCNModel):
     """Model for the PCN with discrete actions."""
 
-    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray):
         """Initialize the PCN model for discrete actions."""
-        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, hidden_dim)
+        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, self.net_arch[0])
         if len(obs_shape) > 1:  # Image observation
-            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=self.hidden_dim)
-            input_dim = self.hidden_dim
+            self.feature_extractor = NatureCNN(self.obs_shape, features_dim=self.net_arch[0])
+            input_dim = self.net_arch[0]
             print("Using CNN feature extractor")
         else:
             input_dim = obs_shape[0]
-        self.s_emb = nn.Sequential(nn.Linear(input_dim, self.hidden_dim), nn.Sigmoid())
-        self.c_emb = nn.Sequential(nn.Linear(self.reward_dim + 1, self.hidden_dim), nn.Sigmoid())
+        self.s_emb = nn.Sequential(nn.Linear(input_dim, self.net_arch[0]), nn.Sigmoid())
+        self.c_emb = nn.Sequential(nn.Linear(self.reward_dim + 1, self.net_arch[0]), nn.Sigmoid())
         self.fc = nn.Sequential(
-            nn.Linear(self.hidden_dim, self.hidden_dim),
-            nn.ReLU(),
-            nn.Linear(self.hidden_dim, self.action_dim),
+            mlp(self.net_arch[0], self.action_dim, self.net_arch[1:]),
             nn.LogSoftmax(dim=1),
         )
+        self.apply(layer_init)
 
 
 class ContinuousActionsDefaultModel(BasePCNModel):
     """Model for the PCN with continuous actions."""
 
-    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, hidden_dim: int):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray):
         """Initialize the PCN model for continuous actions."""
-        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, hidden_dim)
-        self.s_emb = nn.Sequential(nn.Linear(obs_shape[0], self.hidden_dim), nn.Sigmoid())
-        self.c_emb = nn.Sequential(nn.Linear(self.reward_dim + 1, self.hidden_dim), nn.Sigmoid())
-        self.fc = nn.Sequential(
-            nn.Linear(self.hidden_dim, self.hidden_dim),
-            nn.ReLU(),
-            nn.Linear(self.hidden_dim, self.action_dim),
-        )
+        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, self.net_arch[0])
+        self.s_emb = nn.Sequential(nn.Linear(obs_shape[0], self.net_arch[0]), nn.Sigmoid())
+        self.c_emb = nn.Sequential(nn.Linear(self.reward_dim + 1, self.net_arch[0]), nn.Sigmoid())
+        self.fc = mlp(self.net_arch[0], self.action_dim, self.net_arch[1:])
+        self.apply(layer_init)
 
 
 class PCN(MOAgent, MOPolicy):
@@ -137,7 +133,7 @@ class PCN(MOAgent, MOPolicy):
         learning_rate: float = 3e-4,
         gamma: float = 0.99,
         batch_size: int = 256,
-        hidden_dim: int = 64,
+        net_arch=[256, 256],
         noise: float = 0.1,
         project_name: str = "MORL-Baselines",
         experiment_name: str = "PCN",
@@ -159,7 +155,6 @@ class PCN(MOAgent, MOPolicy):
             learning_rate (float, optional): Learning rate. Defaults to 3e-4.
             gamma (float, optional): Discount factor. Defaults to 0.99.
             batch_size (int, optional): Batch size. Defaults to 32.
-            hidden_dim (int, optional): Hidden dimension. Defaults to 64.
             noise (float, optional): Standard deviation of the noise to add to the action in the continuous action case. Defaults to 0.1.
             project_name (str, optional): Name of the project for wandb. Defaults to "MORL-Baselines".
             experiment_name (str, optional): Name of the experiment for wandb. Defaults to "PCN".
@@ -180,7 +175,7 @@ class PCN(MOAgent, MOPolicy):
         self.batch_size = batch_size
         self.gamma = gamma
         self.learning_rate = learning_rate
-        self.hidden_dim = hidden_dim
+        self.net_arch = net_arch
         self.scaling_factor = np.array(scaling_factor)
         self.max_return = np.array(max_return) if max_return is not None else np.full(self.reward_dim, 100.0, dtype=np.float32)
         self.desired_return = None
@@ -198,7 +193,7 @@ class PCN(MOAgent, MOPolicy):
                 model_class = DiscreteActionsDefaultModel
 
         self.model = model_class(
-            self.observation_shape, self.action_dim, self.reward_dim, self.scaling_factor, hidden_dim=self.hidden_dim
+            self.observation_shape, self.action_dim, self.reward_dim, self.scaling_factor, net_arch=self.net_arch
         ).to(self.device)
         self.opt = th.optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
@@ -212,9 +207,9 @@ class PCN(MOAgent, MOPolicy):
         return {
             "env_id": self.env.unwrapped.spec.id,
             "batch_size": self.batch_size,
+            "net_arch": self.net_arch,
             "gamma": self.gamma,
             "learning_rate": self.learning_rate,
-            "hidden_dim": self.hidden_dim,
             "scaling_factor": self.scaling_factor,
             "max_return": self.max_return,
             "continuous_action": self.continuous_action,
