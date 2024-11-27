@@ -284,7 +284,7 @@ class MOAgent(ABC):
         """Initializes the wandb writer.
 
         Args:
-            project_name: name of the wandb project. Usually MORL-Baselines.
+            project_name: name of the wandb project. Usually MORL-Generalization.
             experiment_name: name of the wandb experiment. Usually the algorithm name.
             entity: wandb entity. Usually your username but useful for reporting other places such as openrlbenmark.
 

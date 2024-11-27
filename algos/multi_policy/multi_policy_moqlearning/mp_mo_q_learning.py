@@ -40,7 +40,7 @@ class MPMOQLearning(MOAgent):
         dyna: bool = False,
         dyna_updates: int = 5,
         gpi_pd: bool = False,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "MultiPolicy MO Q-Learning",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

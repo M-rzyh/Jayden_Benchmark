@@ -29,7 +29,7 @@ class PQL(MOAgent):
         epsilon_decay_steps: int = 100000,
         final_epsilon: float = 0.1,
         seed: Optional[int] = None,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "Pareto Q-Learning",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

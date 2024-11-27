@@ -129,7 +129,7 @@ class SACDiscrete(MOAgent):
         alpha: float = 0.2,
         autotune: bool = True,
         target_entropy_scale: float = 0.89,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "SAC Discrete Action",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

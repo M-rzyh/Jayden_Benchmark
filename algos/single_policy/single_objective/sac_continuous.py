@@ -135,7 +135,7 @@ class SACContinuous(MOAgent):
         target_net_freq: int = 1,
         alpha: float = 0.2,
         autotune: bool = True,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "SAC Continuous Action",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

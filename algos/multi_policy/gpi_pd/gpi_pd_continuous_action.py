@@ -116,7 +116,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         dynamics_buffer_size: int = 200000,
         dynamics_min_uncertainty: float = 2.0,
         dynamics_real_ratio: float = 0.1,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "GPI-PD Continuous Action",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

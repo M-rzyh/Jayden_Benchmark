@@ -434,7 +434,7 @@ class CAPQLRNN(RecurrentMOPolicy, MOAgent):
         alpha: float = 0.2,
         learning_starts: int = 1000,
         gradient_updates: int = 1,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "CAPQLRNN",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

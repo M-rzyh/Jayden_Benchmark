@@ -162,7 +162,7 @@ class GPILSRNNContinuousAction(MOAgent, MOPolicy):
         per: bool = True,
         min_priority: float = 0.1,
         alpha: float = 0.6,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "GPI-LS-RNN Continuous Action",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

@@ -384,7 +384,7 @@ class PGMORL(MOAgent):
         sparsity_coef: float = -1.0,
         env=None,
         gamma: float = 0.995,
-        project_name: str = "MORL-baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "PGMORL",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
@@ -428,7 +428,7 @@ class PGMORL(MOAgent):
             sparsity_coef: sparsity coefficient (alpha in the paper)
             env: environment
             gamma: discount factor
-            project_name: name of the project. Usually MORL-baselines.
+            project_name: name of the project. Usually MORL-Generalization.
             experiment_name: name of the experiment. Usually PGMORL.
             wandb_entity: wandb entity, defaults to None.
             wandb_group: The wandb group to use for logging.

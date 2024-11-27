@@ -78,7 +78,7 @@ class MORLD(MOAgent):
         weight_adaptation_method: Optional[str] = None,  # "PSA" or None
         asymmetric: bool = False,
         history_type: str = None,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "MORL-D",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

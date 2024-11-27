@@ -199,7 +199,7 @@ class GPILSRNN(RecurrentMOPolicy, MOAgent):
         min_priority: float = 0.01,
         drop_rate: float = 0.01,
         layer_norm: bool = True,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "GPI-LS-RNN",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

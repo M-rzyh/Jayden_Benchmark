@@ -108,7 +108,7 @@ class Envelope(MOPolicy, MOAgent):
         initial_homotopy_lambda: float = 0.0,
         final_homotopy_lambda: float = 1.0,
         homotopy_decay_steps: int = None,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "Envelope",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

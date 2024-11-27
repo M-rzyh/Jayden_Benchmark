@@ -124,7 +124,7 @@ class GPIPD(MOPolicy, MOAgent):
         dynamics_ensemble_size: int = 5,
         dynamics_num_elites: int = 2,
         real_ratio: float = 0.5,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "GPI-PD",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

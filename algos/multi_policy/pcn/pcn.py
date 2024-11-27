@@ -135,7 +135,7 @@ class PCN(MOAgent, MOPolicy):
         batch_size: int = 256,
         net_arch=[256, 256],
         noise: float = 0.1,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "PCN",
         max_return: Optional[Union[np.ndarray, List]] = None,
         wandb_entity: Optional[str] = None,
@@ -156,7 +156,7 @@ class PCN(MOAgent, MOPolicy):
             gamma (float, optional): Discount factor. Defaults to 0.99.
             batch_size (int, optional): Batch size. Defaults to 32.
             noise (float, optional): Standard deviation of the noise to add to the action in the continuous action case. Defaults to 0.1.
-            project_name (str, optional): Name of the project for wandb. Defaults to "MORL-Baselines".
+            project_name (str, optional): Name of the project for wandb. Defaults to "MORL-Generalization".
             experiment_name (str, optional): Name of the experiment for wandb. Defaults to "PCN".
             max_return: maximum return for clipping desired return. When None, this will be set to 100 for all objectives.
             wandb_entity (Optional[str], optional): Entity for wandb. Defaults to None.

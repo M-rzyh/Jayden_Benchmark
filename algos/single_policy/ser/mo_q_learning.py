@@ -41,7 +41,7 @@ class MOQLearning(MOPolicy, MOAgent):
         min_priority: float = 0.0001,
         alpha: float = 0.6,
         parent=None,
-        project_name: str = "MORL-baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "MO Q-Learning",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,

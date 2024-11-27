@@ -96,7 +96,7 @@ class EUPG(MOPolicy, MOAgent):
         net_arch: List = [256, 256],
         gamma: float = 0.99,
         learning_rate: float = 1e-3,
-        project_name: str = "MORL-Baselines",
+        project_name: str = "MORL-Generalization",
         experiment_name: str = "EUPG",
         wandb_entity: Optional[str] = None,
         wandb_group: Optional[str] = None,
