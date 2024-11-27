@@ -1,0 +1,8 @@
+Algorithm,cardinality/MOLavaGridCheckerBoard-v0,cardinality/MOLavaGridSmiley-v0,cardinality/MOLavaGridSnake-v0,cardinality/MOLavaGridIslands-v0,cardinality/MOLavaGridLabyrinth-v0,cardinality/MOLavaGridMaze-v0,cardinality/MOLavaGridCorridor-v0,cardinality/MOLavaGridRoom-v0
+MORL-D(MOSACDiscrete)-SB+PSA,1.60 ± 0.24,1.00 ± 0.00,1.40 ± 0.24,2.20 ± 0.20,1.40 ± 0.24,1.20 ± 0.20,1.00 ± 0.00,1.00 ± 0.00
+MORL-D(MOSACDiscrete)-SB,1.20 ± 0.20,1.00 ± 0.00,1.40 ± 0.40,1.60 ± 0.24,1.20 ± 0.20,1.00 ± 0.00,1.00 ± 0.00,1.00 ± 0.00
+GPI-PD,1.00 ± 0.00,1.00 ± 0.00,1.00 ± 0.00,1.60 ± 0.24,1.20 ± 0.20,1.80 ± 0.20,1.00 ± 0.00,1.00 ± 0.00
+GPI-LS,1.00 ± 0.00,1.00 ± 0.00,1.00 ± 0.00,1.40 ± 0.24,1.00 ± 0.00,1.60 ± 0.24,1.20 ± 0.20,1.00 ± 0.00
+Envelope,1.00 ± 0.00,1.00 ± 0.00,1.00 ± 0.00,1.20 ± 0.20,1.00 ± 0.00,1.20 ± 0.20,1.00 ± 0.00,1.00 ± 0.00
+PCN,1.60 ± 0.40,1.00 ± 0.00,2.40 ± 0.68,1.00 ± 0.00,1.80 ± 0.58,3.20 ± 1.32,1.00 ± 0.00,1.20 ± 0.20
+SAC Discrete Action,1.00 ± 0.00,1.00 ± 0.00,1.00 ± 0.00,1.20 ± 0.20,1.00 ± 0.00,1.00 ± 0.00,1.00 ± 0.00,1.00 ± 0.00

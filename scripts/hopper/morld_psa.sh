@@ -6,7 +6,6 @@ python3 -u launch_experiment.py \
 --seed 5 \
 --num-timesteps 3000000 \
 --gamma 0.99 \
---auto-tag False \
 --wandb-group 'domain_randomization' \
 --ref-point '-100.0' '-100.0' '-100.0' \
 --test-generalization True \
