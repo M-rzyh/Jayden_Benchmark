@@ -11,6 +11,15 @@ from morl_generalization.wrappers import MORecordVideo, ActionHistoryWrapper, St
 def get_env_selection_algo_wrapper(env, env_selection_algo, history_len = 3, is_eval_env = False) -> gym.Env:
     if env_selection_algo == "domain_randomization": # randomizes domain every `reset` call
         return DRWrapper(env)
+    elif env_selection_algo == "dr_state_history": # randomizes domain + state history
+        env = StateHistoryWrapper(env, history_len)
+        return DRWrapper(env)
+    elif env_selection_algo == "dr_action_history": # randomizes domain + action history
+        env = ActionHistoryWrapper(env, history_len)
+        return DRWrapper(env)
+    elif env_selection_algo == "dr_state_action_history": # randomizes domain + state history + action history
+        env = ActionHistoryWrapper(StateHistoryWrapper(env, history_len), history_len)
+        return DRWrapper(env)
     elif env_selection_algo == "asymmetric_dr": # randomizes domain + asymmetric actor-critic
         if is_eval_env:
             return DRWrapper(env) # eval env should not provide any context
