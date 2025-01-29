@@ -84,7 +84,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 record_video=record_video,
                 record_video_w_freq=record_video_w_freq,
                 record_video_ep_freq=record_video_ep_freq,
-                **kwargs
             ) for env_name in test_envs
         ]
         self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
