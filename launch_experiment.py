@@ -113,7 +113,7 @@ def parse_generalization_args(args):
 
         # default values if not provided
         args.generalization_hyperparams.setdefault("generalization_algo", "domain_randomization")
-        args.generalization_hyperparams.setdefault("history_len", 0)
+        args.generalization_hyperparams.setdefault("history_len", 1)
     
     return args
 

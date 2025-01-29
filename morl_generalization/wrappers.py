@@ -101,8 +101,8 @@ class HistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
             if self.action_history:
                 new_obs_low.extend(env.action_space.low)
                 new_obs_high.extend(env.action_space.high)
-        low = np.concatenate([obs_space.low.flatten(), new_obs_low], axis=0)
-        high = np.concatenate([obs_space.high.flatten(), new_obs_high], axis=0)
+        low = np.concatenate([new_obs_low, obs_space.low.flatten()], axis=0)
+        high = np.concatenate([new_obs_high, obs_space.high.flatten()], axis=0)
         self.observation_space = gym.spaces.Box(low=low, high=high, dtype=obs_space.dtype)
 
     def reset(self, **kwargs):
