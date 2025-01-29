@@ -59,13 +59,17 @@ def termination_fn_minecart(obs, act, next_obs, rew):
 def termination_fn_hopper(obs, act, next_obs, rew):
     """Termination function of hopper."""
     assert len(obs.shape) == len(next_obs.shape) == len(act.shape) == len(rew.shape) == 2
+
+    # truncate obs in case you do history stacking
+    trunc_obs = next_obs[:, -11:] 
+
     # height and angle index needs to be +1 if you unset the
     # exclude_current_positions_from_observation parameter in the hopper env
-    height = next_obs[:, 0] 
-    angle = next_obs[:, 1]
+    height = trunc_obs[:, 0] 
+    angle = trunc_obs[:, 1]
     not_done = (
-        np.isfinite(next_obs).all(axis=-1)
-        * np.abs(next_obs[:, 1:] < 100).all(axis=-1)
+        np.isfinite(trunc_obs).all(axis=-1)
+        * np.abs(trunc_obs[:, 1:] < 100).all(axis=-1)
         * (height > 0.7) # if u change healthy_z_range in the hopper env, change this too
         * (np.abs(angle) < 0.2)
     )
@@ -77,9 +81,13 @@ def termination_fn_humanoid(obs, act, next_obs, rew):
     """Termination function of hopper."""
     assert len(obs.shape) == len(next_obs.shape) == len(act.shape) == len(rew.shape) == 2
     min_z, max_z = 1.0, 2.0 # if u change healthy_z_range in the humanoid env, change this too
+
+    # truncate obs in case you do history stacking
+    trunc_obs = next_obs[:, -348:] # change -348 accordingly if u exclude cinert, cvel, qfrc_actuator, or cfrc_ext 
+
     # index needs to be +2 if you unset the exclude_current_positions_from_observation 
     # parameter in the humanoid env
-    not_done = (min_z < next_obs[:, 0]) & (next_obs[:, 0] < max_z)
+    not_done = (min_z < trunc_obs[:, 0]) & (trunc_obs[:, 0] < max_z)
     done = ~not_done
     done = done[:, np.newaxis]
     return done
@@ -88,11 +96,14 @@ def termination_fn_lunarlander(obs, act, next_obs, rew):
     """Termination function of lunarlander. Use reward prediction to determine termination."""
     assert len(obs.shape) == len(next_obs.shape) == len(act.shape) == len(rew.shape) == 2
 
+    # truncate obs in case you do history stacking
+    trunc_obs = next_obs[:, -8:]
+
     # Condition 1: out of screen
-    has_exited_screen = abs(next_obs[:, 0]) >= 1.0
+    has_exited_screen = abs(trunc_obs[:, 0]) >= 1.0
 
     # Condition 2: all legs have landed (supposed to be 1.0 but we allow for some margin of error) and reward is non-zero
-    has_crashed_or_landed = (rew[:, 0] != 0) & (next_obs[:, 6] >= 0.95) & (next_obs[:, 7] >= 0.95)
+    has_crashed_or_landed = (rew[:, 0] != 0) & (trunc_obs[:, 6] >= 0.95) & (trunc_obs[:, 7] >= 0.95)
     
     not_done = ~(has_exited_screen | has_crashed_or_landed)
     done = ~not_done

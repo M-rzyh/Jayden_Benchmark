@@ -105,7 +105,7 @@ class PPOReplayBuffer:
         )
 
 
-def make_env(env_id, seed, idx, run_name, gamma, generalization_algo=None):
+def make_env(env_id, seed, idx, run_name, gamma, generalization_hyperparams=None):
     """Returns a function to create environments. This is because PPO works better with vectorized environments. Also, some tricks like clipping and normalizing the environments' features are applied.
 
     Args:
@@ -133,7 +133,7 @@ def make_env(env_id, seed, idx, run_name, gamma, generalization_algo=None):
                 episode_trigger=lambda e: e % 1000 == 0,
             ) """
         env = gym.wrappers.ClipAction(env)
-        if generalization_algo is None: # only allow normalization for static environments
+        if generalization_hyperparams is None: # only allow normalization for static environments
             env = gym.wrappers.NormalizeObservation(env)
             env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
         for o in range(reward_dim):
@@ -141,8 +141,8 @@ def make_env(env_id, seed, idx, run_name, gamma, generalization_algo=None):
             env = mo_gym.utils.MOClipReward(env, idx=o, min_r=-10, max_r=10)
         env = MORecordEpisodeStatistics(env, gamma=gamma)
 
-        if generalization_algo is not None:
-            env = get_env_selection_algo_wrapper(env, generalization_algo)
+        if generalization_hyperparams is not None:
+            env = get_env_selection_algo_wrapper(env, generalization_hyperparams)
 
         env.reset(seed=seed)
         env.action_space.seed(seed)

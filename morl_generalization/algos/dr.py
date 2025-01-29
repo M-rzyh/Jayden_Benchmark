@@ -11,7 +11,7 @@ from gymnasium import logger
 from gymnasium.wrappers import FlattenObservation
 from gymnasium.wrappers.monitoring import video_recorder
 from gymnasium.wrappers.frame_stack import FrameStack
-from morl_generalization.wrappers import ObsToNumpy, ActionHistoryWrapper, StateHistoryWrapper
+from morl_generalization.wrappers import ObsToNumpy, HistoryWrapper
 
 class DREnv(ABC):
     def __init__(self):
@@ -36,10 +36,8 @@ class DRWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
             f: A function that transforms the observation
         """
         super(DRWrapper, self).__init__(env)
-        if state_history:
-            env = StateHistoryWrapper(env, history_len)
-        if action_history:
-            env = ActionHistoryWrapper(env, history_len)
+        if state_history or action_history:
+            env = HistoryWrapper(env, history_len, state_history=state_history, action_history=action_history)
         self.env = env
 
     def reset(self, *, seed=None, options=None):
@@ -92,9 +90,7 @@ class DynamicsInObs(DRWrapper, gym.utils.RecordConstructorArgs):
 class AsymmetricDRWrapper(gym.Wrapper):
     def __init__(self, env, history_len=3, state_history=False, action_history=False):
         super(AsymmetricDRWrapper, self).__init__(env)
-        if state_history:
-            env = StateHistoryWrapper(env, history_len)
-        if action_history:
-            env = ActionHistoryWrapper(env, history_len)
+        if state_history or action_history:
+            env = HistoryWrapper(env, history_len, state_history=state_history, action_history=action_history)
         env = DynamicsInObs(env)
         self.env = env

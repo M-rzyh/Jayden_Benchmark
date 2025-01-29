@@ -406,7 +406,7 @@ class PGMORL(MOAgent):
         target_kl: Optional[float] = None,
         gae: bool = True,
         gae_lambda: float = 0.95,
-        generalization_args: Optional[dict] = None,
+        generalization_hyperparams: Optional[dict] = None,
         device: Union[th.device, str] = "auto",
     ):
         """Initializes the PGMORL agent.
@@ -450,7 +450,7 @@ class PGMORL(MOAgent):
             target_kl: target KL divergence
             gae: whether to use generalized advantage estimation
             gae_lambda: lambda parameter for GAE
-            generalization_args: generalization arguments
+            generalization_hyperparams: generalization arguments
             device: device on which the code should run
         """
         super().__init__(env, device=device, seed=seed)
@@ -515,9 +515,9 @@ class PGMORL(MOAgent):
         # env setup
         if env is None:
             if self.seed is not None:
-                envs = [make_env(env_id, self.seed + i, i, experiment_name, self.gamma, generalization_args["generalization_algo"], generalization_args["history_len"]) for i in range(self.num_envs)]
+                envs = [make_env(env_id, self.seed + i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
             else:
-                envs = [make_env(env_id, i, i, experiment_name, self.gamma, generalization_args["generalization_algo"], generalization_args["history_len"]) for i in range(self.num_envs)]
+                envs = [make_env(env_id, i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
             self.env = mo_gym.MOSyncVectorEnv(envs)
         else:
             raise ValueError("Environments should be vectorized for PPO. You should provide an environment id instead.")

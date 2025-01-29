@@ -110,8 +110,10 @@ def parse_generalization_args(args):
         assert "test_envs" != '', "test_envs must be provided if test_generalization is True"
         # assert args.record_video == False, "cannot record video when testing generalization because environments are vectorized"
         args.test_envs = args.test_envs.split(",")
-        args.generalization_algo = "domain_randomization" if "generalization_algo" not in args.generalization_hyperparams else args.generalization_hyperparams["generalization_algo"]
-        args.history_len = 0 if "history_len" not in args.generalization_hyperparams else args.generalization_hyperparams["history_len"]
+
+        # default values if not provided
+        args.generalization_hyperparams.setdefault("generalization_algo", "domain_randomization")
+        args.generalization_hyperparams.setdefault("history_len", 0)
     
     return args
 
@@ -150,8 +152,8 @@ def make_envs(args):
         eval_env = Multi2SingleObjectiveWrapper(eval_env)
 
     if args.test_generalization:
-        env = get_env_selection_algo_wrapper(env, args.generalization_algo, args.history_len)
-        eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_algo, args.history_len, is_eval_env=True)
+        env = get_env_selection_algo_wrapper(env, args.generalization_hyperparams)
+        eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_hyperparams, is_eval_env=True)
         
         # allow for comprehensize evaluation of generalization
         eval_env = make_generalization_evaluator(eval_env, args)
@@ -199,7 +201,7 @@ def main():
             wandb_group=args.wandb_group,
             wandb_tags=args.wandb_tags,
             offline_mode=args.wandb_offline,
-            generalization_args=args.generalization_hyperparams if args.test_generalization else None,
+            generalization_hyperparams=args.generalization_hyperparams if args.test_generalization else None,
             **args.init_hyperparams,
         )
         print(algo.get_config())
@@ -207,7 +209,7 @@ def main():
         eval_env_creator = make_env(args.env_id, seed=args.seed, idx=-1, run_name="PGMORL", gamma=args.gamma)
         eval_env = eval_env_creator()
         if args.test_generalization:
-            eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_algo, args.history_len, is_eval_env=True)
+            eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_hyperparams, is_eval_env=True)
 
             eval_env = make_generalization_evaluator(eval_env, args)
 

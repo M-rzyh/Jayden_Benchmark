@@ -68,6 +68,69 @@ class ActionHistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def _stack_actions_to_obs(self, obs):
         obs = np.concatenate([obs.flatten(), self.actions_buffer.flatten()], axis=0)
         return obs
+    
+class HistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
+    def __init__(self, env: gym.Env, history_len: int = 3, state_history=False, action_history=False):
+        """
+            Augments the observation with
+            a stack of the previous "history_len" states
+            and actions observed.
+            e.g. for history_len=3, the observation will be: [s_{t-3}, a_{t-3}, s_{t-2}, a_{t-2}, s_{t-1}, a_{t-1}, s_t]
+        """
+        gym.utils.RecordConstructorArgs.__init__(self, history_len=history_len)
+        gym.Wrapper.__init__(self, env)
+        assert env.action_space.sample().ndim == 1, 'Actions are assumed to be flat on one-dim vector'
+
+        self.history_len = history_len
+        self.state_history = state_history
+        self.action_history = action_history
+
+        if self.state_history:
+            self.states_buffer = np.zeros((history_len, env.observation_space.shape[0]), dtype=np.float32)
+        if self.action_history:
+            self.actions_buffer = np.zeros((history_len, env.action_space.shape[0]), dtype=np.float32)
+
+        # Modify the observation space to include the history buffer
+        obs_space = env.observation_space
+        new_obs_low = []
+        new_obs_high = []
+        for i in range(history_len):
+            if self.state_history:
+                new_obs_low.extend(env.observation_space.low)
+                new_obs_high.extend(env.observation_space.high)
+            if self.action_history:
+                new_obs_low.extend(env.action_space.low)
+                new_obs_high.extend(env.action_space.high)
+        low = np.concatenate([obs_space.low.flatten(), new_obs_low], axis=0)
+        high = np.concatenate([obs_space.high.flatten(), new_obs_high], axis=0)
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=obs_space.dtype)
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        if self.action_history:
+            self.actions_buffer.fill(0)
+        if self.state_history:
+            self.states_buffer[:] = obs # fill the buffer with the repeated initial state
+        return self._stack_actions_states_to_obs(obs), info
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        if self.action_history:
+            self.actions_buffer[:-1] = self.actions_buffer[1:]
+            self.actions_buffer[-1] = action
+        stack_obs = self._stack_actions_states_to_obs(obs)
+        if self.state_history:
+            self.states_buffer[:-1] = self.states_buffer[1:]
+            self.states_buffer[-1] = obs
+        return stack_obs, reward, terminated, truncated, info
+
+    def _stack_actions_states_to_obs(self, obs):
+        for i in range(self.history_len - 1, -1, -1):
+            if self.action_history:
+                obs = np.concatenate([self.actions_buffer[i].flatten(), obs.flatten()], axis=0)
+            if self.state_history:
+                obs = np.concatenate([self.states_buffer[i].flatten(), obs.flatten()], axis=0)
+        return obs
 
 
 def capped_cubic_video_schedule(episode_id: int) -> bool:
