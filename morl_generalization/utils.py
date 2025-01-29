@@ -12,29 +12,26 @@ def get_env_selection_algo_wrapper(env, env_selection_algo, history_len = 3, is_
     if env_selection_algo == "domain_randomization": # randomizes domain every `reset` call
         return DRWrapper(env)
     elif env_selection_algo == "dr_state_history": # randomizes domain + state history
-        env = StateHistoryWrapper(env, history_len)
-        return DRWrapper(env)
+        return DRWrapper(env, history_len, state_history=True)
     elif env_selection_algo == "dr_action_history": # randomizes domain + action history
-        env = ActionHistoryWrapper(env, history_len)
-        return DRWrapper(env)
+        return DRWrapper(env, history_len, action_history=True)
     elif env_selection_algo == "dr_state_action_history": # randomizes domain + state history + action history
-        env = ActionHistoryWrapper(StateHistoryWrapper(env, history_len), history_len)
-        return DRWrapper(env)
+        return DRWrapper(env, history_len, state_history=True, action_history=True)
     elif env_selection_algo == "asymmetric_dr": # randomizes domain + asymmetric actor-critic
         if is_eval_env:
             return DRWrapper(env) # eval env should not provide any context
         return AsymmetricDRWrapper(env)
     elif env_selection_algo == "asymmetric_dr_state_history": # randomizes domain + asymmetric actor-critic + state history
         if is_eval_env:
-            return StateHistoryWrapper(env, history_len) # eval env should not provide any context
+            return DRWrapper(env, history_len, state_history=True) # eval env should not provide any context
         return AsymmetricDRWrapper(env, history_len, state_history=True)
     elif env_selection_algo == "asymmetric_dr_action_history": # randomizes domain + asymmetric actor-critic + action history
         if is_eval_env:
-            return ActionHistoryWrapper(env, history_len) # eval env should not provide any context
+            return DRWrapper(env, history_len, action_history=True) # eval env should not provide any context
         return AsymmetricDRWrapper(env, history_len, action_history=True)
     elif env_selection_algo == "asymmetric_dr_state_action_history": # randomizes domain + asymmetric actor-critic + state history + action history
         if is_eval_env:
-            return ActionHistoryWrapper(StateHistoryWrapper(env, history_len), history_len) # eval env should not provide any context
+            return DRWrapper(env, history_len, state_history=True, action_history=True) # eval env should not provide any context
         return AsymmetricDRWrapper(env, history_len, state_history=True, action_history=True)
     else:
         raise NotImplementedError
@@ -68,12 +65,12 @@ def make_test_envs(gym_id, algo_name, seed, generalization_algo, record_video=Fa
         env = FlattenObservation(env)
     
     # TODO: allow customisable history len. Currently using fixed history len of 3
-    if generalization_algo == "asymmetric_dr_state_history":
-        env =  StateHistoryWrapper(env)
-    elif generalization_algo == "asymmetric_dr_action_history":
-        env =  ActionHistoryWrapper(env)
-    elif generalization_algo == "asymmetric_dr_state_action_history":
-        env =  ActionHistoryWrapper(StateHistoryWrapper(env))
+    if generalization_algo == "dr_state_history" or generalization_algo == "asymmetric_dr_state_history":
+        env = StateHistoryWrapper(env)
+    elif generalization_algo == "dr_action_history" or generalization_algo == "asymmetric_dr_action_history":
+        env = ActionHistoryWrapper(env)
+    elif generalization_algo == "dr_state_action_history" or generalization_algo == "asymmetric_dr_state_action_history":
+        env = ActionHistoryWrapper(StateHistoryWrapper(env))
 
     if record_video and not is_mario:
         if record_video_w_freq: # record video every set number of weights evaluated

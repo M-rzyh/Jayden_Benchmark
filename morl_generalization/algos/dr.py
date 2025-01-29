@@ -28,15 +28,19 @@ class DREnv(ABC):
 class DRWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
     """Wrapper for DR environment."""
 
-    def __init__(self, env: gym.Env):
+    def __init__(self, env: gym.Env, history_len=3, state_history=False, action_history=False):
         """Initialize the :class:`DRWrapper` wrapper with an environment and a transform function :attr:`f`.
 
         Args:
             env: The environment to apply the wrapper
             f: A function that transforms the observation
         """
-        gym.utils.RecordConstructorArgs.__init__(self)
-        gym.Wrapper.__init__(self, env)
+        super(DRWrapper, self).__init__(env)
+        if state_history:
+            env = StateHistoryWrapper(env, history_len)
+        if action_history:
+            env = ActionHistoryWrapper(env, history_len)
+        self.env = env
 
     def reset(self, *, seed=None, options=None):
         self.env.unwrapped.reset_random() # domain randomization
