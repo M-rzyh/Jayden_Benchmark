@@ -23,7 +23,7 @@ from morl_generalization.generalization_evaluator import MORLGeneralizationEvalu
 def crowding_distance(points):
     """Compute the crowding distance of a set of points."""
     # first normalize across dimensions
-    points = (points - points.min(axis=0)) / (points.ptp(axis=0) + 1e-8)
+    points = (points - points.min(axis=0)) / (np.ptp(points, axis=0) + 1e-8)
     # sort points per dimension
     dim_sorted = np.argsort(points, axis=0)
     point_sorted = np.take_along_axis(points, dim_sorted, axis=0)
@@ -82,9 +82,9 @@ class BasePCNModel(nn.Module, ABC):
 class DiscreteActionsDefaultModel(BasePCNModel):
     """Model for the PCN with discrete actions."""
 
-    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, net_arch: List[int]):
         """Initialize the PCN model for discrete actions."""
-        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, self.net_arch[0])
+        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, net_arch)
         if len(obs_shape) > 1:  # Image observation
             self.feature_extractor = NatureCNN(self.obs_shape, features_dim=self.net_arch[0])
             input_dim = self.net_arch[0]
@@ -103,9 +103,9 @@ class DiscreteActionsDefaultModel(BasePCNModel):
 class ContinuousActionsDefaultModel(BasePCNModel):
     """Model for the PCN with continuous actions."""
 
-    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray):
+    def __init__(self, obs_shape: tuple, action_dim: int, reward_dim: int, scaling_factor: np.ndarray, net_arch: List[int]):
         """Initialize the PCN model for continuous actions."""
-        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, self.net_arch[0])
+        super().__init__(obs_shape, action_dim, reward_dim, scaling_factor, net_arch)
         self.s_emb = nn.Sequential(nn.Linear(obs_shape[0], self.net_arch[0]), nn.Sigmoid())
         self.c_emb = nn.Sequential(nn.Linear(self.reward_dim + 1, self.net_arch[0]), nn.Sigmoid())
         self.fc = mlp(self.net_arch[0], self.action_dim, self.net_arch[1:])
