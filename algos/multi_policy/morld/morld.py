@@ -25,13 +25,12 @@ from mo_utils.utils import nearest_neighbors
 from mo_utils.weights import equally_spaced_weights, random_weights
 from morl_generalization.generalization_evaluator import MORLGeneralizationEvaluator
 from algos.single_policy.esr.eupg import EUPG
-from algos.single_policy.ser.mosac import MOSAC, MOSACDiscrete, MOSACDiscreteSharedCNN
+from algos.single_policy.ser.mosac import MOSAC, MOSACDiscrete
 
 
 POLICIES = {
     "MOSAC": MOSAC,
     "MOSACDiscrete": MOSACDiscrete,
-    "MOSACDiscreteSharedCNN": MOSACDiscreteSharedCNN,
     "EUPG": EUPG,
 }
 
