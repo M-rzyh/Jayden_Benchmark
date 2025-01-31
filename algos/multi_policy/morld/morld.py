@@ -107,7 +107,7 @@ class MORLD(MOAgent):
             update_passes: number of times to update all policies after sampling from one policy.
             weight_init_method: weight initialization method. "uniform" or "random"
             weight_adaptation_method: weight adaptation method. "PSA" or None.
-            asymmetric: whether to use asymmetric soft actor-critic or not
+            asymmetric: whether to use asymmetric actor-critic; critic can condition on context 
             history_type: whether to use state-action history information or not
             project_name: For wandb logging
             experiment_name: For wandb logging

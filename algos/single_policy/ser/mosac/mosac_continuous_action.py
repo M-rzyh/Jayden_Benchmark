@@ -154,6 +154,7 @@ class MOSAC(MOPolicy):
             env: Env
             weights: weights for the scalarization
             scalarization: scalarization function
+            asymmetric: whether to use asymmetric actor-critic; critic can condition on context 
             buffer_size: buffer size
             gamma: discount factor
             tau: target smoothing coefficient (polyak update)

@@ -121,6 +121,7 @@ class MOSACDiscrete(MOPolicy):
         self,
         env: gym.Env,
         weights: np.ndarray,
+        asymmetric: bool = False,
         scalarization=th.matmul,
         buffer_size: int = int(1e6),
         gamma: float = 0.99,
@@ -146,6 +147,7 @@ class MOSACDiscrete(MOPolicy):
         Args:
             env: Env
             weights: weights for the scalarization
+            asymmetric: whether to use asymmetric actor-critic; critic can condition on context 
             scalarization: scalarization function
             buffer_size: buffer size
             gamma: discount factor
@@ -203,9 +205,17 @@ class MOSACDiscrete(MOPolicy):
         assert self.target_net_freq % self.update_frequency == 0, "target_net_freq should be divisible by update_frequency"
         self.target_entropy_scale = target_entropy_scale
 
+        self.asymmetric = asymmetric
+        if self.asymmetric:
+            self.actor_mask, self.critic_mask = env.get_actor_critic_masks()
+            print(f"Actor mask: 0 - {len(self.actor_mask)}, Critic mask: 0 - {len(self.critic_mask)}")
+            actor_obs_shape = (len(self.actor_mask),) # assuming unidimensional observations
+        else:
+            actor_obs_shape = self.obs_shape
+
         # Networks
         self.actor = MOSACDiscreteActor(
-            obs_shape=self.obs_shape,
+            obs_shape=actor_obs_shape,
             action_dim=self.action_dim,
             reward_dim=self.reward_dim,
             net_arch=self.net_arch,
@@ -420,9 +430,15 @@ class MOSACDiscrete(MOPolicy):
         (mb_obs, mb_act, mb_rewards, mb_next_obs, mb_dones) = self.buffer.sample(
             self.batch_size, to_tensor=True, device=self.device
         )
+        if self.asymmetric:
+            actor_obs = mb_obs[:, self.actor_mask]
+            actor_next_obs = mb_next_obs[:, self.actor_mask]
+        else:
+            actor_obs = mb_obs
+            actor_next_obs = mb_next_obs
 
         with th.no_grad():
-            _, next_state_log_pi, next_state_action_probs = self.actor.get_action(mb_next_obs)
+            _, next_state_log_pi, next_state_action_probs = self.actor.get_action(actor_next_obs)
             # (!) Q values are scalarized before being compared (min of ensemble networks)
             qf1_next_target = self.scalarization(self.qf1_target(mb_next_obs), self.weights_tensor) # (B, A, R) -> (B, A)
             qf2_next_target = self.scalarization(self.qf2_target(mb_next_obs), self.weights_tensor)
@@ -447,7 +463,7 @@ class MOSACDiscrete(MOPolicy):
         qf_loss.backward()
         self.q_optimizer.step()
 
-        _, log_pi, action_probs = self.actor.get_action(mb_obs)
+        _, log_pi, action_probs = self.actor.get_action(actor_obs)
         with th.no_grad():
             # (!) Q values are scalarized before being compared (min of ensemble networks)
             qf1_values = self.scalarization(self.qf1(mb_obs), self.weights_tensor)
@@ -517,7 +533,11 @@ class MOSACDiscrete(MOPolicy):
             if self.global_step < self.learning_starts:
                 actions = self.env.action_space.sample()
             else:
-                th_obs = th.as_tensor(obs).float().to(self.device)
+                if self.asymmetric:
+                    actor_obs = obs[self.actor_mask]
+                else:
+                    actor_obs = obs
+                th_obs = th.as_tensor(actor_obs).float().to(self.device)
                 th_obs = th_obs.unsqueeze(0)
                 actions, _, _ = self.actor.get_action(th_obs)
                 actions = actions[0].detach().cpu().numpy()
