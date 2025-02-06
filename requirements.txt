@@ -14,11 +14,11 @@ seaborn
 cvxpy
 fire
 gym_super_mario_bros
-pycddlib
+pycddlib==2.1.6
 mujoco==3.1.6
 requests
 rliable==1.2.0
 moviepy
 opencv-python
 swig
-box2d-py==2.3.5
+box2d-py

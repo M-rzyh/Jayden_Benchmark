@@ -66,7 +66,7 @@ def make_test_envs(gym_id, algo_name, seed, generalization_hyperparams, record_v
         env = FlattenObservation(env)
     
     generalization_algo = generalization_hyperparams["generalization_algo"]
-    history_len = generalization_hyperparams["history_len"] if "history_len" in generalization_hyperparams else 3
+    history_len = generalization_hyperparams["history_len"] if "history_len" in generalization_hyperparams else 1
     if generalization_algo == "dr_state_history" or generalization_algo == "asymmetric_dr_state_history":
         env = HistoryWrapper(env, history_len, state_history=True)
     elif generalization_algo == "dr_action_history" or generalization_algo == "asymmetric_dr_action_history":
