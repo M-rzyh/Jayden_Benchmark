@@ -511,14 +511,11 @@ class PGMORL(MOAgent):
         self.gae = gae
 
         # env setup
-        if env is None:
-            if self.seed is not None:
-                envs = [make_env(env_id, self.seed + i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
-            else:
-                envs = [make_env(env_id, i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
-            self.env = mo_gym.MOSyncVectorEnv(envs)
+        if self.seed is not None:
+            envs = [make_env(env_id, self.seed + i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
         else:
-            raise ValueError("Environments should be vectorized for PPO. You should provide an environment id instead.")
+            envs = [make_env(env_id, i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
+        self.env = mo_gym.MOSyncVectorEnv(envs)
 
         # Logging
         self.log = log
