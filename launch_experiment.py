@@ -191,7 +191,17 @@ def main():
         # PGMORL creates its own environments because it requires wrappers
         print(f"Instantiating {args.algo} on {args.env_id}")
 
+        env_creator = make_env(args.env_id, seed=args.seed, idx=-1, run_name="PGMORL", gamma=args.gamma)
+        eval_env = env_creator()
+        temp_env = env_creator()
+        if args.test_generalization:
+            temp_env = get_env_selection_algo_wrapper(eval_env, args.generalization_hyperparams)
+            eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_hyperparams, is_eval_env=True)
+
+            eval_env = make_generalization_evaluator(eval_env, args)
+
         algo = ALGOS[args.algo](
+            env=temp_env,
             env_id=args.env_id,
             origin=np.array(args.ref_point),
             gamma=args.gamma,
@@ -205,13 +215,6 @@ def main():
             **args.init_hyperparams,
         )
         print(algo.get_config())
-
-        eval_env_creator = make_env(args.env_id, seed=args.seed, idx=-1, run_name="PGMORL", gamma=args.gamma)
-        eval_env = eval_env_creator()
-        if args.test_generalization:
-            eval_env = get_env_selection_algo_wrapper(eval_env, args.generalization_hyperparams, is_eval_env=True)
-
-            eval_env = make_generalization_evaluator(eval_env, args)
 
         print("Training starts... Let's roll!")
         algo.train(

@@ -455,12 +455,10 @@ class PGMORL(MOAgent):
         """
         super().__init__(env, device=device, seed=seed)
         # Env dimensions
-        self.tmp_env = mo_gym.make(env_id)
-        self.extract_env_info(self.tmp_env)
         self.env_id = env_id
         self.num_envs = num_envs
         assert isinstance(self.action_space, gym.spaces.Box), "only continuous action space is supported"
-        self.tmp_env.close()
+        self.env.close() # the environment is just temporary to extract env obs/act info, will initialize vec env later
         self.gamma = gamma
 
         # EA parameters
