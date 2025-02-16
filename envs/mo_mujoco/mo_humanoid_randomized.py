@@ -44,6 +44,7 @@ class MOHumanoidDR(RandomMujocoEnv, DREnv, EzPickle):
     ## Important Changes to Note
     - The original Gymnasium Humanoid environment has healthy_reward=5.0, but that dominates the control cost and forward reward. 
       We made the following changes: healthy_reward=2.0 + ctrl_cost_weight=1e-3. This makes sure there is differentiation between a SORL and MORL agent.
+      Does not affect convergence of single-objective agent in default environment (tested)
     - The original Gymnasium Humanoid environment has contact_cost_weight = 5e-7, which is negligible. We have set it to 0.0.
 
     ## Credits:

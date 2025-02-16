@@ -133,9 +133,8 @@ def make_env(env_id, seed, idx, run_name, gamma, generalization_hyperparams=None
                 episode_trigger=lambda e: e % 1000 == 0,
             ) """
         env = gym.wrappers.ClipAction(env)
-        if generalization_hyperparams is None: # only allow normalization for static environments
-            env = gym.wrappers.NormalizeObservation(env)
-            env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
+        env = gym.wrappers.NormalizeObservation(env)
+        env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
         for o in range(reward_dim):
             env = mo_gym.utils.MONormalizeReward(env, idx=o, gamma=gamma)
             env = mo_gym.utils.MOClipReward(env, idx=o, min_r=-10, max_r=10)

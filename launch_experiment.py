@@ -148,8 +148,9 @@ def make_envs(args):
 
     if args.algo in SINGLE_OBJECTIVE_ALGOS:
         print("Training single-objective agent... Converting multi-objective environment to single-objective environment")
+        # no need to wrap eval_env because it is only used for evaluation because we want get vector reward for logging even
+        # for single-objective algorithms
         env = Multi2SingleObjectiveWrapper(env)
-        eval_env = Multi2SingleObjectiveWrapper(eval_env)
 
     if args.test_generalization:
         env = get_env_selection_algo_wrapper(env, args.generalization_hyperparams)

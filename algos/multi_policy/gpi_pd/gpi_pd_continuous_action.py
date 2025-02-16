@@ -103,7 +103,7 @@ class GPIPDContinuousAction(MOAgent, MOPolicy):
         min_priority: float = 0.1,
         alpha: float = 0.6,
         dyna: bool = True,
-        dynamics_net_arch: List = [200, 200, 200, 200],
+        dynamics_net_arch: List = [256, 256, 256, 256],
         dynamics_lr: float = 0.001,
         dynamics_max_logvar_scale: float = 0.5,
         dynamics_min_logvar_scale: float = 10.0,
