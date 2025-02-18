@@ -243,7 +243,7 @@ FRUITS = {
 }
 
 
-class FruitTreeEnv(gym.Env, EzPickle):
+class MOFruitTreeDR(gym.Env, EzPickle):
     """
     ## Description
 
@@ -268,7 +268,12 @@ class FruitTreeEnv(gym.Env, EzPickle):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, depth=6, render_mode: Optional[str] = None):
+    def __init__(
+        self, 
+        depth=6,
+        fruit_tree: List[List[float]] = None,
+        render_mode: Optional[str] = None
+    ):
         assert depth in [5, 6, 7], "Depth must be 5, 6 or 7."
         EzPickle.__init__(self, depth)
 
@@ -276,13 +281,24 @@ class FruitTreeEnv(gym.Env, EzPickle):
         self.reward_dim = 6
         self.tree_depth = depth  # zero based depth
         branches = np.zeros((int(2**self.tree_depth - 1), self.reward_dim))
-        fruits = np.array(FRUITS[str(depth)])
+        if fruit_tree is not None:
+            assert len(fruit_tree) == 2**self.tree_depth - 1, "Invalid tree size."
+            for i in range(len(fruit_tree)):
+                assert len(fruit_tree[i]) == self.reward_dim, "Invalid reward dimension."
+            fruits = np.array(fruit_tree)
+        else:
+            fruits = np.array(FRUITS[str(depth)])
         self.tree = np.concatenate([branches, fruits])
 
         self.max_reward = 10.0
         self.reward_space = spaces.Box(low=0.0, high=self.max_reward, shape=(self.reward_dim,), dtype=np.float32)
 
-        self.observation_space = spaces.Box(low=0, high=2**self.tree_depth - 1, shape=(2,), dtype=np.int32)
+        self.observation_space = spaces.Box(
+            low=0.0,
+            high=self.max_reward,
+            shape=(2 + self.tree.size,),  # 2 for current_state + flattened tree size
+            dtype=np.float32,
+        )
 
         # action space specification: 0 left, 1 right
         self.action_space = spaces.Discrete(2)
@@ -337,11 +353,10 @@ class FruitTreeEnv(gym.Env, EzPickle):
 
     def reset(self, seed=None, **kwargs):
         super().reset(seed=seed)
-
         self.current_state = np.array([0, 0], dtype=np.int32)
         self.terminal = False
-        return self.current_state.copy(), {}
-    
+        return self._get_flattened_obs(), {}
+        
     def reset_random(self):
         """
         Resets the environment with random weights for the leaf nodes.
@@ -354,12 +369,6 @@ class FruitTreeEnv(gym.Env, EzPickle):
         branches = np.zeros((int(2 ** self.tree_depth - 1), self.reward_dim))
         self.tree = np.concatenate([branches, random_fruits])
 
-        # Reset state and terminal flag
-        self.current_state = np.array([0, 0], dtype=np.int32)
-        self.terminal = False
-
-        return self.current_state.copy(), {}
-
     def step(self, action):
         direction = {
             0: np.array([1, self.current_state[1]], dtype=np.int32),  # left
@@ -371,7 +380,13 @@ class FruitTreeEnv(gym.Env, EzPickle):
         reward = self.get_tree_value(self.current_state)
         if self.current_state[0] == self.tree_depth:
             self.terminal = True
-        return self.current_state.copy(), reward, self.terminal, False, {}
+        return self._get_flattened_obs(), reward, self.terminal, False, {}
+    
+    def _get_flattened_obs(self):
+        """Returns a flattened observation consisting of current_state and flattened tree."""
+        flattened_tree = self.tree.flatten()  # Flatten the entire tree
+        flattened_obs = np.concatenate([self.current_state.astype(np.float32), flattened_tree])
+        return flattened_obs
 
     def get_pos_in_window(self, row, index_in_row):
         """Given the row and index_in_row of the node
@@ -475,16 +490,29 @@ class FruitTreeEnv(gym.Env, EzPickle):
 
 
 if __name__ == "__main__":
-    import time
+    from gymnasium.envs.registration import register
+    from mo_utils.evaluation import seed_everything
+    import matplotlib.pyplot as plt
 
-    import mo_gymnasium as mo_gym
+    seed_everything(101)
 
-    env = mo_gym.make("fruit-tree", depth=6, render_mode="human")
+    register(
+        id="MOFruitTreeDR",
+        entry_point="envs.mo_fruit_tree.mo_fruit_tree_randomized:MOFruitTreeDR",
+    )
+    env = gym.make(
+        "MOFruitTreeDR", 
+        render_mode="human",
+        depth=5
+    )
+
+    terminated = False
+    env.reset_random()
     env.reset()
     while True:
+        obs, r, terminated, truncated, info = env.step(env.action_space.sample())
+        print(r, terminated, truncated, obs.shape)
         env.render()
-        obs, r, terminal, truncated, info = env.step(env.action_space.sample())
-        if terminal or truncated:
-            env.render()
-            time.sleep(2)
+        if terminated or truncated:
+            env.reset_random()
             env.reset()
