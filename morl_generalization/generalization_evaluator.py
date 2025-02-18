@@ -36,6 +36,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             eval_params: Optional[dict] = None,
             save_weights: bool = False,
             save_metric: str = 'hypervolume',
+            normalization: bool = False,
+            recover_single_objective: bool = True,
             **kwargs
         ):
         """Wrapper records generalization evaluation metrics for multi-objective reinforcement learning algorithms.
@@ -68,6 +70,8 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             record_video_ep_freq=record_video_ep_freq, 
             eval_params=eval_params, 
             save_metrics=save_metric, 
+            normalization=normalization,
+            recover_single_objective=recover_single_objective,
             **kwargs
         )
         super().__init__(env)
@@ -98,19 +102,18 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.reward_dim = env.reward_space.shape[0]
         self.num_eval_episodes = num_eval_episodes
         self.eval_params = eval_params
-        self.normalization = False # whether to calculate normalised results
-        self.recover_single_objective = False # whether to log single-objective rewards
+        self.normalization = normalization # whether to calculate normalised results
+        self.recover_single_objective = recover_single_objective # whether to log single-objective rewards
         if eval_params:
             print("Using eval params:", eval_params)
-            self.normalization = "normalization" in eval_params
             if self.normalization:
                 for env in self.test_env_names:
                     assert env in eval_params["normalization"], \
                         f"Normalization parameters not provided for {env}. \
                         Either comment out 'normalization' in eval_params to disable normalisation or provide the minmax ranges."
-            if "recover_single_objective" in eval_params:
+            if self.recover_single_objective:
                 # should only be True if env provides `info['original_scalar_reward']` in `step` function
-                self.recover_single_objective = eval_params["recover_single_objective"]
+                assert "recover_single_objective" in eval_params, "info['original_scalar_reward'] not provided in this domain."
                 self.best_single_objective_weights = [
                     wandb.Table(
                         columns=["global_step"] + [f"objective_{j}" for j in range(1, self.reward_dim + 1)],

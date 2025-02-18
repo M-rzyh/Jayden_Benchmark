@@ -72,38 +72,46 @@ class ActionHistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
 class HistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
     def __init__(self, env: gym.Env, history_len: int = 3, state_history=False, action_history=False):
         """
-            Augments the observation with
-            a stack of the previous "history_len" states
-            and actions observed.
+            Augments the observation with a stack of the previous "history_len" states and actions observed.
             e.g. for history_len=3, the observation will be: [s_{t-3}, a_{t-3}, s_{t-2}, a_{t-2}, s_{t-1}, a_{t-1}, s_t]
         """
         gym.utils.RecordConstructorArgs.__init__(self, history_len=history_len)
         gym.Wrapper.__init__(self, env)
-        assert env.action_space.sample().ndim == 1, 'Actions are assumed to be flat on one-dim vector'
 
         self.history_len = history_len
         self.state_history = state_history
         self.action_history = action_history
 
+        self.is_discrete = isinstance(env.action_space, gym.spaces.Discrete)
+
+        if not self.is_discrete:
+            assert env.action_space.sample().ndim == 1, 'Actions are assumed to be flat on one-dim vector'
+
         if self.state_history:
             self.states_buffer = np.zeros((history_len, env.observation_space.shape[0]), dtype=np.float32)
         if self.action_history:
-            self.actions_buffer = np.zeros((history_len, env.action_space.shape[0]), dtype=np.float32)
+            if self.is_discrete:
+                self.actions_buffer = np.zeros((history_len,), dtype=np.int32)  # int for discrete
+            else:
+                self.actions_buffer = np.zeros((history_len, env.action_space.shape[0]), dtype=np.float32)
 
         # Modify the observation space to include the history buffer
-        obs_space = env.observation_space
         new_obs_low = []
         new_obs_high = []
-        for i in range(history_len):
+        for _ in range(history_len):
             if self.state_history:
-                new_obs_low.extend(env.observation_space.low)
-                new_obs_high.extend(env.observation_space.high)
+                new_obs_low.extend(env.observation_space.low.flatten())
+                new_obs_high.extend(env.observation_space.high.flatten())
             if self.action_history:
-                new_obs_low.extend(env.action_space.low)
-                new_obs_high.extend(env.action_space.high)
-        low = np.concatenate([new_obs_low, obs_space.low.flatten()], axis=0)
-        high = np.concatenate([new_obs_high, obs_space.high.flatten()], axis=0)
-        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=obs_space.dtype)
+                if self.is_discrete:
+                    new_obs_low.append(0)  # Min action (always 0 for Discrete)
+                    new_obs_high.append(env.action_space.n - 1)  # Max action
+                else:
+                    new_obs_low.extend(env.action_space.low.flatten())
+                    new_obs_high.extend(env.action_space.high.flatten())
+        low = np.concatenate([new_obs_low, env.observation_space.low.flatten()])
+        high = np.concatenate([new_obs_high, env.observation_space.high.flatten()])
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=env.observation_space.dtype)
 
     def reset(self, **kwargs):
         obs, info = self.env.reset(**kwargs)
