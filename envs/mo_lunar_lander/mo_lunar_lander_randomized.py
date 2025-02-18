@@ -35,10 +35,10 @@ class MOLunarLanderDR(LunarLander, DREnv):
 
     param_info = {
         'names': ['gravity', 'wind_power', 'turbulence_power', 'main_engine_power', 'side_engine_power', 'initial_x_coeff', 'initial_y_coeff'],
-        'param_max': [0.0, 20.0, 4.0, 15.0, 0.9, 0.75, 1.0],
-        'param_min': [-15.0, 0.0, 0.0, 7.0, 0.1, 0.25, 0.7]
+        'param_max': [-7.0, 20.0, 3.5, 16.0, 0.9, 0.75, 1.0],
+        'param_min': [-13.0, 0.0, 0.0, 10.0, 0.3, 0.25, 0.7]
     }
-    DEFAULT_PARAMS = [-10.0, 15.0, 1.5, 13.0, 0.6]
+    DEFAULT_PARAMS = [-10.0, 15.0, 1.5, 13.0, 0.6, 0.5, 1.0]
 
     def __init__(
         self, 
