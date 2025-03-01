@@ -13,7 +13,6 @@ from mo_utils.performance_indicators import (
     sparsity,
 )
 from mo_utils.weights import equally_spaced_weights
-from mo_utils.morl_algorithm import RecurrentMOPolicy
 from morl_generalization.utils import make_test_envs
 from experiments.evaluation import get_eval_params
 
@@ -161,9 +160,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             disc_original_return = np.zeros(self.test_envs.num_envs)
         gamma = np.ones(self.test_envs.num_envs)
         mask = np.ones(self.test_envs.num_envs, dtype=bool)
-
-        if isinstance(agent, RecurrentMOPolicy):
-            agent.zero_start_rnn_hidden() # IMPORTANT: reinitialize hidden state for each episode
 
         if self.algo_name == 'pcn':
             orig_desired_return, orig_desired_horizon = agent.desired_return.copy(), agent.desired_horizon.copy()

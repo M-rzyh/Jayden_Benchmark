@@ -191,19 +191,6 @@ class MOPolicy(ABC):
         """
         pass
 
-class RecurrentMOPolicy(MOPolicy):
-    def __init__(self, *args, **kwargs) -> None:
-        """
-        Wrapper for recurrent policies
-        """
-        super().__init__(*args, **kwargs)
-
-        self.hidden = None
-    
-    def zero_start_rnn_hidden(self) -> None:
-        """Reinitializes the hidden state of the policy."""
-        self.hidden = None
-
 
 class MOAgent(ABC):
     """An MORL Agent, can contain one or multiple MOPolicies. Contains helpers to extract features from the environment, setup logging etc."""
