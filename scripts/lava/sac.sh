@@ -6,7 +6,7 @@ python3 -u launch_experiment.py \
 --seed 92 \
 --num-timesteps 5000000 \
 --gamma 0.995 \
---ref-point '-1000.0' '-100.0' \
+--ref-point '-1000.0' '-500.0' \
 --wandb-group 'domain_randomization' \
 --test-generalization True \
 --init-hyperparams alpha:0.2 "net_arch:[256, 256, 256, 256]" target_net_freq:200 batch_size:128 buffer_size:1000000 \

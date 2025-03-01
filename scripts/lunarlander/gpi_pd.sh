@@ -10,7 +10,7 @@ python3 -u launch_experiment.py \
 --wandb-group 'domain_randomization' \
 --test-generalization True \
 --init-hyperparams "batch_size:128" "buffer_size:1000000" "net_arch:[256, 256, 256, 256]" "initial_epsilon:1.0" "final_epsilon:0.05" "epsilon_decay_steps:1000000" "target_net_update_freq:1000" "dynamics_uncertainty_threshold:20.0" "gradient_updates:1" "dynamics_train_freq:5000" "dynamics_rollout_freq:5000" \
---train-hyperparams num_eval_episodes_for_front:2 timesteps_per_iter:50000 eval_mo_freq:50000 \
---generalization-hyperparams num_eval_weights:100 num_eval_episodes:1 record_video_w_freq:230 \
---test-envs "MOLunarLanderDefault-v0,MOLunarLanderHighGravity-v0,MOLunarLanderWindy-v0,MOLunarLanderTurbulent-v0,MOLunarLanderLowMainEngine-v0,MOLunarLanderLowSideEngine-v0,MOLunarLanderStartRight-v0,MOLunarLanderStartLow-v0,MOLunarLanderHard-v0" \
+--train-hyperparams num_eval_episodes_for_front:1 timesteps_per_iter:50000 eval_mo_freq:50000 \
+--generalization-hyperparams num_eval_weights:100 num_eval_episodes:1 "generalization_algo:'dr_state_action_history'" history_len:2 \
+--test-envs "MOLunarLanderDefault-v0,MOLunarLanderHighGravity-v0,MOLunarLanderWindy-v0,MOLunarLanderTurbulent-v0,MOLunarLanderLowMainEngine-v0,MOLunarLanderLowSideEngine-v0,MOLunarLanderStartRight-v0,MOLunarLanderHard-v0" \
 # --record-video True \
