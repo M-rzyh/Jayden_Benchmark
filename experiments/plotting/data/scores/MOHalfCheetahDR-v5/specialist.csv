@@ -1,0 +1,16 @@
+metric,score
+hypervolume/MOHalfCheetahDefault-v5,381628.902754725
+hypervolume/MOHalfCheetahLight-v5,529677.0336674096
+hypervolume/MOHalfCheetahHeavy-v5,138701.24054500688
+hypervolume/MOHalfCheetahSlippery-v5,329729.92626759614
+hypervolume/MOHalfCheetahHard-v5,226774.13931005757
+normalized_hypervolume/MOHalfCheetahDefault-v5,0.7619446450131624
+normalized_hypervolume/MOHalfCheetahLight-v5,0.9181175910215312
+normalized_hypervolume/MOHalfCheetahHeavy-v5,0.7697053178009421
+normalized_hypervolume/MOHalfCheetahSlippery-v5,0.6567183523272014
+normalized_hypervolume/MOHalfCheetahHard-v5,0.6396955423920049
+eum/MOHalfCheetahDefault-v5,316.98279642868476
+eum/MOHalfCheetahLight-v5,464.3618730170829
+eum/MOHalfCheetahHeavy-v5,54.46756306707911
+eum/MOHalfCheetahSlippery-v5,276.4128113775404
+eum/MOHalfCheetahHard-v5,161.98627162233873

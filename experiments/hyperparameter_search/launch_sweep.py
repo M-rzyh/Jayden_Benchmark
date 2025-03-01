@@ -1,7 +1,10 @@
+import sys
 import argparse
 import os
+sys.path.insert(0, os.getcwd()) 
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from distutils.util import strtobool
 
 import mo_gymnasium as mo_gym
 import numpy as np
@@ -16,7 +19,7 @@ from mo_utils.experiments import (
     StoreDict,
 )
 from mo_utils.utils import reset_wandb_env
-
+from envs.register_envs import register_envs
 
 @dataclass
 class WorkerInitData:
@@ -56,6 +59,15 @@ def parse_args():
         action=StoreDict,
         help="Override hyperparameters to use for the train method algorithm. Example: --train-hyperparams num_eval_weights_for_front:10 timesteps_per_iter:10000",
         default={},
+    )
+
+    parser.add_argument(
+        "--test-generalization",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        nargs="?",
+        const=True,
+        help="Whether to test the generalizability of the algorithm (default: False)",
     )
 
     parser.add_argument(
@@ -105,6 +117,7 @@ def train(worker_data: WorkerInitData) -> WorkerDoneData:
             eval_env=eval_env,
             ref_point=np.array(args.ref_point),
             known_pareto_front=None,
+            test_generalization=args.test_generalization,
             **args.train_hyperparams,
         )
 
@@ -175,6 +188,7 @@ def main():
     wandb.finish()
 
 
+register_envs()
 args = parse_args()
 
 # Create an array of seeds to use for the sweep

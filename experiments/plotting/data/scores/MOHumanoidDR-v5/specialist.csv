@@ -1,0 +1,16 @@
+metric,score
+hypervolume/MOHumanoidDefault-v5,115430.2225031975
+hypervolume/MOHumanoidLight-v5,155362.40630712046
+hypervolume/MOHumanoidHeavy-v5,80686.98347165238
+hypervolume/MOHumanoidLowDamping-v5,120379.40033280617
+hypervolume/MOHumanoidHard-v5,79675.61385960302
+normalized_hypervolume/MOHumanoidDefault-v5,0.8423659313505278
+normalized_hypervolume/MOHumanoidLight-v5,0.9640136806399814
+normalized_hypervolume/MOHumanoidHeavy-v5,0.9356732540460636
+normalized_hypervolume/MOHumanoidLowDamping-v5,0.9037131091894539
+normalized_hypervolume/MOHumanoidHard-v5,0.9403261785522179
+eum/MOHumanoidDefault-v5,245.98283657015733
+eum/MOHumanoidLight-v5,325.5207157158196
+eum/MOHumanoidHeavy-v5,176.9275576193423
+eum/MOHumanoidLowDamping-v5,247.4680940424388
+eum/MOHumanoidHard-v5,199.53213320507314

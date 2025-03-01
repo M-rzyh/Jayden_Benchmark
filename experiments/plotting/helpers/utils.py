@@ -30,7 +30,7 @@ ENVIRONMENTS_MAP = {
         "MOLunarLanderTurbulent-v0",
         "MOLunarLanderHard-v0",
         "MOLunarLanderLowMainEngine-v0",
-        "MOLunarLanderStartLow-v0",
+        "MOLunarLanderLowSideEngine-v0",
         "MOLunarLanderStartRight-v0",
     ],
     "MOLavaGridDR-v0": [
@@ -85,10 +85,10 @@ PIXEL_ALGORITHMS = [
 
 ENVIRONMENT_TO_ALGORITHMS_MAP = {
     'MOHopperDR-v5': CONTINUOUS_ALGORITHMS,
-    'MOHalfCheetahDR-v5': CONTINUOUS_ALGORITHMS,
-    'MOHumanoidDR-v5': CONTINUOUS_ALGORITHMS,
+    'MOHalfCheetahDR-v5': [algo for algo in CONTINUOUS_ALGORITHMS if algo != 'GPI-PD Continuous Action'],
+    'MOHumanoidDR-v5': [algo for algo in CONTINUOUS_ALGORITHMS if algo != 'GPI-PD Continuous Action'],
     'MOLunarLanderDR-v0': DISCRETE_ALGORITHMS,
-    'MOLavaGridDR-v0': DISCRETE_ALGORITHMS,
+    'MOLavaGridDR-v0': [algo for algo in DISCRETE_ALGORITHMS if algo != 'GPI-PD'],
     'MOSuperMarioBrosZeroShot-v2': PIXEL_ALGORITHMS,
 }
 
@@ -125,3 +125,13 @@ ALGORITHMS_COLOR_MAP = {
 
 def get_algorithms(env_name):
     return ENVIRONMENT_TO_ALGORITHMS_MAP[env_name]
+
+
+DOMAINS_REFERENCE_POINTS = {
+    "MOHopperDR-v5": [-100.0, -100.0, -100.0],
+    "MOHalfCheetahDR-v5": [-100.0, -500.0],
+    "MOHumanoidDR-v5": [-100.0, -100.0],
+    "MOLunarLanderDR-v0": [-101.0, -1001.0, -101.0, -101.0],
+    "MOLavaGridDR-v0": [-1000.0, -500.0],
+    "MOSuperMarioBrosZeroShot-v2": [-100.0, -100.0, -100.0],
+}
