@@ -1,10 +1,10 @@
-# MORL-Baselines
+# MORL-Generalization
 
 MORL-Generalization is a benchmark for evaluating the capabilities of Multi-Objective Reinforcement Learning (MORL) algorithms to generalization across environments.
 
 Our domains are adapted from [MO-Gymnasium](https://github.com/Farama-Foundation/mo-gymnasium) and the implementations of the baseline algorithms are adapted from [MORL-Baselines](https://github.com/LucasAlegre/morl-baselines).
 
-We will release more instructions on using our software in the coming weeks. Please reach out directly if you need instructions on our code urgently.
+**NOTE:** We will release more instructions on using our software in the coming weeks. Please reach out directly if you need instructions on our code urgently.
 
 ## Setup
 To install the necessary dependencies, first make sure you have the necessary packages to install [pycddlib](https://pycddlib.readthedocs.io/en/latest/quickstart.html). Then, run the following commands:
