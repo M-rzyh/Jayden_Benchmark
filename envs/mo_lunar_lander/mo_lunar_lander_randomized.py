@@ -285,3 +285,23 @@ class MOLunarLanderDR(LunarLander, DREnv):
             self.render()
 
         return np.array(state, dtype=np.float32), vector_reward, terminated, False, {"original_scalar_reward": reward}
+    
+
+if __name__ == "__main__":
+    import gymnasium as gym
+    from gymnasium.envs.registration import register
+    import matplotlib.pyplot as plt
+    register(
+        id="LunarLander-v0",
+        entry_point="envs.mo_lunar_lander.mo_lunar_lander_randomized:MOLunarLanderDR",
+    )
+    env = gym.make("LunarLander-v0", render_mode="human")
+
+    obs = env.reset()
+    done = False
+    while True:
+        action = env.action_space.sample()
+        obs, reward, done, _, info = env.step(action)
+        if done:
+            env.reset_random()
+            obs = env.reset()

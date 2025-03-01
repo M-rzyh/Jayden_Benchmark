@@ -87,7 +87,7 @@ class MOLavaGridDR(MiniGridEnv):
     ## Reward Space
     The reward is 2-dimensional:
     - 0: Lava Damage (-5 if agent falls into lava)
-    - 1: Time Penalty (-1 for every step the agent has taken)
+    - 1: Time Penalty (-3 for every step the agent has taken)
 
     ## Termination
     The episode ends if any one of the following conditions is met:
@@ -262,7 +262,7 @@ class MOLavaGridDR(MiniGridEnv):
         self.step_count += 1
 
         vec_reward = np.zeros(2, dtype=np.float32) 
-        vec_reward[1] = -3 # -1 for time penalty
+        vec_reward[1] = -3 # -3 for time penalty
         terminated = False
         truncated = False
         
