@@ -14,7 +14,7 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 from morl_generalization.utils import make_test_envs
-from experiments.evaluation import get_eval_params
+from experiments.evaluation import get_minmax_values
 
 
 class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
@@ -32,10 +32,9 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             num_eval_weights: int = 100,
             num_eval_episodes: int = 5,
             fixed_weights: List[List[float]] = None,
-            eval_params: Optional[dict] = None,
             save_weights: bool = False,
             save_metric: str = 'hypervolume',
-            normalization: bool = False,
+            normalization: bool = True,
             recover_single_objective: bool = True,
             **kwargs
         ):
@@ -53,7 +52,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             record_video_ep_freq: Episodic frequency of recording videos (preferably high number, if agent keeps dying, vectorised test environments will reset, resulting in more frequent video recordings)
             num_eval_weights: Number of weights to evaluate the agent on (for LS methods to condition on and for EUM calculation)
             num_eval_episodes: Number of episodes to average over for policy evaluation for each weight (total episodes = num_eval_weights * num_eval_episodes)
-            eval_params: Evaluation parameters (for normalisation, recovering single-objective rewards, etc.)
             save_weights: Whether to save the best weights for each test environment
             save_metric: Metrics to save the best front (and weights if `save_weights` is set) for
         """
@@ -67,7 +65,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             record_video=record_video, 
             record_video_w_freq=record_video_w_freq,
             record_video_ep_freq=record_video_ep_freq, 
-            eval_params=eval_params, 
             save_metrics=save_metric, 
             normalization=normalization,
             recover_single_objective=recover_single_objective,
@@ -100,31 +97,29 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
         self.reward_dim = env.reward_space.shape[0]
         self.num_eval_episodes = num_eval_episodes
-        self.eval_params = eval_params
         self.normalization = normalization # whether to calculate normalised results
         self.recover_single_objective = recover_single_objective # whether to log single-objective rewards
-        if eval_params:
-            print("Using eval params:", eval_params)
-            if self.normalization:
-                for env in self.test_env_names:
-                    assert env in eval_params["normalization"], \
-                        f"Normalization parameters not provided for {env}. \
-                        Either comment out 'normalization' in eval_params to disable normalisation or provide the minmax ranges."
-            if self.recover_single_objective:
-                # should only be True if env provides `info['original_scalar_reward']` in `step` function
-                assert "recover_single_objective" in eval_params, "info['original_scalar_reward'] not provided in this domain."
-                self.best_single_objective_weights = [
-                    wandb.Table(
-                        columns=["global_step"] + [f"objective_{j}" for j in range(1, self.reward_dim + 1)],
-                        data=[],
-                    ) for _ in test_envs
-                ]
-                self.best_disc_single_objective_weights = [
-                    wandb.Table(
-                        columns=["global_step"] + [f"objective_{j}" for j in range(1, self.reward_dim + 1)],
-                        data=[],
-                    ) for _ in test_envs
-                ]
+
+        if self.normalization:
+            self.minmax_ranges = get_minmax_values(env.unwrapped.spec.id)
+            for test_env in self.test_env_names:
+                assert test_env in self.minmax_ranges, f"Minmax range for {test_env} not found in eval params."
+            print("Including normalized metrics in evaluation.")
+        if self.recover_single_objective:
+            # should only be True if env provides `info['original_scalar_reward']` in `step` function
+            print("Plotting single-objective rewards. Please make sure the environment provides `info['original_scalar_reward']` in the `step` function.")
+            self.best_single_objective_weights = [
+                wandb.Table(
+                    columns=["global_step"] + [f"objective_{j}" for j in range(1, self.reward_dim + 1)],
+                    data=[],
+                ) for _ in test_envs
+            ]
+            self.best_disc_single_objective_weights = [
+                wandb.Table(
+                    columns=["global_step"] + [f"objective_{j}" for j in range(1, self.reward_dim + 1)],
+                    data=[],
+                ) for _ in test_envs
+            ]
 
         # ============ Weights Saving ============
         self.save_weights = save_weights
@@ -326,7 +321,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             wandb.log(metrics)
 
     def get_normalized_vec_returns(self, all_vec_returns, minmax_range):
-        minmax_array = np.array([minmax_range[i] for i in range(all_vec_returns.shape[-1])])
+        minmax_array = np.array([minmax_range[str(i)] for i in range(all_vec_returns.shape[-1])])
         min_vals = minmax_array[:, 0].reshape(1, 1, -1) # reshape to (1, 1, n_objectives) for broadcasting
         max_vals = minmax_array[:, 1].reshape(1, 1, -1)
 
@@ -455,7 +450,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             # currently only normalizing using discounted vec returns, current minmax ranges cannot be applied to undiscounted returns!
             normalized_returns = np.empty_like(disc_vec_returns)
             for env_idx, env in enumerate(self.test_env_names):
-                minmax_range = self.eval_params["normalization"][env]
+                minmax_range = self.minmax_ranges[env]
                 disc_vec_return_for_env = disc_vec_returns[env_idx]
                 normalized_returns_for_env = self.get_normalized_vec_returns(disc_vec_return_for_env, minmax_range)
                 normalized_returns[env_idx] = normalized_returns_for_env
@@ -473,7 +468,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
         print(f"Time taken to complete evaluation: {(time.time() - start_time):.2f} seconds")
 
 def make_generalization_evaluator(env, args) -> MORLGeneralizationEvaluator:
-    eval_params = get_eval_params(args.env_id)
     env = MORLGeneralizationEvaluator(
         env,
         algo_name=args.algo,
@@ -482,7 +476,6 @@ def make_generalization_evaluator(env, args) -> MORLGeneralizationEvaluator:
         record_video=args.record_video,
         record_video_ep_freq=args.record_video_ep_freq,
         record_video_w_freq=args.record_video_w_freq,
-        eval_params=eval_params,
         generalization_hyperparams = args.generalization_hyperparams
     )
     return env
