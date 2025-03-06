@@ -1,10 +1,8 @@
 import gymnasium as gym
 from gymnasium.wrappers import FlattenObservation
-from gymnasium.wrappers.frame_stack import FrameStack
-from gymnasium.wrappers.record_video import RecordVideo
 
 from envs.mo_super_mario.utils import wrap_mario
-from morl_generalization.algos.dr import DRWrapper, DynamicsInObs, AsymmetricDRWrapper
+from morl_generalization.algos.dr import DRWrapper, AsymmetricDRWrapper
 from morl_generalization.wrappers import MORecordVideo, HistoryWrapper
 
 def get_env_selection_algo_wrapper(env, generalization_hyperparams, is_eval_env = False) -> gym.Env:

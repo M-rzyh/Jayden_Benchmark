@@ -11,7 +11,7 @@ import torch as th
 import torch.nn
 import wandb
 from gymnasium import spaces
-from mo_gymnasium.utils import MOSyncVectorEnv
+from mo_gymnasium.wrappers.vector import MOSyncVectorEnv
 
 from mo_utils.evaluation import (
     eval_mo_reward_conditioned,
@@ -240,7 +240,7 @@ class MOAgent(ABC):
             else:
                 self.action_shape = self.env.action_space.shape
                 self.action_dim = self.env.action_space.shape[0]
-            self.reward_dim = self.env.reward_space.shape[0]
+            self.reward_dim = self.env.unwrapped.reward_space.shape[0]
 
     @abstractmethod
     def get_config(self) -> dict:
@@ -279,7 +279,7 @@ class MOAgent(ABC):
             None
         """
         self.experiment_name = experiment_name
-        env_id = self.env.spec.id if not isinstance(self.env, MOSyncVectorEnv) else self.env.envs[0].spec.id
+        env_id = self.env.unwrapped.spec.id if not isinstance(self.env, MOSyncVectorEnv) else self.env.envs[0].unwrapped.spec.id
         self.full_experiment_name = f"{env_id}__{experiment_name}__{self.seed}__{int(time.time())}"
         import wandb
 

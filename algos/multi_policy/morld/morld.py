@@ -13,7 +13,7 @@ from typing_extensions import override
 import gymnasium as gym
 import numpy as np
 import torch as th
-from mo_gymnasium import MONormalizeReward
+from mo_gymnasium.wrappers import MONormalizeReward
 from torch import optim
 
 from mo_utils.evaluation import log_all_multi_policy_metrics

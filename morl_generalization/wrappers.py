@@ -1,12 +1,11 @@
 import os
 import numpy as np
-from typing import Callable, Optional
+from typing import Callable, List
 
 import gymnasium as gym
-from gymnasium import logger
-from gymnasium.wrappers.monitoring import video_recorder
-from gymnasium.wrappers.frame_stack import FrameStack
-from gymnasium.wrappers import FlattenObservation
+from gymnasium import error, logger
+from gymnasium.core import ActType, ObsType, RenderFrame
+from gymnasium.wrappers import FlattenObservation, FrameStackObservation
 
 class ObsToNumpy(gym.ObservationWrapper):
     def __init__(self, env):
@@ -26,7 +25,7 @@ class StateHistoryWrapper(gym.Wrapper, gym.utils.RecordConstructorArgs):
         gym.Wrapper.__init__(self, env)
 
         self.history_len = history_len
-        env = FrameStack(env, history_len + 1)  # FrameStack considers the current obs as 1 stack
+        env = FrameStackObservation(env, history_len + 1)  # FrameStackObservation considers the current obs as 1 stack
         env = ObsToNumpy(env)
         env = FlattenObservation(env)
         self.env = env
@@ -158,7 +157,7 @@ def capped_cubic_video_schedule(episode_id: int) -> bool:
         return episode_id % 1000 == 0
 
     
-class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
+class MORecordVideo(gym.Wrapper[ObsType, ActType, ObsType, ActType], gym.utils.RecordConstructorArgs):
     """Multi-objective RecordVideo wrapper for recording videos. 
     Allows intermittent recording of videos based on number of weights evaluted by specifying ``weight_trigger``.
     To increased weight_number, call `env.reset(options={"weights": w, "step":s})` at the beginning of each evaluation. 
@@ -175,6 +174,7 @@ class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         step_trigger: Callable[[int], bool] = None,
         video_length: int = 0,
         name_prefix: str = "mo-rl-video",
+        fps: int | None = None,
         disable_logger: bool = False,
     ):
         """Wrapper records videos of rollouts.
@@ -217,7 +217,6 @@ class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         self.weight_trigger = weight_trigger
         self.episode_trigger = episode_trigger
         self.step_trigger = step_trigger
-        self.video_recorder: Optional[video_recorder.VideoRecorder] = None
         self.disable_logger = disable_logger
 
         self.video_folder = os.path.abspath(video_folder)
@@ -229,15 +228,18 @@ class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
             )
         os.makedirs(self.video_folder, exist_ok=True)
 
-        self.name_prefix = name_prefix
-        self.step_id = 0
-        self.video_length = video_length
+        if fps is None:
+            fps = self.metadata.get("render_fps", 30)
+        self.frames_per_sec: int = fps
+        self.name_prefix: str = name_prefix
+        self._video_name: str | None = None
+        self.video_length: int = video_length if video_length != 0 else float("inf")
+        self.recording: bool = False
+        self.recorded_frames: list[RenderFrame] = []
+        self.render_history: list[RenderFrame] = []
 
-        self.recording = False
-        self.terminated = False
-        self.truncated = False
-        self.recorded_frames = 0
-        self.episode_id = 0
+        self.step_id = -1
+        self.episode_id = -1
 
         # Custom multi-objective attributes
         self.weight_id = -1
@@ -249,6 +251,24 @@ class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
         except AttributeError:
             self.is_vector_env = False
 
+    def _capture_frame(self):
+        assert self.recording, "Cannot capture a frame, recording wasn't started."
+
+        frame = self.env.render()
+        if isinstance(frame, List):
+            if len(frame) == 0:  # render was called
+                return
+            self.render_history += frame
+            frame = frame[-1]
+
+        if isinstance(frame, np.ndarray):
+            self.recorded_frames.append(frame)
+        else:
+            self.stop_recording()
+            logger.warn(
+                f"Recording stopped: expected type of frame returned by render to be a numpy array, got instead {type(frame)}."
+            )
+
     def reset(self, **kwargs):
         """Reset the environment, set multi-objective weights if provided, and start video recording if enabled."""
         # Check for multi-objective weights in kwargs
@@ -259,56 +279,22 @@ class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
             self.current_weight = np.array2string(options["weights"], precision=2, separator=',')
             self.weight_id += 1
             self.current_step = options["step"]
-
+        
         observations = super().reset(**kwargs)
-        self.terminated = False
-        self.truncated = False
+        self.episode_id += 1
+        if self.recording and self.video_length == float("inf"):
+            self.stop_recording()
+
+        if self.episode_trigger and self.episode_trigger(self.episode_id):
+            self.start_recording(f"{self.name_prefix}-episode-{self.episode_id}")
+        if self.weight_trigger and self.weight_trigger(self.weight_id):
+            self.start_recording(f"{self.name_prefix}-step{self.current_step}-weight-{self.current_weight}")
         if self.recording:
-            assert self.video_recorder is not None
-            self.video_recorder.recorded_frames = []
-            self.video_recorder.capture_frame()
-            self.recorded_frames += 1
-            if self.video_length > 0:
-                if self.recorded_frames > self.video_length:
-                    self.close_video_recorder()
-        elif self._video_enabled():
-            self.start_video_recorder()
+            self._capture_frame()
+            if len(self.recorded_frames) > self.video_length:
+                self.stop_recording()
+
         return observations
-
-    def start_video_recorder(self):
-        """Starts video recorder using :class:`video_recorder.VideoRecorder`."""
-        self.close_video_recorder()
-
-        video_name = f"{self.name_prefix}-step-{self.step_id}"
-        if self.episode_trigger:
-            video_name = f"{self.name_prefix}-episode-{self.episode_id}"
-        elif self.weight_trigger:
-            video_name = f"{self.name_prefix}-step{self.current_step}-weight-{self.current_weight}"
-
-        base_path = os.path.join(self.video_folder, video_name)
-        self.video_recorder = video_recorder.VideoRecorder(
-            env=self.env,
-            base_path=base_path,
-            metadata={
-                "step_id": self.step_id, 
-                "episode_id": self.episode_id,
-                "num_evaluated_weights": self.weight_id,
-                "evaluated_weight": self.current_weight
-            },
-            disable_logger=self.disable_logger,
-        )
-
-        self.video_recorder.capture_frame()
-        self.recorded_frames = 1
-        self.recording = True
-
-    def _video_enabled(self):
-        if self.step_trigger:
-            return self.step_trigger(self.step_id)
-        elif self.episode_trigger:
-            return self.episode_trigger(self.episode_id)
-        elif self.weight_trigger:
-            return self.weight_trigger(self.weight_id)
 
     def step(self, action):
         """Steps through the environment using action, recording observations if :attr:`self.recording`."""
@@ -320,64 +306,69 @@ class MORecordVideo(gym.Wrapper, gym.utils.RecordConstructorArgs):
             infos,
         ) = self.env.step(action)
 
-        if not (self.terminated or self.truncated):
-            # increment steps and episodes
-            self.step_id += 1
-            if not self.is_vector_env:
-                if terminateds or truncateds:
-                    self.episode_id += 1
-                    self.terminated = terminateds
-                    self.truncated = truncateds
-            elif terminateds[0] or truncateds[0]:
-                self.episode_id += 1
-                self.terminated = terminateds[0]
-                self.truncated = truncateds[0]
+        self.step_id += 1
 
-            if self.recording:
-                assert self.video_recorder is not None
-                self.video_recorder.capture_frame()
-                self.recorded_frames += 1
-                if self.video_length > 0:
-                    if self.recorded_frames > self.video_length:
-                        self.close_video_recorder()
-                else:
-                    if not self.is_vector_env:
-                        if terminateds or truncateds:
-                            self.close_video_recorder()
-                    elif terminateds[0] or truncateds[0]:
-                        self.close_video_recorder()
+        if self.step_trigger and self.step_trigger(self.step_id):
+            self.start_recording(f"{self.name_prefix}-step-{self.step_id}")
+        if self.recording:
+            self._capture_frame()
 
-            elif self._video_enabled():
-                self.start_video_recorder()
+            if len(self.recorded_frames) > self.video_length:
+                self.stop_recording()
 
         return observations, rewards, terminateds, truncateds, infos
 
-    def close_video_recorder(self):
-        """Closes the video recorder if currently recording."""
-        if self.recording:
-            assert self.video_recorder is not None
-            self.video_recorder.close()
-        self.recording = False
-        self.recorded_frames = 1
+    def render(self) -> RenderFrame | list[RenderFrame]:
+        """Compute the render frames as specified by render_mode attribute during initialization of the environment."""
+        render_out = super().render()
+        if self.recording and isinstance(render_out, List):
+            self.recorded_frames += render_out
 
-    def render(self, *args, **kwargs):
-        """Compute the render frames as specified by render_mode attribute during initialization of the environment or as specified in kwargs."""
-        if self.video_recorder is None or not self.video_recorder.enabled:
-            return super().render(*args, **kwargs)
-
-        if len(self.video_recorder.render_history) > 0:
-            recorded_frames = [
-                self.video_recorder.render_history.pop()
-                for _ in range(len(self.video_recorder.render_history))
-            ]
-            if self.recording:
-                return recorded_frames
-            else:
-                return recorded_frames + super().render(*args, **kwargs)
+        if len(self.render_history) > 0:
+            tmp_history = self.render_history
+            self.render_history = []
+            return tmp_history + render_out
         else:
-            return super().render(*args, **kwargs)
+            return render_out
 
     def close(self):
         """Closes the wrapper then the video recorder."""
         super().close()
-        self.close_video_recorder()
+        if self.recording:
+            self.stop_recording()
+
+    def start_recording(self, video_name: str):
+        """Start a new recording. If it is already recording, stops the current recording before starting the new one."""
+        if self.recording:
+            self.stop_recording()
+
+        self.recording = True
+        self._video_name = video_name
+
+    def stop_recording(self):
+        """Stop current recording and saves the video."""
+        assert self.recording, "stop_recording was called, but no recording was started"
+
+        if len(self.recorded_frames) == 0:
+            logger.warn("Ignored saving a video as there were zero frames to save.")
+        else:
+            try:
+                from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+            except ImportError as e:
+                raise error.DependencyNotInstalled(
+                    'MoviePy is not installed, run `pip install "gymnasium[other]"`'
+                ) from e
+
+            clip = ImageSequenceClip(self.recorded_frames, fps=self.frames_per_sec)
+            moviepy_logger = None if self.disable_logger else "bar"
+            path = os.path.join(self.video_folder, f"{self._video_name}.mp4")
+            clip.write_videofile(path, logger=moviepy_logger)
+
+        self.recorded_frames = []
+        self.recording = False
+        self._video_name = None
+
+    def __del__(self):
+        """Warn the user in case last video wasn't saved."""
+        if len(self.recorded_frames) > 0:
+            logger.warn("Unable to save last video! Did you call close()?")

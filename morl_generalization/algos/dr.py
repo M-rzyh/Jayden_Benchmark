@@ -8,9 +8,6 @@ from typing import Callable, Optional
 
 import gymnasium as gym
 from gymnasium import logger
-from gymnasium.wrappers import FlattenObservation
-from gymnasium.wrappers.monitoring import video_recorder
-from gymnasium.wrappers.frame_stack import FrameStack
 from morl_generalization.wrappers import ObsToNumpy, HistoryWrapper
 
 class DREnv(ABC):

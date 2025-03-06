@@ -515,7 +515,7 @@ class PGMORL(MOAgent):
             envs = [make_env(env_id, self.seed + i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
         else:
             envs = [make_env(env_id, i, i, experiment_name, self.gamma, generalization_hyperparams) for i in range(self.num_envs)]
-        self.env = mo_gym.MOSyncVectorEnv(envs)
+        self.env = mo_gym.wrappers.vector.MOSyncVectorEnv(envs)
 
         # Logging
         self.log = log

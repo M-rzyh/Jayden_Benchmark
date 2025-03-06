@@ -86,16 +86,16 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 record_video_ep_freq=record_video_ep_freq,
             ) for env_name in test_envs
         ]
-        self.test_envs = mo_gym.MOSyncVectorEnv(make_fn)
+        self.test_envs = mo_gym.wrappers.vector.MOSyncVectorEnv(make_fn)
 
         if fixed_weights:
             self.eval_weights = [np.array(w) for w in fixed_weights]
             self.num_eval_weights = len(self.eval_weights)
         else:
             self.num_eval_weights = num_eval_weights
-            self.eval_weights = equally_spaced_weights(self.reward_dim, self.num_eval_weights)
+            self.eval_weights = equally_spaced_weights(self.unwrapped.reward_dim, self.num_eval_weights)
 
-        self.reward_dim = env.reward_space.shape[0]
+        self.reward_dim = env.unwrapped.reward_space.shape[0]
         self.num_eval_episodes = num_eval_episodes
         self.normalization = normalization # whether to calculate normalised results
         self.recover_single_objective = recover_single_objective # whether to log single-objective rewards

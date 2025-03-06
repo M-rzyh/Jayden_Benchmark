@@ -14,4 +14,4 @@ python3 -u launch_experiment.py \
 --generalization-hyperparams num_eval_weights:100 num_eval_episodes:1 "generalization_algo:'dr_state_action_history'" history_len:2 \
 --test-envs "MOHalfCheetahDefault-v5,MOHalfCheetahLight-v5,MOHalfCheetahHeavy-v5,MOHalfCheetahSlippery-v5,MOHalfCheetahHard-v5" \
 # --record-video True \
-# --record_video_ep_freq:1001
+# --record-video-ep-freq 1001

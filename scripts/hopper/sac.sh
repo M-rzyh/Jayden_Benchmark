@@ -14,4 +14,4 @@ python3 -u launch_experiment.py \
 --generalization-hyperparams num_eval_weights:100 num_eval_episodes:1 "generalization_algo:'dr_state_action_history'" history_len:2 \
 --test-envs "MOHopperDefault-v5,MOHopperLight-v5,MOHopperHeavy-v5,MOHopperSlippery-v5,MOHopperLowDamping-v5,MOHopperHard-v5" \
 # --record-video True \
-# --record_video_ep_freq:1001 \
+# --record-video-ep-freq 1001 \

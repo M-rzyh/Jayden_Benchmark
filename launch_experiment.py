@@ -17,8 +17,9 @@ import mo_gymnasium as mo_gym
 import numpy as np
 import requests
 from gymnasium.wrappers import FlattenObservation
+from mo_gymnasium.wrappers import MORecordEpisodeStatistics
 
-from mo_utils.wrappers import MORecordEpisodeStatistics, Multi2SingleObjectiveWrapper
+from mo_utils.wrappers import Multi2SingleObjectiveWrapper
 from mo_utils.evaluation import seed_everything
 from mo_utils.experiments import (
     ALGOS,
