@@ -393,6 +393,7 @@ class SACDiscrete(MOAgent):
         self, 
         obs: np.ndarray, 
         w: Optional[np.ndarray] = None,
+        num_envs: int = 1,
         **kwargs,
     ) -> Union[int, np.ndarray]:
         """Returns the best action to perform for the given obs.
@@ -404,7 +405,8 @@ class SACDiscrete(MOAgent):
             action as a numpy array (discrete actions)
         """
         obs = th.as_tensor(obs).float().to(self.device)
-        obs = obs.unsqueeze(0)
+        if num_envs == 1:
+            obs = np.expand_dims(obs, 0)
         with th.no_grad():
             action, _, _ = self.actor.get_action(obs)
 
