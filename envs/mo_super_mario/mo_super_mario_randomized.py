@@ -219,7 +219,7 @@ class MOSuperMarioBrosDR(SuperMarioBrosRandomStagesEnv, EzPickle):
 if __name__ == "__main__":
     from gymnasium.envs.registration import register
     from mo_utils.evaluation import seed_everything
-    from gymnasium.wrappers import GrayScaleObservation, ResizeObservation
+    from gymnasium.wrappers.transform_observation import GrayscaleObservation, ResizeObservation
     from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
     from envs.mo_super_mario.utils.joypad_space import JoypadSpace
     from envs.mo_super_mario.utils.mario_video_wrapper import RecordMarioVideo
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     )
     # env = MaxAndSkipEnv(env, 4)
     env = ResizeObservation(env, (84, 84))
-    env = GrayScaleObservation(env)
+    env = GrayscaleObservation(env)
     # env = FrameStack(env, 4)
     env = mo_gym.LinearReward(env)
 

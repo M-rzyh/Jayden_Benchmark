@@ -410,7 +410,12 @@ class SACDiscrete(MOAgent):
         with th.no_grad():
             action, _, _ = self.actor.get_action(obs)
 
-        return action[0].detach().cpu().numpy()
+        if num_envs > 1:
+            action = action.detach().cpu().numpy()
+        else:
+            action = action[0].detach().item()
+
+        return action
 
     @override
     def update(self):

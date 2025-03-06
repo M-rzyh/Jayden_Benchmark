@@ -3,13 +3,13 @@ from envs.mo_super_mario.utils.mario_video_wrapper import RecordMarioVideo
 
 def wrap_mario(env, gym_id="", algo_name="", seed=0, record_video=False, record_video_w_freq=None, record_video_ep_freq=None):
     from gymnasium.wrappers import (
-        FrameStack,
-        GrayScaleObservation,
+        FrameStackObservation,
+        GrayscaleObservation,
         ResizeObservation,
         TimeLimit,
     )
     from mo_gymnasium.envs.mario.joypad_space import JoypadSpace
-    from mo_gymnasium.utils import MOMaxAndSkipObservation
+    from mo_gymnasium.wrappers import MOMaxAndSkipObservation
 
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
     env = TimeLimit(env, max_episode_steps=2000) # this must come before video recording else truncation will not be captured
@@ -30,6 +30,6 @@ def wrap_mario(env, gym_id="", algo_name="", seed=0, record_video=False, record_
             )
     env = MOMaxAndSkipObservation(env, skip=4)
     env = ResizeObservation(env, (84, 84))
-    env = GrayScaleObservation(env)
-    env = FrameStack(env, 4)
+    env = GrayscaleObservation(env)
+    env = FrameStackObservation(env, 4)
     return env

@@ -1,5 +1,5 @@
 """An OpenAI Gym Super Mario Bros. environment that randomly selects levels."""
-import gym
+import gymnasium as gym
 import numpy as np
 from gym_super_mario_bros import SuperMarioBrosEnv
 

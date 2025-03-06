@@ -14,7 +14,7 @@ from nes_py.nes_env import SCREEN_SHAPE_24_BIT
 from envs.mo_super_mario.utils.joypad_space import JoypadSpace
 
 
-class MOSuperMarioBros(SuperMarioBrosEnv, EzPickle):
+class MOSuperMarioBros(SuperMarioBrosEnv, gym.Env, EzPickle):
     """
     ## Description
     Multi-objective version of the SuperMarioBro environment.

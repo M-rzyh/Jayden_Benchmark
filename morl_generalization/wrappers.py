@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import gymnasium as gym
 from gymnasium import error, logger
@@ -174,7 +174,7 @@ class MORecordVideo(gym.Wrapper[ObsType, ActType, ObsType, ActType], gym.utils.R
         step_trigger: Callable[[int], bool] = None,
         video_length: int = 0,
         name_prefix: str = "mo-rl-video",
-        fps: int | None = None,
+        fps: Optional[int] = None,
         disable_logger: bool = False,
     ):
         """Wrapper records videos of rollouts.
@@ -318,7 +318,7 @@ class MORecordVideo(gym.Wrapper[ObsType, ActType, ObsType, ActType], gym.utils.R
 
         return observations, rewards, terminateds, truncateds, infos
 
-    def render(self) -> RenderFrame | list[RenderFrame]:
+    def render(self):
         """Compute the render frames as specified by render_mode attribute during initialization of the environment."""
         render_out = super().render()
         if self.recording and isinstance(render_out, List):
