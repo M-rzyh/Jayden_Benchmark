@@ -1,6 +1,5 @@
 from envs.mo_mujoco.mo_hopper_randomized import MOHopperDR
 from envs.mo_mujoco.mo_halfcheetah_randomized import MOHalfCheetahDR
-from envs.mo_mujoco.mo_halfcheetah3d_randomized import MOHalfCheetah3dDR
 from envs.mo_mujoco.mo_humanoid_randomized import MOHumanoidDR
 import gymnasium as gym
 import numpy as np
@@ -77,35 +76,6 @@ class MOHalfCheetahHard(MOHalfCheetahDR):
         task = np.concatenate([masses, friction])
         super().__init__(task=task, **kwargs)
 
-# ============================ Cheetah 3D ============================
-class MOHalfCheetah3dLight(MOHalfCheetah3dDR):
-    def __init__(self, **kwargs):
-        masses = np.array([0.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-        friction = np.array([0.4])
-        task = np.concatenate([masses, friction])
-        super().__init__(task=task, **kwargs)
-
-class MOHalfCheetah3dHeavy(MOHalfCheetah3dDR):
-    def __init__(self, **kwargs):
-        masses = np.array([10.0, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5])
-        friction = np.array([0.4])
-        task = np.concatenate([masses, friction])
-        super().__init__(task=task, **kwargs)
-
-class MOHalfCheetah3dSlippery(MOHalfCheetah3dDR):
-    def __init__(self, **kwargs):
-        masses = np.array([6.25020921, 1.54351464, 1.5874477, 1.09539749, 1.43807531, 1.20083682, 0.88451883])
-        friction = np.array([0.1])
-        task = np.concatenate([masses, friction])
-        super().__init__(task=task, **kwargs)
-
-class MOHalfCheetah3dHard(MOHalfCheetah3dDR):
-    def __init__(self, **kwargs):
-        # default torso, heavy back (thigh, shin, foot), light front (thigh, shin, foot)
-        masses = np.array([6.25020921, 9.5, 9.5, 9.5, 0.1, 0.1, 0.1])
-        friction = np.array([0.1])
-        task = np.concatenate([masses, friction])
-        super().__init__(task=task, **kwargs)
 
 # ============================ Humanoid ============================
 class MOHumanoidLight(MOHumanoidDR):
@@ -148,7 +118,6 @@ def register_mujoco():
     except Exception as e:
         print(f"Unexpected error: {e}, {type(e)}")
         
-
     try:
         gym.envs.register(
             id="MOHalfCheetahDefault-v5", # copy of the dr environment but renamed for clarity
@@ -196,63 +165,6 @@ def register_mujoco():
     except Exception as e:
         print(f"Unexpected error: {e}, {type(e)}")
 
-    # HalfCheetah3d
-    try:
-        gym.envs.register(
-            id="MOHalfCheetah3dDR-v0",
-            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheetahDR",
-            max_episode_steps=1000,
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}, {type(e)}")
-        
-
-    try:
-        gym.envs.register(
-            id="MOHalfCheetah3dDefault-v0", # copy of the dr environment but renamed for clarity
-            entry_point="envs.mo_mujoco.mo_halfcheetah_randomized:MOHalfCheetah3dDR",
-            max_episode_steps=1000,
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}, {type(e)}")
-
-    try:
-        gym.envs.register(
-            id="MOHalfCheetah3dLight-v0",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetah3dLight",
-            max_episode_steps=1000,
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}, {type(e)}")
-
-    try:
-        gym.envs.register(
-            id="MOHalfCheetah3dHeavy-v0",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetah3dHeavy",
-            max_episode_steps=1000,
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}, {type(e)}")
-
-    
-    try:
-        gym.envs.register(
-            id="MOHalfCheetah3dSlippery-v0",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetah3dSlippery",
-            max_episode_steps=1000,
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}, {type(e)}")
-
-
-    try:
-        gym.envs.register(
-            id="MOHalfCheetah3dHard-v0",
-            entry_point="envs.mo_mujoco.mo_mujoco_test_envs:MOHalfCheetah3dHard",
-            max_episode_steps=1000,
-        )
-    except Exception as e:
-        print(f"Unexpected error: {e}, {type(e)}")
 
     # Hopper
     try:

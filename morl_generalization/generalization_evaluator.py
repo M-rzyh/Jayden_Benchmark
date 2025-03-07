@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Tuple, List, Union
 import numpy as np
 import gymnasium as gym
+from gymnasium.envs.registration import _find_spec
 import mo_gymnasium as mo_gym
 import wandb
 import time
@@ -14,6 +15,7 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 from morl_generalization.utils import make_test_envs
+from morl_generalization.wrappers import MOAsyncVectorEnv
 from experiments.evaluation import get_minmax_values
 
 
@@ -25,6 +27,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             seed: int,
             test_envs: List[str],
             algo_suffix: str = "",
+            async_envs: bool = True,
             record_video: bool = False,
             record_video_w_freq: Optional[int] = None,
             record_video_ep_freq: Optional[int] = None,
@@ -73,18 +76,23 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
 
         # ============ Evaluation Parameters ============
         self.test_env_names = test_envs
+        gym_specs = [_find_spec(env_name) for env_name in test_envs]
         make_fn = [
-            lambda env_name=env_name: make_test_envs(
-                env_name, 
+            lambda env_spec=env_spec: make_test_envs(
+                env_spec, 
                 self.algo_name, 
                 seed,
                 record_video=record_video,
                 record_video_w_freq=record_video_w_freq,
                 record_video_ep_freq=record_video_ep_freq,
                 **kwargs
-            ) for env_name in test_envs
+            ) for env_spec in gym_specs
         ]
-        self.test_envs = mo_gym.wrappers.vector.MOSyncVectorEnv(make_fn)
+
+        if async_envs:
+            self.test_envs = MOAsyncVectorEnv(make_fn, copy=False)
+        else:
+            self.test_envs = mo_gym.wrappers.vector.MOSyncVectorEnv(make_fn)
 
         if fixed_weights:
             self.eval_weights = [np.array(w) for w in fixed_weights]
