@@ -14,6 +14,7 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 from morl_generalization.utils import make_test_envs
+from morl_generalization.wrappers import MOAsyncVectorEnv
 from experiments.evaluation import get_minmax_values
 
 
@@ -86,7 +87,7 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 record_video_ep_freq=record_video_ep_freq,
             ) for env_name in test_envs
         ]
-        self.test_envs = mo_gym.wrappers.vector.MOSyncVectorEnv(make_fn)
+        self.test_envs = MOAsyncVectorEnv(make_fn)
 
         if fixed_weights:
             self.eval_weights = [np.array(w) for w in fixed_weights]

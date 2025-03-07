@@ -13,7 +13,7 @@ moviepy
 seaborn
 cvxpy
 fire
-gym_super_mario_bros
+gym_super_mario_bros==7.4.0
 pycddlib==2.1.6
 mujoco==3.1.6
 requests
