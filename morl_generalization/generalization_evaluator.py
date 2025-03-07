@@ -14,7 +14,6 @@ from mo_utils.performance_indicators import (
 )
 from mo_utils.weights import equally_spaced_weights
 from morl_generalization.utils import make_test_envs
-from morl_generalization.wrappers import MOAsyncVectorEnv
 from experiments.evaluation import get_minmax_values
 
 
@@ -25,7 +24,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             algo_name: str,
             seed: int,
             test_envs: List[str],
-            generalization_hyperparams: dict,
             algo_suffix: str = "",
             record_video: bool = False,
             record_video_w_freq: Optional[int] = None,
@@ -61,7 +59,6 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
             algo_name=algo_name, 
             algo_suffix=algo_suffix,
             seed=seed, 
-            generalization_hyperparams=generalization_hyperparams, 
             test_envs=test_envs, 
             record_video=record_video, 
             record_video_w_freq=record_video_w_freq,
@@ -81,13 +78,13 @@ class MORLGeneralizationEvaluator(gym.Wrapper, gym.utils.RecordConstructorArgs):
                 env_name, 
                 self.algo_name, 
                 seed,
-                generalization_hyperparams,
                 record_video=record_video,
                 record_video_w_freq=record_video_w_freq,
                 record_video_ep_freq=record_video_ep_freq,
+                **kwargs
             ) for env_name in test_envs
         ]
-        self.test_envs = MOAsyncVectorEnv(make_fn)
+        self.test_envs = mo_gym.wrappers.vector.MOSyncVectorEnv(make_fn)
 
         if fixed_weights:
             self.eval_weights = [np.array(w) for w in fixed_weights]
@@ -477,6 +474,6 @@ def make_generalization_evaluator(env, args) -> MORLGeneralizationEvaluator:
         record_video=args.record_video,
         record_video_ep_freq=args.record_video_ep_freq,
         record_video_w_freq=args.record_video_w_freq,
-        generalization_hyperparams = args.generalization_hyperparams
+        **args.generalization_hyperparams
     )
     return env

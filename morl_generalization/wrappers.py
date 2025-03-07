@@ -525,6 +525,12 @@ class MORecordVideo(gym.Wrapper[ObsType, ActType, ObsType, ActType], gym.utils.R
             logger.warn("Unable to save last video! Did you call close()?")
 
 class MOAsyncVectorEnv(AsyncVectorEnv):
+    """Vectorized environment that runs multiple environments in parallel.
+
+    It uses ``multiprocessing`` processes, and pipes for communication.
+
+    Mofified from gymnasium.vector.async_vector_env.AsyncVectorEnv to allow for multi-objective rewards.
+    """
     def __init__(
         self,
         env_fns: Sequence[Callable[[], gym.Env]],
@@ -592,7 +598,6 @@ class MOAsyncVectorEnv(AsyncVectorEnv):
             )
         
         # modify to allow return of vector rewards
-        print("rewards", rewards)
         self.rewards = concatenate(
             self.reward_space,
             rewards,

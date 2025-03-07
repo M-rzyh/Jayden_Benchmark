@@ -37,8 +37,7 @@ def get_env_selection_algo_wrapper(env, generalization_hyperparams, is_eval_env 
     else:
         raise NotImplementedError
 
-def make_test_envs(gym_id, algo_name, seed, generalization_hyperparams, record_video=False, record_video_w_freq=None, record_video_ep_freq=None, **kwargs):
-    register_envs()
+def make_test_envs(gym_id, algo_name, seed, generalization_algo='domain_randomization', history_len=1, record_video=False, record_video_w_freq=None, record_video_ep_freq=None, **kwargs):
     is_mario = "mario" in gym_id.lower()
     if record_video:
         assert sum(x is not None for x in [record_video_w_freq, record_video_ep_freq]) == 1, "Must specify exactly one video recording trigger"
@@ -66,8 +65,6 @@ def make_test_envs(gym_id, algo_name, seed, generalization_hyperparams, record_v
     if "highway" in gym_id.lower():
         env = FlattenObservation(env)
     
-    generalization_algo = generalization_hyperparams["generalization_algo"]
-    history_len = generalization_hyperparams["history_len"] if "history_len" in generalization_hyperparams else 1
     if generalization_algo == "dr_state_history" or generalization_algo == "asymmetric_dr_state_history":
         env = HistoryWrapper(env, history_len, state_history=True)
     elif generalization_algo == "dr_action_history" or generalization_algo == "asymmetric_dr_action_history":
