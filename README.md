@@ -26,12 +26,12 @@ The evaluations of 8 state-of-the-art algorithms and SAC on our benchmark domain
 If you use this repository in your research, please cite:
 ```bibtex
 @inproceedings{
-teoh2025on,
-title={On Generalization Across Environments In Multi-Objective Reinforcement Learning},
-author={Jayden Teoh and Pradeep Varakantham and Peter Vamplew},
-booktitle={The Thirteenth International Conference on Learning Representations},
-year={2025},
-url={https://openreview.net/forum?id=tuEP424UQ5}
+  teoh2025morlgeneralization,
+  title={On Generalization Across Environments In Multi-Objective Reinforcement Learning},
+  author={Jayden Teoh and Pradeep Varakantham and Peter Vamplew},
+  booktitle={The Thirteenth International Conference on Learning Representations},
+  year={2025},
+  url={https://openreview.net/forum?id=tuEP424UQ5}
 }
 ```
 Please also cite [MO-Gymnasium](https://github.com/Farama-Foundation/mo-gymnasium) if you use any of the baseline algorithms for evaluations.
