@@ -1,5 +1,5 @@
 # MORL-Generalization
-<img src="https://github.com/user-attachments/assets/a148cdd4-1e58-4896-9866-a620e45bdc5b" width="100%" height="250"/>
+<img src="https://github.com/user-attachments/assets/69e3fa00-9cd2-4b7c-bc8d-4e9481bc6664" width="100%" />
 &nbsp
 
 MORL-Generalization is a benchmark for evaluating the capabilities of Multi-Objective Reinforcement Learning (MORL) algorithms to generalize across environments. This software is developed as part of our ICLR'25 paper ["On Generalization Across Environments In Multi-Objective Reinforcement Learning"](https://arxiv.org/abs/2503.00799).
